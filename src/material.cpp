@@ -61,6 +61,13 @@ namespace engine {
         }
     }
 
+    material& material::operator=(material&& o) {
+        m_shader = std::move(o.m_shader);
+        m_textures = std::move(o.m_textures);
+
+        return *this;
+    }
+
     static uniforms_info parse_uniforms(const std::string& s) {
         auto eat_whitespace = [](std::string_view& str) {
             while(std::isspace(str[0])) {

@@ -6,6 +6,7 @@
 #include <span>
 #include <GAL/framebuffer.hpp>
 #include "../renderer.hpp"
+#include "../concepts.hpp"
 
 namespace engine {
     using framebuffer = gal::framebuffer<rc<gal::texture>>;
@@ -32,14 +33,13 @@ namespace engine {
 
         explicit viewport(const viewport& o);
 
-        // this function can be called from a const&, but returns a mut&. this is because
         framebuffer& fbo() { return m_fbo; }
         const framebuffer& fbo() const { return m_fbo; }
         material& postfx_material() { return m_postfx_material; }
         const material& postfx_material() const { return m_postfx_material; }
         std::optional<glm::vec2> dynamic_size_relative_to_output() const { return m_dynamic_size_relative_to_output; }
 
-	void bind_draw() const { m_fbo.bind_draw(); }
+        void bind_draw() const { m_fbo.bind_draw(); }
 
         //can be set to null
         void set_active_camera(const camera* c) { m_active_camera = c; }
@@ -48,43 +48,51 @@ namespace engine {
 
         // note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and "leaking" to the gc the old one.
         void output_resolution_changed(glm::ivec2 native_resolution) const;
+
+        void operator=(viewport&& o) {
+            m_fbo = std::move(o.m_fbo);
+            m_postfx_material = std::move(o.m_postfx_material);
+            m_dynamic_size_relative_to_output = std::move(o.m_dynamic_size_relative_to_output);
+            m_active_camera = std::move(o.m_active_camera);
+        }
     };
 
     struct null_node_data {};
 
+    namespace detail { class internal_node; }
+    class node_span;
+    class const_node_span;
+
     class node {
-        std::vector<node> m_children;
+        std::vector<detail::internal_node> m_children;
         bool m_children_is_sorted;
         node* m_father;
         std::string m_name;
         glm::mat4 m_transform;
 
-    public:
-        using node_variant_t = std::variant<camera, mesh, collision_shape, viewport, null_node_data>;
-
-    private:
-        node_variant_t m_other_data;
+        special_node_data_variant_t m_other_data;
         rc<const nodetree> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
 
-        node(std::vector<node> children, bool children_is_sorted, node* father, std::string name, glm::mat4 transform, node_variant_t other_data, rc<const nodetree> nodetree_reference);
-
+        friend class detail::internal_node;
+        node& operator=(node&& o); // useful for sorting children nodes, but it is bad for it to be exposed like this
     public:
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node(std::string name, node_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1));
+        explicit node(std::string name, special_node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1));
+
         node(node&& o);
         //this is an expensive deep-copy
         explicit node(const node& o);
-        node& operator=(node&& o);
 
-        node(const rc<const nodetree>& nt, std::string name = std::string()); // this is expensive (calls deep-copy constructor)
+        // this is expensive (calls deep-copy constructor)
+        node(const rc<const nodetree>& nt, std::string name = std::string());
 
         // children access
         void add_child(node c);
         node& get_child(std::string_view name);
-        std::span<const node> children() const;
-        std::span<node> children();
+        const_node_span children() const;
+        node_span children();
         void set_children_sorting_preference(bool v); // sets whether the children vector is sorted. sorted -> fast O(logn) retrieval, slow O(n) insertion; unsorted -> slow O(n) retrieval, fast O(1) insertion.
         // get node with relative path
         node& get_from_path(std::string_view path);
@@ -102,16 +110,70 @@ namespace engine {
         glm::mat4& transform();
 
         // special node data access
-        template<class T> bool 	   has() const { return std::holds_alternative<T>(m_other_data); }
-        template<class T> const T& get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
-        template<class T> T&       get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+        template<SpecialNodeData T> bool     has() const { return std::holds_alternative<T>(m_other_data); }
+        template<SpecialNodeData T> const T& get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+        template<SpecialNodeData T> T&       get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
     };
 
-//    std::strong_ordering operator<=>(const std::string_view& s, const node& n);
-//    std::strong_ordering operator<=>(const node& n, const std::string_view& s);
+    namespace detail {
+        // this class is a wrapper around node which allows move assignment, exposing to the stdlib and allowing it to keep the children vector sorted
+        class internal_node {
+            node v;
+        public:
+            internal_node(internal_node&& o) : v(std::move(o.v)) {}
+            internal_node(const internal_node& o) : v(o.v) {}
+            internal_node(node&& o) : v(std::move(o)) {}
+            internal_node& operator=(internal_node&& o) {
+                v = std::move(o.v);
+                return *this;
+            }
+            node& operator*() { return v; }
+            const node& operator*() const { return v; }
+            node* operator->() { return &v; }
+            const node* operator->() const { return &v; }        };
+    }
 
-//    bool operator==(const node& n, const std::string_view& s);
+    class node_span {
+        std::vector<detail::internal_node>& m_vec;
+    public:
+        struct const_iterator {
+            const detail::internal_node* p;
+            const_iterator(const detail::internal_node* p) : p(p){ }
+            void operator++() { p++; }
+            const node& operator*() { return **p; }
+            bool operator!=(const const_iterator& o) { return p != o.p; }
+        };
+        struct iterator {
+            detail::internal_node* p;
+            iterator(detail::internal_node* p) : p(p){ }
+            void operator++() { p++; }
+            node& operator*() { return **p; }
+            bool operator!=(iterator& o) { return p != o.p; }
+            operator const_iterator() { return const_iterator{p}; }
+        };
 
+        node_span(std::vector<detail::internal_node>& vec) : m_vec(vec) {}
+        node_span(node_span& o) : m_vec(o.m_vec) {}
+
+        node& operator[](size_t i) { return *m_vec[i]; }
+        const node& operator[](size_t i) const { return *m_vec[i]; }
+
+        iterator begin() { return m_vec.data(); }
+        const_iterator begin() const { return m_vec.data(); }
+        iterator end() { return m_vec.data() + m_vec.size(); }
+        const_iterator end() const { return m_vec.data() + m_vec.size(); }
+    };
+    class const_node_span {
+        const std::vector<detail::internal_node>& m_vec;
+    public:
+        const_node_span(const std::vector<detail::internal_node>& vec) : m_vec(vec) {}
+        const_node_span(const_node_span& o) : m_vec(o.m_vec) {}
+
+        const node& operator[](size_t i) const { return *m_vec[i]; }
+
+        node_span::const_iterator begin() const { return m_vec.data(); }
+        node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
+    };
     // "nodetree" is what we call a preconstructed, immutable subtree of the node tree, generally loaded from file
     class nodetree {
         node m_root;

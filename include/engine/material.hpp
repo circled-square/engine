@@ -47,8 +47,9 @@ namespace engine {
         rc<const gal::texture>& get_texture(size_t);
         const rc<const gal::texture>& get_texture(size_t) const;
 
-
         void bind_and_set_uniforms(glm::mat4 mvp, glm::ivec2 output_resolution, float frame_time) const;
+
+        material& operator=(material&& o);
     };
     namespace uniform_names {
         extern const char* output_resolution; // = "u_output_resolution";
