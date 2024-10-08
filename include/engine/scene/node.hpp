@@ -33,28 +33,23 @@ namespace engine {
 
         explicit viewport(const viewport& o);
 
-        framebuffer& fbo() { return m_fbo; }
-        const framebuffer& fbo() const { return m_fbo; }
-        material& postfx_material() { return m_postfx_material; }
-        const material& postfx_material() const { return m_postfx_material; }
-        std::optional<glm::vec2> dynamic_size_relative_to_output() const { return m_dynamic_size_relative_to_output; }
+        framebuffer& fbo();
+        const framebuffer& fbo() const;
+        material& postfx_material();
+        const material& postfx_material() const;
+        std::optional<glm::vec2> dynamic_size_relative_to_output() const;
 
-        void bind_draw() const { m_fbo.bind_draw(); }
+        void bind_draw() const;
 
         //can be set to null
-        void set_active_camera(const camera* c) { m_active_camera = c; }
+        void set_active_camera(const camera* c);
         //can return null
-        const camera* get_active_camera() const { return m_active_camera; }
+        const camera* get_active_camera() const;
 
         // note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and "leaking" to the gc the old one.
         void output_resolution_changed(glm::ivec2 native_resolution) const;
 
-        void operator=(viewport&& o) {
-            m_fbo = std::move(o.m_fbo);
-            m_postfx_material = std::move(o.m_postfx_material);
-            m_dynamic_size_relative_to_output = std::move(o.m_dynamic_size_relative_to_output);
-            m_active_camera = std::move(o.m_active_camera);
-        }
+        void operator=(viewport&& o);
     };
 
     struct null_node_data {};
@@ -110,9 +105,9 @@ namespace engine {
         glm::mat4& transform();
 
         // special node data access
-        template<SpecialNodeData T> bool     has() const { return std::holds_alternative<T>(m_other_data); }
-        template<SpecialNodeData T> const T& get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
-        template<SpecialNodeData T> T&       get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+        template<SpecialNodeData T> bool     has() const;
+        template<SpecialNodeData T> const T& get() const;
+        template<SpecialNodeData T> T&       get();
     };
 
     namespace detail {
@@ -174,6 +169,7 @@ namespace engine {
         node_span::const_iterator begin() const { return m_vec.data(); }
         node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
     };
+
     // "nodetree" is what we call a preconstructed, immutable subtree of the node tree, generally loaded from file
     class nodetree {
         node m_root;

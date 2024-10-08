@@ -2,40 +2,8 @@
 #define ENGINE_CONCEPTS_HPP
 
 #include <typeinfo>
-#include <type_traits>
-#include <concepts>
-#include <tuple>
-#include <variant>
+#include "meta_utils.hpp"
 
-// general purpose concepts: Polymorphic, Derived, ContainedInTuple, ContainedInVariant
-namespace engine {
-    template<typename T>
-    concept Polymorphic = std::is_polymorphic_v<T>;
-    template<class T, class U>
-    concept Derived = std::is_base_of<U, T>::value;
-
-
-    template<typename T, typename... Ts>
-    concept AnyOneOf = (std::same_as<T, Ts> || ...);
-
-    namespace detail {
-        template<typename T, template<typename...>typename generic_tuple_t, typename tuple_t>
-        struct contained_in_pack__struct {
-            static_assert(false, "tuple_t must be an instantiation of generic_tuple_t");
-        };
-        template<typename T, template<typename...>typename generic_tuple_t, typename...Ts>
-        struct contained_in_pack__struct<T, generic_tuple_t, generic_tuple_t<Ts...>> {
-            static constexpr bool value = AnyOneOf<T, Ts...>;
-        };
-    }
-
-    template<typename T, typename tuple_t>
-    concept ContainedInTuple = detail::contained_in_pack__struct<T, std::tuple, tuple_t>::value;
-
-    template<typename T, typename variant_t>
-    concept ContainedInVariant = detail::contained_in_pack__struct<T, std::variant, variant_t>::value;
-
-}
 
 // Resource and associated concepts
 // forward declarations of resource types and declaration of Resource and PolymorphicResource concept

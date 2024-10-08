@@ -140,6 +140,20 @@ namespace engine {
         }
     }
 
+    template<SpecialNodeData T> bool     node::has() const { return std::holds_alternative<T>(m_other_data); }
+    template<SpecialNodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+    template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+
+    template<SpecialNodeData T> class node_templates_instantiator {
+        T& (node::*_get)() = &node::get<T>;
+        const T& (node::*_get_const)() const = &node::get<T>;
+        bool(node::*_has)() const = &node::has<T>;
+    };
+
+    constexpr static map_pack<node_templates_instantiator, std::variant, std::tuple, special_node_data_variant_t> __instantiate_node_templates;
+
+
+
     viewport::viewport(framebuffer fbo, rc<const shader> postfx_shader, std::optional<glm::vec2> dynamic_size_relative_to_output)
         : m_fbo(std::move(fbo)), m_postfx_material(std::move(postfx_shader), {m_fbo.get_texture()}),
           m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {}
@@ -159,6 +173,22 @@ namespace engine {
     viewport::viewport(const viewport &o)
         : viewport(copy(o)) {}
 
+    framebuffer &viewport::fbo() { return m_fbo; }
+
+    const framebuffer &viewport::fbo() const { return m_fbo; }
+
+    material &viewport::postfx_material() { return m_postfx_material; }
+
+    const material &viewport::postfx_material() const { return m_postfx_material; }
+
+    std::optional<glm::vec2> viewport::dynamic_size_relative_to_output() const { return m_dynamic_size_relative_to_output; }
+
+    void viewport::bind_draw() const { m_fbo.bind_draw(); }
+
+    void viewport::set_active_camera(const camera *c) { m_active_camera = c; }
+
+    const camera *viewport::get_active_camera() const { return m_active_camera; }
+
     void viewport::output_resolution_changed(glm::ivec2 output_resolution) const {
         if(!m_dynamic_size_relative_to_output)
             return;
@@ -172,6 +202,13 @@ namespace engine {
                 m_fbo.link_texture(std::move(new_texture));
             }
         }
+    }
+
+    void viewport::operator=(viewport &&o) {
+        m_fbo = std::move(o.m_fbo);
+        m_postfx_material = std::move(o.m_postfx_material);
+        m_dynamic_size_relative_to_output = std::move(o.m_dynamic_size_relative_to_output);
+        m_active_camera = std::move(o.m_active_camera);
     }
 }
 

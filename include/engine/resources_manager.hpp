@@ -16,18 +16,6 @@
 
 namespace engine {
     namespace detail {
-        //map_tuple maps all element types of a given Tuple type with the Template template
-        template<template<class> class Template, class Tuple>
-        struct map_tuple_struct {
-            static_assert(false, "map_tuple's Tuple argument should be an instantiation of std::tuple");
-        };
-        template<template<class> class Template, class... Ts>
-        struct map_tuple_struct<Template, std::tuple<Ts...>> {
-            using type = std::tuple<Template<Ts>...>;
-        };
-        template<template<class> class Template, class Tuple> using map_tuple = typename map_tuple_struct<Template, Tuple>::type;
-
-
         // An owning pointer with reference counting, can be used to construct a rc
         template<Resource T> using rc_ptr = std::unique_ptr<rc_resource<T>>;
 
@@ -68,49 +56,31 @@ namespace engine {
         template<Resource T>
         friend void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource);
 
-        detail::map_tuple<detail::id_to_resource_hashmap, resource_tuple_t> m_active_resources;
+        template<Resource T> friend class rm_templates_instantiator;
+
+        map_tuple<detail::id_to_resource_hashmap, resource_tuple_t> m_active_resources;
 
         //NOTE: dither texture has name "dither_texture"; retro 3d shader has name "retro_3d_shader"
-        detail::map_tuple<detail::name_to_id_hashmap, resource_tuple_t> m_resources_by_name;
+        map_tuple<detail::name_to_id_hashmap, resource_tuple_t> m_resources_by_name;
 
-        detail::map_tuple<detail::deletion_set, resource_tuple_t> m_marked_for_deletion;
+        map_tuple<detail::deletion_set, resource_tuple_t> m_marked_for_deletion;
 
         std::unordered_map<std::string, std::function<detail::rc_ptr<basic_scene>()>> m_dbg_scene_ctors;
 
-        // only used internally, so it being a template is not a problem.
         // TODO: make this something other than a private method, since private methods of this class are supposed to be used by engine::application
-        template<Resource T> rc<T> create_or_get_named_resource(const std::string& path, auto resource_constructor);
+        template<Resource T> rc<T> create_or_get_named_resource(const std::string& path, std::function<detail::rc_ptr<T>(const std::string&)> resource_constructor);
 
         resources_manager() = default;
-        ~resources_manager() {
-            collect_garbage(); // unnecessary, useful for debug reasons
-        }
+        ~resources_manager() = default;
     public:
-        template <NonPolymorphicResource T, typename... Args> [[nodiscard, maybe_unused]]
-        rc<const T> new_from(Args&&... args) {
+
+        template <NonPolymorphicResource T> [[nodiscard, maybe_unused]]
+        rc<const T> new_from(T&& res);
+        template <PolymorphicResource base_t, Derived<base_t> derived_t> [[nodiscard, maybe_unused]]
+        rc<const base_t> new_from(derived_t&& res) {
             using namespace detail;
-            static_assert(
-                ContainedInTuple<id_to_resource_hashmap<T>, decltype(m_active_resources)>,
-                "T passed to resources_manager::new_from can't be stored in resources_manager::m_active_resources"
-            );
 
-            rc_ptr<T> p(new rc_resource<T>(std::forward<Args>(args)...));
-            rc<const T> ret(p.get());
-            auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
-            resource_id<T> key = *p;
-            resources_hm.insert(std::make_pair(key, std::make_pair(std::string(), std::move(p))));
-            return ret;
-        }
-
-        template <PolymorphicResource base_t, Derived<base_t> derived_t, typename... Args> [[nodiscard, maybe_unused]]
-        rc<const base_t> new_from(Args&&... args) {
-            using namespace detail;
-            static_assert(
-                ContainedInTuple<id_to_resource_hashmap<base_t>, decltype(m_active_resources)>,
-                "base_t passed to resources_manager::new_from can't be stored in resources_manager::m_active_resources"
-            );
-
-            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::forward<Args>(args)...));
+            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::move(res)));
             rc<const base_t> ret(p.get());
             auto& resources_hm = std::get<id_to_resource_hashmap<base_t>>(m_active_resources);
             resource_id<base_t> key = *p;
@@ -118,31 +88,13 @@ namespace engine {
             return ret;
         }
 
-        template <NonPolymorphicResource T, typename... Args> [[nodiscard, maybe_unused]]
-        rc<T> new_mut_from(Args&&... args) {
+        template <NonPolymorphicResource T> [[nodiscard, maybe_unused]]
+        rc<T> new_mut_from(T&& res);
+        template <PolymorphicResource base_t, Derived<base_t> derived_t> [[nodiscard, maybe_unused]]
+        rc<base_t> new_mut_from(derived_t&& res) {
             using namespace detail;
-            static_assert(
-                ContainedInTuple<id_to_resource_hashmap<T>, decltype(m_active_resources)>,
-                "T passed to resources_manager::new_from can't be stored in resources_manager::m_active_resources"
-            );
 
-            auto p = rc_ptr<T>(new rc_resource<T>(std::forward<Args>(args)...));
-            rc<T> ret(p.get());
-            auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
-            resource_id<T> key = *p;
-            resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
-            return ret;
-        }
-
-        template <PolymorphicResource base_t, Derived<base_t> derived_t, typename... Args> [[nodiscard, maybe_unused]]
-        rc<base_t> new_mut_from(Args&&... args) {
-            using namespace detail;
-            static_assert(
-                ContainedInTuple<id_to_resource_hashmap<base_t>, decltype(m_active_resources)>,
-                "base_t passed to resources_manager::new_from can't be stored in resources_manager::m_active_resources"
-            );
-
-            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::forward<Args>(args)...));
+            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::move(res)));
             rc<base_t> ret(p.get());
             auto& resources_hm = std::get<id_to_resource_hashmap<base_t>>(m_active_resources);
             resource_id<base_t> key = *p;
@@ -189,14 +141,8 @@ namespace engine {
     };
 
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource) {
-        using namespace detail;
+    void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource);
 
-        resource_id<T> id = *resource;
-        auto& marked_for_deletion_set = std::get<deletion_set<T>>(rm.m_marked_for_deletion);
-        EXPECTS(!marked_for_deletion_set.contains(id));
-        marked_for_deletion_set.insert(id);
-    }
 
     [[nodiscard]]
     resources_manager& get_rm();

@@ -10,11 +10,35 @@
 
 namespace engine {
     using namespace detail;
+    /*
+    template<SpecialNodeData T> bool     node::has() const { return std::holds_alternative<T>(m_other_data); }
+    template<SpecialNodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+    template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+
+    template<SpecialNodeData T> class node_templates_instantiator {
+        T& (node::*_get)() = &node::get<T>;
+        const T& (node::*_get_const)() const = &node::get<T>;
+        bool(node::*_has)() const = &node::has<T>;
+    };
+
+    [[no_unique_address]]
+    constexpr map_pack<node_templates_instantiator, std::variant, std::tuple, special_node_data_variant_t> __instantiate_node_templates;
+    */
+    template<Resource T>
+    void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource) {
+        using namespace detail;
+
+        resource_id<T> id = *resource;
+        auto& marked_for_deletion_set = std::get<deletion_set<T>>(rm.m_marked_for_deletion);
+        EXPECTS(!marked_for_deletion_set.contains(id));
+        marked_for_deletion_set.insert(id);
+    }
+
 
     template<typename T> inline rc_ptr<T> make_rc_ptr(T res) { return rc_ptr<T>(new rc_resource<T>(std::move(res))); }
 
     template<Resource T>
-    rc<T> resources_manager::create_or_get_named_resource(const std::string& path, auto resource_constructor) {
+    rc<T> resources_manager::create_or_get_named_resource(const std::string& path, std::function<rc_ptr<T>(const std::string&)> resource_constructor) {
         //hashmaps for gal::texture
         auto& id_to_resource_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
         auto& name_to_id_hm = std::get<name_to_id_hashmap<T>>(m_resources_by_name);
@@ -47,6 +71,37 @@ namespace engine {
 
         return ret;
     }
+
+    template <NonPolymorphicResource T>
+    rc<const T> resources_manager::new_from(T&& res) {
+        using namespace detail;
+
+        rc_ptr<T> p(new rc_resource<T>(std::move(res)));
+        rc<const T> ret(p.get());
+        auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
+        resource_id<T> key = *p;
+        resources_hm.insert(std::make_pair(key, std::make_pair(std::string(), std::move(p))));
+        return ret;
+    }
+    template <NonPolymorphicResource T>
+    rc<T> resources_manager::new_mut_from(T&& res) {
+        using namespace detail;
+
+        auto p = rc_ptr<T>(new rc_resource<T>(std::move(res)));
+        rc<T> ret(p.get());
+        auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
+        resource_id<T> key = *p;
+        resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
+        return ret;
+    }
+
+    template<Resource T> class rm_templates_instantiator {
+        void (*_flag_for_del)(resources_manager&, rc_resource<T>*) = &flag_for_deletion<T>;
+        rc<T> (resources_manager::*_create_or_get_res)(const std::string&, std::function<rc_ptr<T>(const std::string&)>) = &resources_manager::create_or_get_named_resource<T>;
+        rc<const T> (resources_manager::*_new_from)(T&& res) = &resources_manager::new_from<T>;
+        rc<T> (resources_manager::*_new_mut_from)(T&& res) = &resources_manager::new_mut_from<T>;
+    };
+    constexpr static map_tuple<rm_templates_instantiator, resource_tuple_t> __instantiate_rm_templates;
 
 
     rc<const gal::texture> resources_manager::get_texture(const std::string& path) {
