@@ -14,7 +14,7 @@ callable from other threads.
 struct GLFWwindow; // forward declaration to avoid needlessly including glfw everywhere
 
 namespace engine::window {
-    enum window_creation_hints {
+    enum creation_hints {
         NO_HINTS = 0,
         FULLSCREEN = 1 << 0,
         MAXIMIZED = 1 << 1,
@@ -28,7 +28,7 @@ namespace engine::window {
         window(window&&) = delete;
         window(const window&) = delete;
 
-        window(glm::ivec2 res, const std::string& title, window_creation_hints hints = window_creation_hints::NO_HINTS);
+        window(glm::ivec2 res, const std::string& title, creation_hints hints = creation_hints::NO_HINTS);
         ~window();
 
         bool should_close();

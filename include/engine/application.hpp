@@ -19,7 +19,7 @@ namespace engine {
         application(application&&) = delete; // application cannot be moved: m_window's window handle points to it in its user pointer and scene::m_application points to it
 
         //pass negative values in the resolution for fullscreen
-        application(glm::ivec2 res, const std::string& title, window::window_creation_hints hints = window::window_creation_hints::NO_HINTS);
+        application(glm::ivec2 res, const std::string& title, window::creation_hints hints = window::creation_hints::NO_HINTS);
 
         ~application();
 

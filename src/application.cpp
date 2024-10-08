@@ -12,7 +12,7 @@
 #include <iostream>
 
 namespace engine {
-    application::application(glm::ivec2 res, const std::string &title, window::window_creation_hints hints)
+    application::application(glm::ivec2 res, const std::string &title, window::creation_hints hints)
             : m_window(res, title, hints), m_active_scene(),
               m_prev_mouse_cursor_pos(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()),
               m_ignore_mouse_move_on_next_event(true)

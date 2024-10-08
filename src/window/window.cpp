@@ -13,7 +13,7 @@ namespace engine::window {
 
     std::int64_t window::window_count = 0;
 
-    window::window(glm::ivec2 res, const std::string& title, window_creation_hints hints) {
+    window::window(glm::ivec2 res, const std::string& title, creation_hints hints) {
         //Initialize the library
         if(!window_count)
             throw_on_error(glfwInit(), "Unable to initialize glfwInit");
@@ -27,7 +27,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
-        if(hints & window_creation_hints::MAXIMIZED)
+        if(hints & creation_hints::MAXIMIZED)
             glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
         /*
         //taken care of by glad's generator, only causes problems if done alongside it
@@ -36,7 +36,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         */
 
-        if(hints & window_creation_hints::FULLSCREEN)
+        if(hints & creation_hints::FULLSCREEN)
             m_window_ptr = glfwCreateWindow(mode->width, mode->height, title.c_str(), monitor, nullptr);
         else
             m_window_ptr = glfwCreateWindow(res.x, res.y, title.c_str(), nullptr, nullptr);
