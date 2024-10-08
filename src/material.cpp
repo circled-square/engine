@@ -35,6 +35,7 @@ namespace engine {
 
 
     void material::bind_and_set_uniforms(glm::mat4 mvp, glm::ivec2 output_resolution, float frame_time) const {
+        EXPECTS(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
         m_shader->get_program().bind();
 
         if(m_shader->get_uniforms().output_resolution) {
@@ -49,7 +50,6 @@ namespace engine {
             m_shader->get_program().set_uniform(uniform_names::mvp, mvp);
         }
 
-        assert(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
 
         size_t next_texture_slot = 0;
         for(; next_texture_slot < m_textures.size(); next_texture_slot++) {
@@ -181,11 +181,12 @@ namespace engine {
         size_t vert_str_pos = content.find(vert_str);
         size_t frag_str_pos = content.find(frag_str);
 
-        assert(uniforms_str_pos != std::string::npos);
-        assert(vert_str_pos != std::string::npos);
-        assert(frag_str_pos != std::string::npos);
-        assert(uniforms_str_pos < vert_str_pos);
-        assert(vert_str_pos < frag_str_pos);
+        // TODO: throw custom exception instead of using ASSERTS
+        ASSERTS(uniforms_str_pos != std::string::npos);
+        ASSERTS(vert_str_pos != std::string::npos);
+        ASSERTS(frag_str_pos != std::string::npos);
+        ASSERTS(uniforms_str_pos < vert_str_pos);
+        ASSERTS(vert_str_pos < frag_str_pos);
 
         size_t uniforms_start = uniforms_str_pos + std::strlen(uniforms_str);
         size_t uniforms_end = vert_str_pos;
