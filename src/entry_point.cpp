@@ -5,7 +5,7 @@
 namespace engine {
     static void terminate_handler();
 
-    void entry_point(glm::ivec2 wnd_res, const char* wnd_name, window::window_creation_hints wnd_hints, get_start_scene_t get_start_scene) {
+    void entry_point(glm::ivec2 wnd_res, const char* wnd_name, window::window_creation_hints wnd_hints, std::function<rc<basic_scene>()> get_start_scene) {
         #ifdef NDEBUG
             slogga::stdout_log.set_log_level(slogga::log_level::WARNING);
         #else
