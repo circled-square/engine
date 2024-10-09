@@ -51,5 +51,17 @@ namespace engine {
 
     template<template<class> class Template, class Tuple> using map_tuple = map_pack<Template, std::tuple, std::tuple, Tuple>;
 
+    namespace detail {
+        template<class... Ts>
+        struct overloaded : Ts... { using Ts::operator()...; };
+        // explicit deduction guide (not needed as of C++20)
+        template<class... Ts>
+        overloaded(Ts...) -> overloaded<Ts...>;
+    }
+
+    template<typename...Ts>
+    void pattern_match_visit(const std::variant<Ts...>& v, auto...overloads) {
+        std::visit(detail::overloaded(overloads...), v);
+    }
 }
 #endif // ENGINE_META_UTILS_HPP

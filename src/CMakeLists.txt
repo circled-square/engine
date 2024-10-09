@@ -11,7 +11,7 @@ target_link_libraries(engine__application PRIVATE imgui GAL slogga)
 
 #entry_point
 add_library(engine__entry_point STATIC entry_point.cpp)
-target_link_libraries(engine__entry_point PUBLIC engine__include_dirs engine__window engine__basic_scene)
+target_link_libraries(engine__entry_point PUBLIC engine__include_dirs engine__window engine__scene)
 target_link_libraries(engine__entry_point PRIVATE engine__application)
 
 #gltf_loader

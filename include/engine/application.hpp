@@ -5,15 +5,17 @@
 #include <glm/glm.hpp>
 #include <engine/rc.hpp>
 
-#include "scene/basic_scene.hpp"
+#include "scene/scene.hpp"
+#include "application/event.hpp"
 
 namespace engine {
     class application {
         window::window m_window;
 
-        rc<basic_scene> m_active_scene;
+        rc<scene> m_active_scene;
         glm::vec2 m_prev_mouse_cursor_pos;
         bool m_ignore_mouse_move_on_next_event;
+        std::vector<event_variant_t> m_events_this_frame;
     public:
 
         application(application&&) = delete; // application cannot be moved: m_window's window handle points to it in its user pointer and scene::m_application points to it
@@ -23,7 +25,7 @@ namespace engine {
 
         ~application();
 
-        rc<basic_scene> set_active_scene(rc<basic_scene> new_scene);
+        rc<scene> set_active_scene(rc<scene> new_scene);
 
         void run();
     };

@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <format>
 #include <source_location>
+#include <slogga/log.hpp>
+#include <slogga/asserts.hpp>
 
 namespace engine::window {
     inline auto throw_on_error(auto res, const char* what, std::source_location l = std::source_location::current()) {
@@ -62,9 +64,15 @@ namespace engine::window {
         m_window_ptr = nullptr;
     }
 
-    void window::capture_mouse_cursor() { glfwSetInputMode(m_window_ptr, GLFW_CURSOR, GLFW_CURSOR_DISABLED); }
+    void window::capture_mouse_cursor() {
+        glfwSetInputMode(m_window_ptr, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        ENSURES(is_mouse_cursor_captured());
+    }
 
-    void window::uncapture_mouse_cursor() { glfwSetInputMode(m_window_ptr, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+    void window::uncapture_mouse_cursor() {
+        glfwSetInputMode(m_window_ptr, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        ENSURES(!is_mouse_cursor_captured());
+    }
 
     bool window::is_mouse_cursor_captured() { return glfwGetInputMode(m_window_ptr, GLFW_CURSOR) == GLFW_CURSOR_DISABLED; }
 

@@ -10,14 +10,18 @@ namespace engine {
         return s;
     }
 
-    node::node(std::string name, special_node_data_variant_t other_data, glm::mat4 transform)
+    node::node(std::string name, special_node_data_variant_t other_data, glm::mat4 transform, std::optional<script> script)
         : m_children(),
           m_children_is_sorted(true),
           m_father(nullptr),
           m_name(fix_name(std::move(name))),
           m_transform(std::move(transform)),
           m_other_data(std::move(other_data)),
-          m_nodetree_reference(rc<const nodetree>()) {}
+          m_nodetree_reference(rc<const nodetree>()),
+          m_script(std::move(script)) {
+        if(m_script)
+            m_script->attach(*this);
+    }
 
     node::node(node&& o)
         : m_children(std::move(o.m_children)),
@@ -26,7 +30,8 @@ namespace engine {
           m_name(std::move(o.m_name)),
           m_transform(std::move(o.m_transform)),
           m_other_data(std::move(o.m_other_data)),
-          m_nodetree_reference(std::move(o.m_nodetree_reference))
+          m_nodetree_reference(std::move(o.m_nodetree_reference)),
+          m_script(std::move(o.m_script))
     {
         o.m_father = nullptr;
     }
@@ -38,7 +43,9 @@ namespace engine {
           m_name(o.m_name),
           m_transform(o.m_transform),
           m_other_data(o.m_other_data),
-          m_nodetree_reference(o.m_nodetree_reference) {}
+          m_nodetree_reference(o.m_nodetree_reference),
+          m_script(o.m_script)
+    {}
 
     node& node::operator=(node&& o) {
         m_children = std::move(o.m_children);
@@ -51,6 +58,7 @@ namespace engine {
         m_transform = std::move(o.m_transform);
         m_other_data = std::move(o.m_other_data);
         m_nodetree_reference = std::move(o.m_nodetree_reference);
+        m_script = std::move(o.m_script);
 
         return *this;
     }

@@ -5,7 +5,7 @@
 namespace engine {
     static void terminate_handler();
 
-    void entry_point(glm::ivec2 wnd_res, const char* wnd_name, window::creation_hints wnd_hints, std::function<rc<basic_scene>()> get_start_scene) {
+    void entry_point(glm::ivec2 wnd_res, const char* wnd_name, window::creation_hints wnd_hints, std::function<rc<scene>()> get_start_scene) {
         #ifdef NDEBUG
             slogga::stdout_log.set_log_level(slogga::log_level::WARNING);
         #else
@@ -22,10 +22,13 @@ namespace engine {
     }
 
     static void terminate_handler() {
+        slogga::stdout_log("terminate called!");
         try {
             std::rethrow_exception(std::current_exception());
         } catch(const std::exception& e) {
             slogga::stdout_log.fatal("uncaught exception: {}", e.what());
+        } catch(...) {
+            slogga::stdout_log.fatal("uncaught exception with unknown type");
         }
     }
 }

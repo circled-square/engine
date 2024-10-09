@@ -63,15 +63,14 @@ namespace engine {
         }
     }
 
-    static void process_node(node& n, glm::mat4 parent_transform) {
+    static void process_node(node& n, glm::mat4 parent_transform, application_channel_t& app_chan) {
         glm::mat4 transform = parent_transform * n.transform();
 
-        // n.set_global_transform(transform);
-        // n.process();
+        n.process(app_chan);
 
         // process children
         for(auto& child : n.children()) {
-            process_node(child, transform);
+            process_node(child, transform, app_chan);
         }
     }
 
@@ -105,22 +104,27 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene()
-        : engine::basic_scene(),
-        m_renderer(),
-        m_root(""),
-        m_whole_screen_vao(get_rm().get_whole_screen_vao())
-    {}
+    scene::scene(std::string name, node root, application_channel_t::to_app_t to_app_chan)
+        : m_root(std::move(root)),
+          m_name(std::move(name)),
+          m_renderer(),
+          m_whole_screen_vao(get_rm().get_whole_screen_vao()),
+          m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t()) {
+        //the root of a scene's name should always be unnamed.
+        EXPECTS(m_root.name().empty());
+    }
 
     scene::scene(scene &&o)
-        : engine::basic_scene(std::move(o)), m_renderer(std::move(o.m_renderer)), m_root(std::move(o.m_root)),
-          m_whole_screen_vao(std::move(o.m_whole_screen_vao)) {}
+        :  m_root(std::move(o.m_root)),
+          m_name(std::move(o.m_name)),
+          m_renderer(std::move(o.m_renderer)),
+          m_whole_screen_vao(std::move(o.m_whole_screen_vao)),
+          m_application_channel(std::move(o.m_application_channel)) {}
 
 
-    void scene::render(float frame_time) {
-        glm::ivec2 resolution = application_channel().from_app.framebuffer_size;
-
-        process_node(get_root(), glm::mat4(1)); // TODO: move this in update() final;
+    void scene::render() {
+        glm::ivec2 resolution = m_application_channel.from_app.framebuffer_size;
+        float frame_time = m_application_channel.from_app.frame_time;
 
         const camera* default_fb_camera = set_cameras(get_root(), glm::mat4(1), nullptr);
 
@@ -129,8 +133,14 @@ namespace engine {
         glm::mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : glm::mat4(1);
         glm::mat4 viewproj_mat = proj_mat * view_mat;
         render_node(m_renderer, *m_whole_screen_vao, get_root(), glm::mat4(1), viewproj_mat, resolution, frame_time, nullptr);
+    }
 
-        this->render_ui(frame_time);
+    void scene::update() {
+        process_node(get_root(), glm::mat4(1), m_application_channel);
+
+        //TODO: collision checks
+
+        // n.set_global_transform(transform); //TODO? currently calculated by render_node & process_node separately
     }
 
     void scene::reheat() {
@@ -147,6 +157,16 @@ namespace engine {
         glCullFace(GL_BACK);
     }
 
+    const application_channel_t::to_app_t &scene::channel_to_app() const {
+        return m_application_channel.to_app;
+    }
+
+    rc<scene> scene::get_and_reset_scene_to_change_to() { return std::move(m_application_channel.to_app.scene_to_change_to); }
+
+    application_channel_t::from_app_t &scene::channel_from_app() {
+        return m_application_channel.from_app;
+    }
+
     node& scene::get_root() { return m_root; }
 
     node& scene::get_node(std::string_view path) {
@@ -156,5 +176,7 @@ namespace engine {
         std::string_view subpath(path.begin()+1, path.end());
         return m_root.get_from_path(subpath);
     }
+
+    application_channel_t::application_channel_t(to_app_t to_app, from_app_t from_app) : to_app(std::move(to_app)), from_app(std::move(from_app)) {}
 
 } // namespace engine

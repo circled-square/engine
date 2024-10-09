@@ -7,23 +7,11 @@
 #include <engine/renderer.hpp>
 #include <engine/materials.hpp>
 #include <engine/gltf_loader.hpp>
+#include <engine/scene/scene.hpp>
 
 namespace engine {
     using namespace detail;
-    /*
-    template<SpecialNodeData T> bool     node::has() const { return std::holds_alternative<T>(m_other_data); }
-    template<SpecialNodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
-    template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
 
-    template<SpecialNodeData T> class node_templates_instantiator {
-        T& (node::*_get)() = &node::get<T>;
-        const T& (node::*_get_const)() const = &node::get<T>;
-        bool(node::*_has)() const = &node::has<T>;
-    };
-
-    [[no_unique_address]]
-    constexpr map_pack<node_templates_instantiator, std::variant, std::tuple, special_node_data_variant_t> __instantiate_node_templates;
-    */
     template<Resource T>
     void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource) {
         using namespace detail;
@@ -72,7 +60,7 @@ namespace engine {
         return ret;
     }
 
-    template <NonPolymorphicResource T>
+    template <Resource T>
     rc<const T> resources_manager::new_from(T&& res) {
         using namespace detail;
 
@@ -83,7 +71,7 @@ namespace engine {
         resources_hm.insert(std::make_pair(key, std::make_pair(std::string(), std::move(p))));
         return ret;
     }
-    template <NonPolymorphicResource T>
+    template <Resource T>
     rc<T> resources_manager::new_mut_from(T&& res) {
         using namespace detail;
 
@@ -142,11 +130,19 @@ namespace engine {
     }
 
     //temporary debug implementation, since we currently do not support loading scenes from file
-    rc<basic_scene> resources_manager::get_scene(const std::string &name) {
-        return create_or_get_named_resource<basic_scene>(name, [&](const std::string& p) {
+    rc<scene> resources_manager::get_scene(const std::string &name) {
+        return create_or_get_named_resource<scene>(name, [&](const std::string& p) {
             EXPECTS(m_dbg_scene_ctors.contains(p));
             return this->m_dbg_scene_ctors[p]();
         });
+    }
+
+    void resources_manager::dbg_add_scene_constructor(std::string name, std::function<scene ()> scene_constructor) {
+        using namespace detail;
+        std::function<rc_ptr<scene>()> rc_scene_constructor = [scene_ctor = std::move(scene_constructor)]() {
+            return rc_ptr<scene>(new rc_resource<scene>(scene_ctor()));
+        };
+        m_dbg_scene_ctors.insert({name, std::move(rc_scene_constructor)});
     }
 
     rc<const gal::texture> resources_manager::get_dither_texture() {

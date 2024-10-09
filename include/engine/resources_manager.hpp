@@ -11,14 +11,12 @@
 #include <GAL/vertex_array.hpp>
 #include "material.hpp"
 #include "scene/node.hpp"
-#include "scene/basic_scene.hpp"
 #include <functional>
 
 namespace engine {
     namespace detail {
         // An owning pointer with reference counting, can be used to construct a rc
         template<Resource T> using rc_ptr = std::unique_ptr<rc_resource<T>>;
-
 
         // The id of a resource, which can be used to retrieve from rm's hashmaps the resource itself, its name and whether it is flagged for deletion.
         // To be unique to the resource, tied to its type, for std::hash and for simplicity a ptr could be used; however a resource_id is not meant to be derefed or used in math, so this was deemed inappropriate
@@ -41,7 +39,6 @@ namespace engine {
 
 
         // these aliases are necessary to compose complex types from resource_tuple_t with map_tuple
-
         // map from id to (name, resource)
         template<Resource T> using id_to_resource_hashmap = std::unordered_map<resource_id<T>, std::pair<std::string, rc_ptr<T>>, resource_id_hash>;
         // map from name to id
@@ -65,7 +62,7 @@ namespace engine {
 
         map_tuple<detail::deletion_set, resource_tuple_t> m_marked_for_deletion;
 
-        std::unordered_map<std::string, std::function<detail::rc_ptr<basic_scene>()>> m_dbg_scene_ctors;
+        std::unordered_map<std::string, std::function<detail::rc_ptr<scene>()>> m_dbg_scene_ctors;
 
         // TODO: make this something other than a private method, since private methods of this class are supposed to be used by engine::application
         template<Resource T> rc<T> create_or_get_named_resource(const std::string& path, std::function<detail::rc_ptr<T>(const std::string&)> resource_constructor);
@@ -74,33 +71,11 @@ namespace engine {
         ~resources_manager() = default;
     public:
 
-        template <NonPolymorphicResource T> [[nodiscard, maybe_unused]]
+        template <Resource T> [[nodiscard, maybe_unused]]
         rc<const T> new_from(T&& res);
-        template <PolymorphicResource base_t, Derived<base_t> derived_t> [[nodiscard, maybe_unused]]
-        rc<const base_t> new_from(derived_t&& res) {
-            using namespace detail;
 
-            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::move(res)));
-            rc<const base_t> ret(p.get());
-            auto& resources_hm = std::get<id_to_resource_hashmap<base_t>>(m_active_resources);
-            resource_id<base_t> key = *p;
-            resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
-            return ret;
-        }
-
-        template <NonPolymorphicResource T> [[nodiscard, maybe_unused]]
+        template <Resource T> [[nodiscard, maybe_unused]]
         rc<T> new_mut_from(T&& res);
-        template <PolymorphicResource base_t, Derived<base_t> derived_t> [[nodiscard, maybe_unused]]
-        rc<base_t> new_mut_from(derived_t&& res) {
-            using namespace detail;
-
-            auto p = rc_ptr<base_t>(new rc_resource_derived<base_t, derived_t>(std::move(res)));
-            rc<base_t> ret(p.get());
-            auto& resources_hm = std::get<id_to_resource_hashmap<base_t>>(m_active_resources);
-            resource_id<base_t> key = *p;
-            resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
-            return ret;
-        }
 
         [[nodiscard, maybe_unused]]
         rc<const gal::texture> get_texture(const std::string& path);
@@ -112,17 +87,10 @@ namespace engine {
         rc<const gal::vertex_array> get_whole_screen_vao();
 
         [[nodiscard, maybe_unused]]
-        rc<basic_scene> get_scene(const std::string& name);
+        rc<scene> get_scene(const std::string& name);
 
         //useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
-        template<Derived<basic_scene> scene_t> [[maybe_unused]]
-        void dbg_add_scene_constructor(std::string name, std::function<scene_t()> scene_constructor) {
-            using namespace detail;
-            std::function<rc_ptr<basic_scene>()> rc_scene_constructor = [scene_ctor = std::move(scene_constructor)]() {
-                return rc_ptr<basic_scene>(new rc_resource_derived<basic_scene, scene_t>(scene_ctor()));
-            };
-            m_dbg_scene_ctors.insert({name, std::move(rc_scene_constructor)});
-        }
+        void dbg_add_scene_constructor(std::string name, std::function<scene()> scene_constructor);
 
         [[nodiscard, maybe_unused]]
         rc<const gal::texture> get_dither_texture();

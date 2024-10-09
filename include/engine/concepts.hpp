@@ -3,6 +3,7 @@
 
 #include <typeinfo>
 #include "meta_utils.hpp"
+#include <slogga/log.hpp>
 
 
 // Resource and associated concepts
@@ -13,25 +14,26 @@ namespace gal {
 }
 namespace engine {
     class shader;
-    class basic_scene;
+    class scene;
     class nodetree;
+    class stateless_script;
 
     // technically not a concept, but nonetheless this is not a type supposed to be used as is, but instead it is supposed to be used
     // to define concept Resource and to be mapped to tuples of data structures of each resource type
-    using resource_tuple_t = std::tuple<basic_scene, nodetree, shader, gal::texture, gal::vertex_array>;
+    using resource_tuple_t = std::tuple<scene, nodetree, shader, stateless_script, gal::texture, gal::vertex_array>;
 
     template <typename T> concept Resource = ContainedInTuple<T, resource_tuple_t>;
-    template <typename T> concept PolymorphicResource = Polymorphic<T> && Resource<T>;
-    template <typename T> concept NonPolymorphicResource = !Polymorphic<T> && Resource<T>;
 
     //for debug reasons
     template<Resource T>
     constexpr const char* get_resource_typename() {
+        if(std::same_as<T, scene>) return "scene";
+        if(std::same_as<T, nodetree>) return "nodetree";
+        if(std::same_as<T, shader>) return "shader";
+        if(std::same_as<T, stateless_script>) return "script";
         if(std::same_as<T, gal::texture>) return "texture";
         if(std::same_as<T, gal::vertex_array>) return "vertex_array";
-        if(std::same_as<T, shader>) return "shader";
-        if(std::same_as<T, nodetree>) return "nodetree";
-        if(std::same_as<T, basic_scene>) return "scene";
+        slogga::stdout_log.info("get_resource_typename<T>() called for T with unknown name; falling back to mangled name {}", typeid(T).name());
         return typeid(T).name();
     }
 }

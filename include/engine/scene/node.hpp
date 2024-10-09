@@ -7,6 +7,7 @@
 #include <GAL/framebuffer.hpp>
 #include "../renderer.hpp"
 #include "../concepts.hpp"
+#include "node/script.hpp"
 
 namespace engine {
     using framebuffer = gal::framebuffer<rc<gal::texture>>;
@@ -68,13 +69,15 @@ namespace engine {
         special_node_data_variant_t m_other_data;
         rc<const nodetree> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
 
+        std::optional<script> m_script;
+
         friend class detail::internal_node;
         node& operator=(node&& o); // useful for sorting children nodes, but it is bad for it to be exposed like this
     public:
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node(std::string name, special_node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1));
+        explicit node(std::string name, special_node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1), std::optional<script> script = {});
 
         node(node&& o);
         //this is an expensive deep-copy
@@ -103,6 +106,13 @@ namespace engine {
         //transform access
         const glm::mat4& transform() const;
         glm::mat4& transform();
+
+        //script
+        void attach_script(rc<const stateless_script> s) {
+            m_script = script(std::move(s));
+            m_script->attach(*this);
+        }
+        void process(application_channel_t& app_chan) { if(m_script) m_script->process(*this, app_chan); }
 
         // special node data access
         template<SpecialNodeData T> bool     has() const;
