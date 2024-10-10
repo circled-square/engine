@@ -6,7 +6,7 @@
 #include <tuple>
 #include <variant>
 
-// general purpose concepts and utilities: AnyOneOf, ContainedInTuple, ContainedInVariant, map_pack, map_tuple, pattern_match_visit
+// general purpose concepts and utilities: AnyOneOf, ContainedInTuple, ContainedInVariant, map_pack, map_tuple, match_variant
 namespace engine {
     template<typename T, typename... Ts>
     concept AnyOneOf = (std::same_as<T, Ts> || ...);
@@ -55,10 +55,10 @@ namespace engine {
         overloaded(Ts...) -> overloaded<Ts...>;
     }
 
-    //like std::visit but with multiple overloads
+    //like std::visit but with multiple overloads; will cause a compile error if not all of the variant's cases are covered
     template<typename...Ts>
-    void pattern_match_visit(const std::variant<Ts...>& v, auto...overloads) {
-        std::visit(detail::overloaded(overloads...), v);
+    void match_variant(const std::variant<Ts...>& v, const auto&... handlers) {
+        std::visit(detail::overloaded(handlers...), v);
     }
 }
 #endif // ENGINE_META_UTILS_HPP
