@@ -1,7 +1,6 @@
 #ifndef ENGINE_META_UTILS_HPP
 #define ENGINE_META_UTILS_HPP
 
-#include <type_traits>
 #include <concepts>
 #include <tuple>
 #include <variant>
