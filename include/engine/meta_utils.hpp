@@ -6,14 +6,8 @@
 #include <tuple>
 #include <variant>
 
-// general purpose concepts: Polymorphic, Derived, ContainedInTuple, ContainedInVariant
+// general purpose concepts and utilities: AnyOneOf, ContainedInTuple, ContainedInVariant, map_pack, map_tuple, pattern_match_visit
 namespace engine {
-    template<typename T>
-    concept Polymorphic = std::is_polymorphic_v<T>;
-    template<class T, class U>
-    concept Derived = std::is_base_of<U, T>::value;
-
-
     template<typename T, typename... Ts>
     concept AnyOneOf = (std::same_as<T, Ts> || ...);
 
@@ -46,9 +40,11 @@ namespace engine {
         };
     }
 
+    //takes a Tuple = InTuple<Ts...> type and returns OutTuple<Template<Ts>...> type
     template<template<class> class Template, template<class...> class InTuple, template<class...> class OutTuple, class Tuple>
     using map_pack = detail::map_pack__struct<Template, InTuple, OutTuple, Tuple>::type;
 
+    //takes a Tuple=std::tuple<Ts...> type and returns std::tuple<Template<Ts>...>
     template<template<class> class Template, class Tuple> using map_tuple = map_pack<Template, std::tuple, std::tuple, Tuple>;
 
     namespace detail {
@@ -59,6 +55,7 @@ namespace engine {
         overloaded(Ts...) -> overloaded<Ts...>;
     }
 
+    //like std::visit but with multiple overloads
     template<typename...Ts>
     void pattern_match_visit(const std::variant<Ts...>& v, auto...overloads) {
         std::visit(detail::overloaded(overloads...), v);
