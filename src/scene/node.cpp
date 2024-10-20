@@ -34,6 +34,10 @@ namespace engine {
           m_script(std::move(o.m_script))
     {
         o.m_father = nullptr;
+        // fix the children's father pointers
+        for(detail::internal_node& child : m_children) {
+            child->m_father = this;
+        }
     }
 
     node::node(const node& o)
@@ -45,11 +49,21 @@ namespace engine {
           m_other_data(o.m_other_data),
           m_nodetree_reference(o.m_nodetree_reference),
           m_script(o.m_script)
-    {}
+    {
+        // fix the children's father pointers
+        for(detail::internal_node& child : m_children) {
+            child->m_father = this;
+        }
+    }
 
     node& node::operator=(node&& o) {
         m_children = std::move(o.m_children);
         m_children_is_sorted = o.m_children_is_sorted;
+
+        // fix the children's father pointers
+        for(detail::internal_node& child : m_children) {
+            child->m_father = this;
+        }
 
         m_father = o.m_father;
         o.m_father = nullptr;
@@ -82,21 +96,18 @@ namespace engine {
         if(m_children_is_sorted) {
             insert_sorted(m_children, std::move(c));
         } else {
-            m_children.push_back(std::move(c));
+            m_children.emplace_back(std::move(c));
         }
     }
 
     node& node::get_child(std::string_view name) {
         if(m_children_is_sorted) {
-            auto it = std::lower_bound(m_children.begin(), m_children.end(), name,
-                [](const detail::internal_node& n, const std::string_view& s) { return n->name() < s; });
-
-            if (it != m_children.end() && (*it)->name() == name) {
+            auto less_than = [](const detail::internal_node& n, const std::string_view& s) { return n->name() < s; };
+            if(auto it = std::lower_bound(m_children.begin(), m_children.end(), name, less_than); it != m_children.end() && (*it)->name() == name) {
                 return **it;
             }
         } else {
-            auto it = std::find_if(m_children.begin(), m_children.end(), [&name](const detail::internal_node& n){ return n->name() == name; });
-            if (it != m_children.end()) {
+            if (auto it = std::ranges::find_if(m_children, [&name](const detail::internal_node& n){ return n->name() == name; }); it != m_children.end()) {
                 return **it;
             }
         }
