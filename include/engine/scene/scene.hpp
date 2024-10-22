@@ -34,8 +34,8 @@ namespace engine {
         //for post processing
         rc<const gal::vertex_array> m_whole_screen_vao;
 
-    protected: // TODO: make private
         application_channel_t m_application_channel;
+
     public:
         scene() = delete;
         scene(std::string s, node root = node(""), application_channel_t::to_app_t to_app_chan = application_channel_t::to_app_t());

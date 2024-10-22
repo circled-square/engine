@@ -159,7 +159,7 @@ namespace engine {
             gal::texture texture = get_texture_from_mesh_primitive(model, mesh_idx, primitive_idx);
 
             primitives.emplace_back(
-                make_retro_3d_material(get_rm().new_from<gal::texture>(std::move(texture))),
+                material(get_rm().get_retro_3d_shader(), get_rm().new_from<gal::texture>(std::move(texture))),
                 get_rm().new_from<gal::vertex_array>(std::move(vao))
             );
         }

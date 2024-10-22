@@ -8,6 +8,8 @@
 #include <engine/materials.hpp>
 #include <engine/gltf_loader.hpp>
 #include <engine/scene/scene.hpp>
+#include <engine/scene/node/script.hpp>
+#include <engine/scene/node.hpp>
 
 namespace engine {
     using namespace detail;
@@ -26,11 +28,10 @@ namespace engine {
     template<typename T> inline rc_ptr<T> make_rc_ptr(T res) { return rc_ptr<T>(new rc_resource<T>(std::move(res))); }
 
     template<Resource T>
-    rc<T> resources_manager::create_or_get_named_resource(const std::string& path, std::function<rc_ptr<T>(const std::string&)> resource_constructor) {
-        //hashmaps for gal::texture
-        auto& id_to_resource_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
-        auto& name_to_id_hm = std::get<name_to_id_hashmap<T>>(m_resources_by_name);
-        auto& marked_for_deletion_set = std::get<detail::deletion_set<T>>(m_marked_for_deletion);
+    static rc_resource<T>* create_or_get_named_resource(auto& active_resources, auto& resources_by_name, auto& marked_for_deletion, const std::string& path, std::function<rc_ptr<T>(const std::string&)> resource_constructor) {
+        auto& id_to_resource_hm = std::get<id_to_resource_hashmap<T>>(active_resources);
+        auto& name_to_id_hm = std::get<name_to_id_hashmap<T>>(resources_by_name);
+        auto& marked_for_deletion_set = std::get<detail::deletion_set<T>>(marked_for_deletion);
 
         //don't load if already loaded
         if (auto search = name_to_id_hm.find(path); search != name_to_id_hm.end()) {
@@ -47,7 +48,7 @@ namespace engine {
         //otherwise load it
         //create the owning pointer
         rc_ptr<T> p = resource_constructor(path.c_str());
-        rc<T> ret = p.get();
+        rc_resource<T>* ret = p.get();
 
         //after loading store the information in the hashmaps
         //create the resource id (for which we use the address)
@@ -83,23 +84,23 @@ namespace engine {
         return ret;
     }
 
-    template<Resource T> class rm_templates_instantiator {
-        void (*_flag_for_del)(resources_manager&, rc_resource<T>*) = &flag_for_deletion<T>;
-        rc<T> (resources_manager::*_create_or_get_res)(const std::string&, std::function<rc_ptr<T>(const std::string&)>) = &resources_manager::create_or_get_named_resource<T>;
-        rc<const T> (resources_manager::*_new_from)(T&& res) = &resources_manager::new_from<T>;
-        rc<T> (resources_manager::*_new_mut_from)(T&& res) = &resources_manager::new_mut_from<T>;
-    };
-    constexpr static map_tuple<rm_templates_instantiator, resource_tuple_t> __instantiate_rm_templates;
 
+
+    #define INSTANTIATE_RM_TEMPLATES(TYPE) \
+        template void flag_for_deletion<TYPE>(resources_manager&, rc_resource<TYPE>*); \
+        template rc<const TYPE> resources_manager::new_from<TYPE>(TYPE&&res); \
+        template rc<TYPE> resources_manager::new_mut_from<TYPE>(TYPE&&res);
+
+    CALL_MACRO_FOR_EACH(INSTANTIATE_RM_TEMPLATES, RESOURCES)
 
     rc<const gal::texture> resources_manager::get_texture(const std::string& path) {
-        return create_or_get_named_resource<gal::texture>(path, [](const std::string& p) {
+        return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
             return make_rc_ptr(gal::texture(gal::image(p.c_str())));
         });
     }
 
     rc<const nodetree> resources_manager::get_nodetree_from_gltf(const std::string& path) {
-        return create_or_get_named_resource<nodetree>(path, [](const std::string& p) {
+        return create_or_get_named_resource<nodetree>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
             return make_rc_ptr(load_nodetree_from_gltf(p.c_str()));
         });
     }
@@ -124,14 +125,14 @@ namespace engine {
             return gal::vertex_array(std::move(vbo), std::move(ibo), whole_screen_vao_vertex_t::layout_t::to_vertex_layout());
         };
 
-        return create_or_get_named_resource<gal::vertex_array>("whole_screen_vao", [&](const std::string& p) {
+        return create_or_get_named_resource<gal::vertex_array>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "whole_screen_vao", [&](const std::string& p) {
             return make_rc_ptr(make_whole_screen_vao());
         });
     }
 
     //temporary debug implementation, since we currently do not support loading scenes from file
     rc<scene> resources_manager::get_scene(const std::string &name) {
-        return create_or_get_named_resource<scene>(name, [&](const std::string& p) {
+        return create_or_get_named_resource<scene>(m_active_resources, m_resources_by_name, m_marked_for_deletion, name, [&](const std::string& p) {
             EXPECTS(m_dbg_scene_ctors.contains(p));
             return this->m_dbg_scene_ctors[p]();
         });
@@ -146,14 +147,14 @@ namespace engine {
     }
 
     rc<const gal::texture> resources_manager::get_dither_texture() {
-        return create_or_get_named_resource<gal::texture>("dither_texture", [&](const std::string& p) -> rc_ptr<gal::texture> {
+        return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "dither_texture", [&](const std::string& p) -> rc_ptr<gal::texture> {
             throw std::runtime_error("not implemented");
         });
     }
 
     rc<const shader> resources_manager::get_retro_3d_shader() {
-        return create_or_get_named_resource<shader>("retro_3d_shader", [&](const std::string& p) {
-            return make_rc_ptr(engine::make_retro_3d_shader());
+        return create_or_get_named_resource<shader>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "retro_3d_shader", [&](const std::string& p) {
+            return make_rc_ptr(make_retro_3d_shader());
         });
     }
 
@@ -221,12 +222,12 @@ namespace engine {
     static bool global_rm_instance_is_inited = false;
 
     resources_manager &resources_manager::get_instance() {
-        assert(global_rm_instance_is_inited);
+        EXPECTS(global_rm_instance_is_inited);
         return *reinterpret_cast<resources_manager*>(&global_rm_instance);
     }
 
     void resources_manager::init_instance() {
-        assert(!global_rm_instance_is_inited);
+        EXPECTS(!global_rm_instance_is_inited);
         resources_manager* rm_p = reinterpret_cast<resources_manager*>(&global_rm_instance);
         new(rm_p) resources_manager();
         global_rm_instance_is_inited = true;

@@ -2,7 +2,6 @@
 #define ENGINE_MATERIALS_HPP
 
 #include "material.hpp"
-#include "rc.hpp"
 
 namespace engine {
     shader make_retro_3d_shader();
@@ -14,8 +13,6 @@ namespace engine {
 
         using layout_t = decltype(gal::static_vertex_layout(pos, tex_coord));
     };
-
-    material make_retro_3d_material(rc<const gal::texture> t);
 }
 
 #endif // ENGINE_MATERIALS_HPP

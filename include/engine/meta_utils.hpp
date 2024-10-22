@@ -59,5 +59,24 @@ namespace engine {
     void match_variant(const std::variant<Ts...>& v, const auto&... handlers) {
         std::visit(detail::overloaded(handlers...), v);
     }
+
+
+    // CALL_MACRO_FOR_EACH: a for each implemented in the preprocessor
+    // expand to the Nth arg; N = 10
+    #define _GET_NTH_ARG(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
+
+    // for each macros for different number of arguments
+    #define __FE_0(MACRO, ...)
+    #define __FE_1(MACRO, x) MACRO(x)
+    #define __FE_2(MACRO, x, ...) MACRO(x) __FE_1(MACRO, __VA_ARGS__)
+    #define __FE_3(MACRO, x, ...) MACRO(x) __FE_2(MACRO, __VA_ARGS__)
+    #define __FE_4(MACRO, x, ...) MACRO(x) __FE_3(MACRO, __VA_ARGS__)
+    #define __FE_5(MACRO, x, ...) MACRO(x) __FE_4(MACRO, __VA_ARGS__)
+    #define __FE_6(MACRO, x, ...) MACRO(x) __FE_5(MACRO, __VA_ARGS__)
+    #define __FE_7(MACRO, x, ...) MACRO(x) __FE_6(MACRO, __VA_ARGS__)
+    #define __FE_8(MACRO, x, ...) MACRO(x) __FE_7(MACRO, __VA_ARGS__)
+    #define __FE_9(MACRO, x, ...) MACRO(x) __FE_8(MACRO, __VA_ARGS__)
+
+    #define CALL_MACRO_FOR_EACH(MACRO,...) _GET_NTH_ARG(__VA_ARGS__, __FE_9, __FE_8, __FE_7, __FE_6, __FE_5, __FE_4, __FE_3, __FE_2, __FE_1, __FE_0)(MACRO, __VA_ARGS__)
 }
 #endif // ENGINE_META_UTILS_HPP

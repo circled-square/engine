@@ -2,101 +2,73 @@
 #define ENGINE_RC_HPP
 
 #include "internal/rc_resource.hpp"
+#include <type_traits>
+
+// rc is a reference counted pointer managed by the engine's resources manager, which points to a Resource
 
 namespace engine {
-    //mutable template specialization
+    // unused base template
     template<typename T>
     class rc {
-        rc_resource<T>* m_resource;
+        static_assert(false, "rc<T>: T must be a Resource or const Resource type");
+    };
+
+    // mutable resource template specialization
+    template<Resource T>
+    class rc<T> {
+        detail::rc_resource<T>* m_resource;
 
         //friends which use the private constructor
         friend class resources_manager;
         friend class rc<const T>;
 
 
-        rc(rc_resource<T>* resource) : m_resource(&*resource) {
-            EXPECTS(m_resource);
-            m_resource->inc_refcount();
-        }
+        rc(detail::rc_resource<T>* resource);
     public:
-        rc() : m_resource(nullptr) {}
-        rc(const rc& o) : rc() {
-            this->operator=(o);
-        }
+        rc();
+        rc(const rc& o);
 
-        rc(rc&& o) : m_resource(o.m_resource) {
-            o.m_resource = nullptr;
-        }
-        ~rc() {
-            if(m_resource) {
-                m_resource->dec_refcount();
+        rc(rc&& o);
+        ~rc();
 
-                m_resource = nullptr;
-            }
-        }
+        rc& operator=(const rc& o);
 
-        rc& operator=(const rc& o) {
-            if(this->m_resource)
-                this->m_resource->dec_refcount();
+        operator bool() const;
+        bool operator!() const;
 
-            this->m_resource = o.m_resource;
-            if(this->m_resource)
-                this->m_resource->inc_refcount();
+        T& operator*();
+        const T& operator*() const;
+        T* operator->();
+        const T* operator->() const;
 
-            return *this;
-        }
-
-        operator bool() const { return m_resource; }
-        bool operator!() const { return !m_resource; }
-
-        T& operator*() {
-            EXPECTS(m_resource);
-            return m_resource->resource();
-        }
-        const T& operator*() const {
-            EXPECTS(m_resource);
-            return m_resource->resource();
-        }
-        T* operator->() {
-            EXPECTS(m_resource);
-            return &m_resource->resource();
-        }
-        const T* operator->() const {
-            EXPECTS(m_resource);
-            return &m_resource->resource();
-        }
-
-        bool operator==(const rc& o) const { return m_resource == o.m_resource; }
-        bool operator!=(const rc& o) const { return m_resource != o.m_resource; }
+        bool operator==(const rc& o) const;
+        bool operator!=(const rc& o) const;
     };
 
 
-    //immutable template specialization
-    template<typename T>
+    // immutable resource template specialization
+    template<Resource T>
     class rc<const T> : rc<T> {
         friend class resources_manager;
 
         //constructor used by resource manager
-        rc(rc_resource<T>* resource) : rc<T>(resource) {}
+        rc(detail::rc_resource<T>* resource);
     public:
-        rc() : rc<T>() {}
-        rc(const rc& o) : rc<T>(o) {}
-        rc(rc&& o) : rc<T>(std::move(o)) {}
-        rc(rc<T> o) : rc<T>(std::move(o)) {}
+        rc();
+        rc(const rc& o);
+        rc(rc&& o);
+        rc(rc<T> o);
 
-        rc& operator=(const rc& o) {
-            this->rc<T>::operator=(o);
-            return *this;
-        }
+        rc& operator=(const rc& o);
 
-        operator bool() const { return rc<T>::operator bool(); }
-        bool operator!() const { return rc<T>::operator!(); }
+        operator bool() const;
+        bool operator!() const;
 
-        const T& operator*() const { return rc<T>::operator*(); }
-        const T* operator->() const { return rc<T>::operator->(); }
+        const T& operator*() const;
+        const T* operator->() const;
 
-        bool operator==(const rc& o) const { return rc<T>::operator==(o); }
-        bool operator!=(const rc& o) const { return rc<T>::operator!=(o); }
+        bool operator==(const rc& o) const;
+        bool operator!=(const rc& o) const;
     };
 }
 #endif // ENGINE_RC_HPP

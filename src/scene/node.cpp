@@ -152,18 +152,18 @@ namespace engine {
     template<SpecialNodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
     template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
 
-    template<SpecialNodeData T> class node_templates_instantiator {
-        T& (node::*_get)() = &node::get<T>;
-        const T& (node::*_get_const)() const = &node::get<T>;
-        bool(node::*_has)() const = &node::has<T>;
-    };
 
-    constexpr static map_pack<node_templates_instantiator, std::variant, std::tuple, special_node_data_variant_t> __instantiate_node_templates;
+    #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
+        template TYPE& node::get<TYPE>(); \
+        template const TYPE& node::get<TYPE>() const; \
+        template bool node::has<TYPE>() const;
+
+    CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, SPECIAL_NODE_DATA_CONTENTS)
 
 
 
     viewport::viewport(framebuffer fbo, rc<const shader> postfx_shader, std::optional<glm::vec2> dynamic_size_relative_to_output)
-        : m_fbo(std::move(fbo)), m_postfx_material(std::move(postfx_shader), {m_fbo.get_texture()}),
+        : m_fbo(std::move(fbo)), m_postfx_material(std::move(postfx_shader), m_fbo.get_texture()),
           m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {}
 
     viewport::viewport(rc<const shader> postfx_shader, glm::vec2 dynamic_size_relative_to_output)

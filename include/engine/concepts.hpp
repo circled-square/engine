@@ -18,9 +18,11 @@ namespace engine {
     class nodetree;
     class stateless_script;
 
+
+    #define RESOURCES scene, nodetree, stateless_script, shader, gal::texture, gal::vertex_array
     // technically not a concept, but nonetheless this is not a type supposed to be used as is, but instead it is supposed to be used
     // to define concept Resource and to be mapped to tuples of data structures of each resource type
-    using resource_tuple_t = std::tuple<scene, nodetree, shader, stateless_script, gal::texture, gal::vertex_array>;
+    using resource_tuple_t = std::tuple<RESOURCES>;
 
     template <typename T> concept Resource = ContainedInTuple<T, resource_tuple_t>;
 
@@ -45,7 +47,10 @@ namespace engine {
     class collision_shape;
     class viewport;
     class null_node_data;
-    using special_node_data_variant_t = std::variant<null_node_data, camera, mesh, collision_shape, viewport>;
+
+    #define SPECIAL_NODE_DATA_CONTENTS null_node_data, camera, mesh, collision_shape, viewport
+
+    using special_node_data_variant_t = std::variant<SPECIAL_NODE_DATA_CONTENTS>;
 
     template<typename T>
     concept SpecialNodeData = ContainedInVariant<T, special_node_data_variant_t>;

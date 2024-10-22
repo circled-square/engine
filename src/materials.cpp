@@ -1,5 +1,4 @@
 #include <engine/materials.hpp>
-#include <engine/resources_manager.hpp>
 
 namespace engine {
     shader make_retro_3d_shader() {
@@ -28,12 +27,5 @@ namespace engine {
         uniforms_info uniforms { .mvp = true, .sampler_names = sampler_names };
 
         return shader(std::move(program), std::move(uniforms));
-    }
-
-
-    material make_retro_3d_material(rc<const gal::texture> t) {
-        std::vector<rc<const gal::texture>> v;
-        v.push_back(std::move(t));
-        return material(get_rm().get_retro_3d_shader(), std::move(v));
     }
 }

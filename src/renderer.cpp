@@ -18,6 +18,7 @@ namespace engine {
             m_low_level_renderer.draw(*prim.vao, material.get_shader()->get_program(), 0, prim.vao->get_triangle_count(0), 0);
         }
     }
+
     gal::renderer &renderer::get_low_level_renderer() { return m_low_level_renderer; }
 
 }

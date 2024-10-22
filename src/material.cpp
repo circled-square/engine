@@ -20,6 +20,8 @@ namespace engine {
         EXPECTS(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
     }
 
+    material::material(rc<const shader> shader, rc<const gal::texture> texture) : material(std::move(shader), std::vector { std::move(texture) }){}
+
     const rc<const shader>& material::get_shader() const { return m_shader; }
 
     const std::vector<rc<const gal::texture>>& material::get_textures() const { return m_textures; }

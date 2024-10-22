@@ -41,6 +41,7 @@ namespace engine {
         material(material&& o);
         material(const material& o);
         material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures);
+        material(rc<const shader> shader, rc<const gal::texture> texture);
 
         const rc<const engine::shader>& get_shader() const;
         const std::vector<rc<const gal::texture>>& get_textures() const;

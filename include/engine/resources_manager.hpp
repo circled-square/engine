@@ -11,6 +11,7 @@
 #include <GAL/vertex_array.hpp>
 #include "material.hpp"
 #include "scene/node.hpp"
+#include "scene/scene.hpp"
 #include <functional>
 
 namespace engine {
@@ -51,57 +52,48 @@ namespace engine {
     // frequently abbreviated as rm
     class resources_manager {
         template<Resource T>
-        friend void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource);
+        friend void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
 
         template<Resource T> friend class rm_templates_instantiator;
 
         map_tuple<detail::id_to_resource_hashmap, resource_tuple_t> m_active_resources;
 
-        //NOTE: dither texture has name "dither_texture"; retro 3d shader has name "retro_3d_shader"
+        //NOTE: dither texture has name "dither_texture"; retro 3d shader has name "retro_3d_shader"; whole screen vao is "whole_screen_vao"
         map_tuple<detail::name_to_id_hashmap, resource_tuple_t> m_resources_by_name;
 
         map_tuple<detail::deletion_set, resource_tuple_t> m_marked_for_deletion;
 
         std::unordered_map<std::string, std::function<detail::rc_ptr<scene>()>> m_dbg_scene_ctors;
 
-        // TODO: make this something other than a private method, since private methods of this class are supposed to be used by engine::application
-        template<Resource T> rc<T> create_or_get_named_resource(const std::string& path, std::function<detail::rc_ptr<T>(const std::string&)> resource_constructor);
-
         resources_manager() = default;
-        ~resources_manager() = default;
+        ~resources_manager() {
+            collect_garbage();
+        }
     public:
 
-        template <Resource T> [[nodiscard, maybe_unused]]
-        rc<const T> new_from(T&& res);
+        // hand over ownership of resource to resources_manager
+        template<Resource T> [[nodiscard]] rc<const T> new_from(T&& res);
+        template<Resource T> [[nodiscard]] rc<T> new_mut_from(T&& res);
 
-        template <Resource T> [[nodiscard, maybe_unused]]
-        rc<T> new_mut_from(T&& res);
+        // get resource loaded from disk
+        [[nodiscard]] rc<const gal::texture>    get_texture(const std::string& path);
+        [[nodiscard]] rc<const nodetree>        get_nodetree_from_gltf(const std::string& path);
+        [[nodiscard]] rc<scene>                 get_scene(const std::string& path);
 
-        [[nodiscard, maybe_unused]]
-        rc<const gal::texture> get_texture(const std::string& path);
+        // get resource generated at runtime
+        [[nodiscard]] rc<const gal::vertex_array>   get_whole_screen_vao();
+        [[nodiscard]] rc<const gal::texture>        get_dither_texture();
+        [[nodiscard]] rc<const shader>              get_retro_3d_shader();
 
-        [[nodiscard, maybe_unused]]
-        rc<const nodetree> get_nodetree_from_gltf(const std::string& path);
 
-        [[nodiscard, maybe_unused]]
-        rc<const gal::vertex_array> get_whole_screen_vao();
-
-        [[nodiscard, maybe_unused]]
-        rc<scene> get_scene(const std::string& name);
-
-        //useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
+        // useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
         void dbg_add_scene_constructor(std::string name, std::function<scene()> scene_constructor);
 
-        [[nodiscard, maybe_unused]]
-        rc<const gal::texture> get_dither_texture();
-
-        [[nodiscard, maybe_unused]]
-        rc<const shader> get_retro_3d_shader();
-
+        // destroys and deallocates resources not in use
         void collect_garbage();
 
-        [[nodiscard]]
-        static resources_manager& get_instance();
+        // get singleton instance
+        [[nodiscard]] static resources_manager& get_instance();
     private:
         friend class application;
         static void init_instance();
@@ -109,8 +101,7 @@ namespace engine {
     };
 
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource);
-
+    void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
 
     [[nodiscard]]
     resources_manager& get_rm();
