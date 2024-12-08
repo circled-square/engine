@@ -1,0 +1,22 @@
+# viewport
+add_library(engine__scene_node_viewport STATIC viewport.cpp)
+target_link_libraries(engine__scene_node_viewport PUBLIC engine__include_dirs glm GAL)
+target_link_libraries(engine__scene_node_viewport PRIVATE slogga engine__resources_manager)
+
+# collisions
+add_library(engine__scene_node_collisions STATIC collisions.cpp)
+target_link_libraries(engine__scene_node_collisions PUBLIC engine__include_dirs glm GAL)
+target_link_libraries(engine__scene_node_collisions PRIVATE slogga)
+
+# script
+add_library(engine__scene_node_script STATIC script.cpp)
+target_link_libraries(engine__scene_node_script PUBLIC engine__include_dirs glm GAL)
+target_link_libraries(engine__scene_node_script PRIVATE slogga)
+
+# special_node_data interface target
+add_library(engine__scene_node_special_node_data INTERFACE)
+target_link_libraries(engine__scene_node_special_node_data INTERFACE
+    engine__scene_node_viewport
+    engine__scene_node_collisions
+    engine__scene_node_script
+)

@@ -143,7 +143,8 @@ namespace engine {
         // n.set_global_transform(transform); //TODO? currently calculated by render_node & process_node separately
     }
 
-    void scene::reheat() {
+    //TODO: make the setting of these options based on scene settings
+    void scene::prepare() {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
         glEnable(GL_BLEND);

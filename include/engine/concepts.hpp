@@ -15,11 +15,11 @@ namespace gal {
 namespace engine {
     class shader;
     class scene;
-    class nodetree;
+    class nodetree_blueprint;
     class stateless_script;
 
 
-    #define RESOURCES scene, nodetree, stateless_script, shader, gal::texture, gal::vertex_array
+    #define RESOURCES scene, nodetree_blueprint, stateless_script, shader, gal::texture, gal::vertex_array
     // technically not a concept, but nonetheless this is not a type supposed to be used as is, but instead it is supposed to be used
     // to define concept Resource and to be mapped to tuples of data structures of each resource type
     using resource_tuple_t = std::tuple<RESOURCES>;
@@ -30,7 +30,7 @@ namespace engine {
     template<Resource T>
     constexpr const char* get_resource_typename() {
         if(std::same_as<T, scene>) return "scene";
-        if(std::same_as<T, nodetree>) return "nodetree";
+        if(std::same_as<T, nodetree_blueprint>) return "nodetree_blueprint";
         if(std::same_as<T, shader>) return "shader";
         if(std::same_as<T, stateless_script>) return "script";
         if(std::same_as<T, gal::texture>) return "texture";

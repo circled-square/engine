@@ -73,6 +73,12 @@ namespace engine {
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     }
 
+    void application::set_start_scene(rc<scene> start_scene) {
+        EXPECTS(!m_active_scene && start_scene);
+        m_active_scene = std::move(start_scene);
+        m_active_scene->prepare();
+    }
+
     application::~application() {
         m_active_scene.~rc(); // deinit this before resources_manager, or else it will be dangling by the time its destructor is called
 
@@ -81,22 +87,6 @@ namespace engine {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
-    }
-
-    rc<scene> application::set_active_scene(rc<scene> new_scene) {
-        rc<scene> old_active_scene = std::move(m_active_scene);
-        m_active_scene = std::move(new_scene);
-
-        if(old_active_scene) {
-            EXPECTS(old_active_scene->channel_from_app().scene_is_active);
-            old_active_scene->freeze();
-            old_active_scene->channel_from_app().scene_is_active = false;
-        }
-
-        m_active_scene->channel_from_app().scene_is_active = true;
-        m_active_scene->reheat();
-
-        return old_active_scene;
     }
 
     void application::run() {
@@ -112,7 +102,12 @@ namespace engine {
             // read and write to the channel to the scene
             rc<scene> scene_to_change_to = m_active_scene->get_and_reset_scene_to_change_to();
             if(scene_to_change_to) {
-                set_active_scene(std::move(scene_to_change_to));
+                EXPECTS(m_active_scene && m_active_scene->channel_from_app().scene_is_active);
+                m_active_scene->channel_from_app().scene_is_active = false;
+
+                m_active_scene = std::move(scene_to_change_to);
+                m_active_scene->channel_from_app().scene_is_active = true;
+                m_active_scene->prepare();
             }
 
             bool cursor_is_captured = m_window.is_mouse_cursor_captured();

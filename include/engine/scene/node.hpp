@@ -8,56 +8,18 @@
 #include "../renderer.hpp"
 #include "../concepts.hpp"
 #include "node/script.hpp"
+#include "node/collisions.hpp"
+#include "node/viewport.hpp"
 
 namespace engine {
-    using framebuffer = gal::framebuffer<rc<gal::texture>>;
-
-    //later defined in this translation unit
-    class nodetree;
-
-    //currently unimplemented
-    class collision_shape {};
-
-    // a viewport node is composed of the fbo to which its descendants should be rendered, and the shader to be applied when rendering the resulting texture.
-    // the internal fbo texture's size is kept consistent to the resolution it should be rendered to (through the use of output_resolution_changed).
-    class viewport {
-        //members are mutable because output_resolution_changed does not fundamentally change what they are and it needs to be const
-        mutable framebuffer m_fbo;
-        mutable material m_postfx_material;
-        std::optional<glm::vec2> m_dynamic_size_relative_to_output;
-        const camera* m_active_camera = nullptr;
-    public:
-        //note: the postfx material at this stage contains a null pointer to a texture.
-        viewport(framebuffer fbo, rc<const shader> postfx_shader, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
-        viewport(rc<const shader> postfx_shader, glm::vec2 dynamic_size_relative_to_output);
-        viewport(viewport&& o);
-
-        explicit viewport(const viewport& o);
-
-        framebuffer& fbo();
-        const framebuffer& fbo() const;
-        material& postfx_material();
-        const material& postfx_material() const;
-        std::optional<glm::vec2> dynamic_size_relative_to_output() const;
-
-        void bind_draw() const;
-
-        //can be set to null
-        void set_active_camera(const camera* c);
-        //can return null
-        const camera* get_active_camera() const;
-
-        // note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and "leaking" to the gc the old one.
-        void output_resolution_changed(glm::ivec2 native_resolution) const;
-
-        void operator=(viewport&& o);
-    };
-
-    struct null_node_data {};
+    //all type declarations are later defined in this translation unit
+    class nodetree_blueprint;
 
     namespace detail { class internal_node; }
     class node_span;
     class const_node_span;
+
+    struct null_node_data {};
 
     class node {
         std::vector<detail::internal_node> m_children;
@@ -67,7 +29,7 @@ namespace engine {
         glm::mat4 m_transform;
 
         special_node_data_variant_t m_other_data;
-        rc<const nodetree> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
+        rc<const nodetree_blueprint> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
 
         std::optional<script> m_script;
 
@@ -84,7 +46,7 @@ namespace engine {
         explicit node(const node& o);
 
         // this is expensive (calls deep-copy constructor)
-        node(const rc<const nodetree>& nt, std::string name = std::string());
+        node(const rc<const nodetree_blueprint>& nt, std::string name = std::string());
 
         // children access
         void add_child(node c);
@@ -180,12 +142,12 @@ namespace engine {
         node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
     };
 
-    // "nodetree" is what we call a preconstructed, immutable subtree of the node tree, generally loaded from file
-    class nodetree {
+    // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
+    class nodetree_blueprint {
         node m_root;
         std::string m_name;
     public:
-        nodetree(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
         const node& root() const { return m_root; }
     };

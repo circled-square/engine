@@ -16,7 +16,7 @@ namespace engine {
 
         engine::application application(wnd_res, wnd_name, wnd_hints);
 
-        application.set_active_scene(get_start_scene());
+        application.set_start_scene(get_start_scene());
 
         application.run();
     }

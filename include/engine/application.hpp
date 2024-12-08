@@ -25,7 +25,8 @@ namespace engine {
 
         ~application();
 
-        rc<scene> set_active_scene(rc<scene> new_scene);
+        //needs to be separate from the constructor because a scene can only be constructed after gl (gal) and resources_manager are initialized, which happens in application's constructor
+        void set_start_scene(rc<scene> new_scene);
 
         void run();
     };
