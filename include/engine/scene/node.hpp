@@ -68,6 +68,14 @@ namespace engine {
         //transform access
         const glm::mat4& transform() const;
         glm::mat4& transform();
+        glm::mat4 compute_global_transform() {
+            node* f = try_get_father();
+            if(f) {
+                return f->compute_global_transform() * transform();
+            } else {
+                return transform();
+            }
+        }
 
         //script
         void attach_script(rc<const stateless_script> s) {
