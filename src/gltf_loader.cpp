@@ -37,6 +37,7 @@ namespace engine {
         return model;
     }
 
+    //BufferViews can have a byteStride of 0 if they are tightly packed, in which case we need to deduce their stride
     static void deduce_vbo_strides(vector<gal::vertex_buffer>& vbos, const gal::vertex_layout& vertex_layout) {
         unordered_set<size_t> vbos_to_deduce_stride_of;
         for(size_t i = 0; i < vbos.size(); i++) {
@@ -72,11 +73,10 @@ namespace engine {
         return gal::index_buffer(std::move(raw_data), triangle_count, element_typeid);
     }
 
-    static gal::vertex_array get_vao_from_mesh_primitive(const tinygltf::Model& model, int mesh_idx, int primitive_idx) {
-        const tinygltf::Mesh& mesh = model.meshes[mesh_idx];
+    static gal::vertex_array get_vao_from_mesh_primitive(const tinygltf::Model& model, const tinygltf::Mesh& mesh, int primitive_idx) {
         const tinygltf::Primitive& primitive = mesh.primitives[primitive_idx];
         const tinygltf::Accessor& indices_accessor = model.accessors[primitive.indices];
-        //TODO: support other modes other than TRIANGLES
+        // TODO: support other modes other than TRIANGLES
         EXPECTS(primitive.mode == TINYGLTF_MODE_TRIANGLES);
         // TODO: currently only supporting indexed data; if primitive.indices is undefined(-1) then the primitive is non-indexed
         EXPECTS(primitive.indices != -1);
@@ -84,6 +84,7 @@ namespace engine {
         EXPECTS(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
             || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
+        // TODO: currently all mesh primitives must have distinct vbos, which may cause duplication of data in VRAM
         vector<gal::vertex_buffer> vbos;
         vector<gal::index_buffer> ibos;
         unordered_map<int, int> bufview_to_vbo_map;
@@ -104,13 +105,14 @@ namespace engine {
 
                 uint vbo_bind = (uint)-1;
 
+                // TODO: every vbo contains the contents of a bufview, but this may cause the transfer of unused data to VRAM (because unused attribs might be stored in the same bufview as used ones)
                 if (!bufview_to_vbo_map.contains(bufview_idx)) {
                     vbo_bind = vbos.size();
                     bufview_to_vbo_map[bufview_idx] = vbo_bind;
                     vbos.push_back(make_vbo_from_bufview(model, bufview_idx));
                 }
 
-                //TODO: support matrices: this currently only works for scalars and vec2/3/4
+                // TODO: support matrices: this currently only works for scalars and vec2/3/4
                 uint size = accessor.type == TINYGLTF_TYPE_SCALAR ?  1 : accessor.type;
 
                 if (vbo_bind == (uint)-1) // only lookup in the table if we didn't just add the element into it
@@ -130,8 +132,8 @@ namespace engine {
         return gal::vertex_array(std::move(vbos), std::move(ibos), std::move(layout));
     }
 
-    static gal::texture get_texture_from_mesh_primitive(const tinygltf::Model& model, int mesh_idx, int primitive_idx) {
-        int material_idx = model.meshes[mesh_idx].primitives[primitive_idx].material;
+    static gal::texture get_texture_from_mesh_primitive(const tinygltf::Model& model, const tinygltf::Mesh& mesh, int primitive_idx) {
+        int material_idx = mesh.primitives[primitive_idx].material;
         EXPECTS(material_idx != -1);
         int texture_idx = model.materials[material_idx].pbrMetallicRoughness.baseColorTexture.index;
         EXPECTS(texture_idx != -1);
@@ -152,11 +154,11 @@ namespace engine {
 
     }
 
-    static engine::mesh load_mesh(const tinygltf::Model& model, int mesh_idx) {
+    static engine::mesh load_mesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
         vector<engine::primitive> primitives;
-        for(size_t primitive_idx = 0; primitive_idx < model.meshes[mesh_idx].primitives.size(); primitive_idx++) {
-            gal::vertex_array vao = get_vao_from_mesh_primitive(model, mesh_idx, primitive_idx);
-            gal::texture texture = get_texture_from_mesh_primitive(model, mesh_idx, primitive_idx);
+        for(size_t primitive_idx = 0; primitive_idx < mesh.primitives.size(); primitive_idx++) {
+            gal::vertex_array vao = get_vao_from_mesh_primitive(model, mesh, primitive_idx);
+            gal::texture texture = get_texture_from_mesh_primitive(model, mesh, primitive_idx);
 
             primitives.emplace_back(
                 material(get_rm().get_retro_3d_shader(), get_rm().new_from<gal::texture>(std::move(texture))),
@@ -164,6 +166,49 @@ namespace engine {
             );
         }
         return engine::mesh(std::move(primitives));
+    }
+
+    static engine::collision_shape load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
+        //multiple collision_shape primitives are currently unsupported
+        EXPECTS(mesh.primitives.size() == 1);
+        const tinygltf::Primitive& primitive = mesh.primitives[0];
+
+        const tinygltf::Accessor& indices_accessor = model.accessors[primitive.indices];
+        // TODO: support other modes other than TRIANGLES for collision_shape
+        EXPECTS(primitive.mode == TINYGLTF_MODE_TRIANGLES);
+        // TODO: currently only supporting indexed data for collision_shape; if primitive.indices is undefined(-1) then the primitive is non-indexed
+        EXPECTS(primitive.indices != -1);
+        // TODO: currently the only type supported for indices for collision_shape is unsigned int
+        EXPECTS(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT);
+
+        int position_accessor_idx = -1;
+        for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+            //the only relevant attribute for collision_shape is the position
+            if(attrib_name != "POSITION") continue;
+            position_accessor_idx = accessor_idx;
+            break;
+        }
+
+        //there must be a position accessor
+        ASSERTS(position_accessor_idx != -1);
+        const tinygltf::Accessor& position_accessor = model.accessors[position_accessor_idx];
+        //only vec3 are supported for position since we only support 3d collision
+        EXPECTS(position_accessor.type == 3);
+        const tinygltf::BufferView& position_bufview = model.bufferViews[position_accessor.bufferView];
+        const tinygltf::Buffer& position_buf = model.buffers[position_bufview.buffer];
+
+        const void* verts_ptr = &position_buf.data[position_bufview.byteOffset];
+        size_t number_of_verts = position_bufview.byteLength / position_bufview.byteStride;
+        size_t verts_offset = position_accessor.byteOffset;
+        size_t verts_stride = position_bufview.byteStride;
+
+
+        auto& indices_bufview = model.bufferViews[indices_accessor.bufferView];
+        EXPECTS(indices_bufview.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER);
+        auto& indices_buf = model.buffers[indices_bufview.buffer];
+        std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
+
+        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span);
     }
 
     static glm::mat4 get_node_transform(const tinygltf::Node& n) {
@@ -177,15 +222,25 @@ namespace engine {
         return translation_mat * scale_mat * rotation_mat * raw_mat;
     }
 
+    static special_node_data_variant_t load_special_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
+        if(node.mesh == -1)
+            return null_node_data();
+        const tinygltf::Mesh& mesh = model.meshes[node.mesh];
+        if(mesh.name.ends_with("-col")) {
+            return load_mesh_as_collision_shape(model, mesh);
+        } else {
+            return load_mesh(model, mesh);
+        }
+    }
+
     static engine::node load_node_subtree(const tinygltf::Model& model, int idx) {
         const tinygltf::Node& node = model.nodes[idx];
 
-        std::optional<engine::mesh> mesh = node.mesh != -1 ? std::optional{load_mesh(model, node.mesh)} : std::nullopt;
+
+        special_node_data_variant_t special_node_data = load_special_node_data(model, node);
 
         glm::mat4 transform = get_node_transform(node);
-        engine::node root = mesh ?
-            engine::node(node.name, std::move(*mesh), transform)
-            : engine::node(node.name, null_node_data{}, transform);
+        engine::node root = engine::node(node.name, std::move(special_node_data), transform);
 
         for(int child_idx : node.children) {
             root.add_child(load_node_subtree(model, child_idx));
@@ -194,7 +249,7 @@ namespace engine {
         return root;
     }
 
-    engine::nodetree load_nodetree_from_gltf(const char* filepath, const char* nodetree_name) {
+    engine::nodetree_blueprint load_nodetree_from_gltf(const char* filepath, const char* nodetree_name) {
         nodetree_name = nodetree_name ? nodetree_name : filepath;
         bool binary = string_view(filepath).ends_with(".glb");
 
@@ -210,6 +265,6 @@ namespace engine {
         for (int node_idx : scene.nodes)
             root.add_child(load_node_subtree(model, node_idx));
 
-        return engine::nodetree(std::move(root), nodetree_name);
+        return engine::nodetree_blueprint(std::move(root), nodetree_name);
     }
 }
