@@ -4,12 +4,27 @@
 #include <string>
 #include <variant>
 #include <span>
+#include <optional>
 #include <GAL/framebuffer.hpp>
 #include "../renderer.hpp"
 #include "../concepts.hpp"
 #include "node/script.hpp"
 #include "node/collisions.hpp"
 #include "node/viewport.hpp"
+
+//TODO: delete this fwd decl
+namespace ImGui {
+    void Text(const char*, ...);
+}
+
+
+//TODO: this file contains too much node-related stuff which ought to have its own place; move other classes out
+
+/* TODO: the titular node class has too many responsibilities and is too complex, or at least this is what it feels like.
+ * Try to think of ways to split its behaviour into different classes. However, complexity has to lie somewhere; if this
+ * needs to be a complex class then do not split it, but hopefully this is not the case.
+ * A possibility could be to split the generic tree functionality from the engine primitive functionality, somehow.
+ */
 
 namespace engine {
     //all type declarations are later defined in this translation unit
@@ -22,6 +37,8 @@ namespace engine {
     struct null_node_data {};
 
     class node {
+        friend class detail::internal_node; // node but with move assignment, allows storing children as a sorted vector
+        node& operator=(node&& o); // for sorting children nodes
         std::vector<detail::internal_node> m_children;
         bool m_children_is_sorted;
         node* m_father;
@@ -30,11 +47,10 @@ namespace engine {
 
         special_node_data_variant_t m_other_data;
         rc<const nodetree_blueprint> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
+        collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
 
-        friend class detail::internal_node;
-        node& operator=(node&& o); // useful for sorting children nodes, but it is bad for it to be exposed like this
     public:
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
@@ -68,21 +84,54 @@ namespace engine {
         //transform access
         const glm::mat4& transform() const;
         glm::mat4& transform();
-        glm::mat4 compute_global_transform() {
-            node* f = try_get_father();
-            if(f) {
-                return f->compute_global_transform() * transform();
-            } else {
-                return transform();
-            }
-        }
+        /* TODO: Create a global transform cache:
+         * - add an attribute
+         *     std::optional<glm::mat4> m_global_transform_cache;
+         * - and a private method
+         *     void invalidate_global_transform_cache();
+         * and a setter for transform, which calls invalidate_global_transform_cache;
+         * a node on which invalidate_global_transform_cache is called checks whether
+         * the cache is currently valid:
+         *   - if it is, it invalidates it and calls invalidate_global_transform_cache
+         *     on all its children;
+         *   - if it isn't it does nothing; it is assumed that a node that has an
+         *     invalid cache will never have descendants with a valid cache, and conversely
+         *     a node with a valid cache will never have ancestors with an invalid cache.
+         * compute_global_transform would then only need to compute the transform if
+         * the global transform cache is invalid, and in that case populate the cache
+         * for all nodes higher than *this in the hierarchy.
+         *
+         * Note:
+         *      a node will only validate the cache of itself and its ANCESTORS, and
+         *      invalidate the cache of itself and its DESCENDANTS
+         *
+         * BEFORE implementing this check whether this just adds complexity without
+         * actually improving performance; keep in mind the average hierarchy to
+         * traverse is not too complex, since most of the complexity comes from bones
+         * which only need a global_transform to be computed if they have a mesh child.
+         * Also keep in mind that currently we already compute global transforms for all
+         * nodes when we render (possibly multiple times), and we could reduce this to only
+         * mesh nodes and their children while also saving the result for the next use.
+         *
+         * This saves computation also for nodes that are always still, like environment
+         * nodes or nodes only useful for grouping nodes while still allowing those nodes
+         * to move should they need to (imagine an elevator), and conversely if a node that
+         * generally moves stops moving its global transform will not need to be recomputed
+         * until it starts moving again.
+         *
+         * When you're at that point rename compute_global_transform to get_global_transform
+         */
+        glm::mat4 compute_global_transform();
+
+        const collision_behaviour& get_collision_behaviour();
+        void set_collision_behaviour(collision_behaviour col_behaviour);
+
+        void react_to_collision(collision_result res, node& other);
 
         //script
-        void attach_script(rc<const stateless_script> s) {
-            m_script = script(std::move(s));
-            m_script->attach(*this);
-        }
-        void process(application_channel_t& app_chan) { if(m_script) m_script->process(*this, app_chan); }
+        void attach_script(rc<const stateless_script> s);
+        void process(application_channel_t& app_chan);
+        void pass_collision_to_script(collision_result res, node& ev_src, node& other);
 
         // special node data access
         template<SpecialNodeData T> bool     has() const;

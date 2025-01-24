@@ -42,6 +42,7 @@ namespace engine {
         }
     public:
         struct empty_error : std::runtime_error {};
+
         using value_type = T;
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
@@ -57,6 +58,7 @@ namespace engine {
 
         stack_vector() : m_size(0) {}
         ~stack_vector() { clear(); }
+
         static size_t max_size() { return MAX_SIZE; }
         static size_t capacity() { return MAX_SIZE; }
         size_t size() const { return m_size; }
@@ -93,7 +95,6 @@ namespace engine {
             return ret;
         }
 
-
         T& front() {
             if(m_size == 0) {
                 throw empty_error("stack_vector::front called with size() == 0");
@@ -127,7 +128,6 @@ namespace engine {
             EXPECTS(i < m_size && i < MAX_SIZE);
             return *nth(i);
         }
-
         T& at(size_t i) {
             if(i >= m_size)
                 throw std::out_of_range("out of range access through stack_vector::at");

@@ -136,11 +136,24 @@ namespace engine {
     }
 
     void scene::update() {
+        // TODO: currently resubscribing all colliders at every update: suboptimal
+        m_bp_collision_detector.reset_subscriptions();
+
         process_node(get_root(), glm::mat4(1), m_application_channel);
 
-        //TODO: collision checks
+        std::vector<node*> dfs_stack;
+        dfs_stack.push_back(&get_root());
+        while(!dfs_stack.empty()) {
+            node* n = dfs_stack.back();
+            dfs_stack.pop_back();
+            for(node& c : n->children())
+                dfs_stack.push_back(&c);
 
-        // n.set_global_transform(transform); //TODO? currently calculated by render_node & process_node separately
+            if(n->has<collision_shape>())
+                m_bp_collision_detector.subscribe(*n);
+        }
+
+        m_bp_collision_detector.check_collisions_and_trigger_reactions();
     }
 
     //TODO: make the setting of these options based on scene settings

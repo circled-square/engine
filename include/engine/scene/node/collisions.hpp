@@ -15,12 +15,13 @@
 #include <engine/utils/stack_vector.hpp>
 
 namespace engine {
+    class node;
     using collision_layer_index = std::uint8_t;
     using collision_layer_mask = stack_vector<collision_layer_index, 15>;
 
     static_assert(sizeof(collision_layer_mask) == 16);
 
-    //TODO: collision_shape currently is not a resource; does it need to be?
+    //TODO: collision_shape currently is not a resource; it should be, since it is immutable, shared among many nodes and expensive to copy and compute
     struct collision_shape {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> face_normals;
@@ -29,7 +30,13 @@ namespace engine {
         collision_layer_mask sees_layers;
         collision_layer_index is_layers;
 
-        static collision_shape from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices);
+        static collision_shape from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices);   
+    };
+
+    struct collision_behaviour {
+        bool moves_away_on_collision : 1 = false;
+        bool passes_events_to_script : 1 = false;
+        bool passes_events_to_father : 1 = false;
     };
 
     struct collision_result {
@@ -42,6 +49,8 @@ namespace engine {
         //returns the minimum translation the first collider should undertake to not collide with the second
         glm::vec3 get_min_translation();
         operator bool() const;
+
+        collision_result operator-() { return collision_result { .versor = -versor, .depth = depth }; }
     };
 
     collision_result check_collision(const collision_shape& a, glm::mat4 a_trans, const collision_shape& b, glm::mat4 b_trans);

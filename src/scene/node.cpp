@@ -31,6 +31,7 @@ namespace engine {
           m_transform(std::move(o.m_transform)),
           m_other_data(std::move(o.m_other_data)),
           m_nodetree_reference(std::move(o.m_nodetree_reference)),
+          m_col_behaviour(std::move(o.m_col_behaviour)),
           m_script(std::move(o.m_script))
     {
         o.m_father = nullptr;
@@ -48,6 +49,7 @@ namespace engine {
           m_transform(o.m_transform),
           m_other_data(o.m_other_data),
           m_nodetree_reference(o.m_nodetree_reference),
+          m_col_behaviour(o.m_col_behaviour),
           m_script(o.m_script)
     {
         // fix the children's father pointers
@@ -72,6 +74,7 @@ namespace engine {
         m_transform = std::move(o.m_transform);
         m_other_data = std::move(o.m_other_data);
         m_nodetree_reference = std::move(o.m_nodetree_reference);
+        m_col_behaviour = std::move(o.m_col_behaviour);
         m_script = std::move(o.m_script);
 
         return *this;
@@ -143,6 +146,62 @@ namespace engine {
 
     glm::mat4 &node::transform() { return m_transform; }
 
+    glm::mat4 node::compute_global_transform() {
+        node* f = try_get_father();
+        if(f) {
+            return f->compute_global_transform() * transform();
+        } else {
+            return transform();
+        }
+    }
+
+    const collision_behaviour& node::get_collision_behaviour() { return m_col_behaviour; }
+
+    void node::set_collision_behaviour(collision_behaviour col_behaviour) {
+        m_col_behaviour = col_behaviour;
+
+        slogga::stdout_log("{}: col_b set to ({}, {})", absolute_path(),
+                           m_col_behaviour.moves_away_on_collision, m_col_behaviour.passes_events_to_father
+                           );
+    }
+
+    void node::react_to_collision(collision_result res, node& other) {
+        node* node_cursor = this;
+        while(true) {
+
+            auto& col_behaviour = node_cursor->get_collision_behaviour();
+
+            if(col_behaviour.moves_away_on_collision) {
+                node* father_p = node_cursor->try_get_father();
+                glm::mat4 father_inverse_globtrans = father_p ? glm::inverse(father_p->compute_global_transform()) : glm::mat4(1);
+
+                glm::vec3 local_space_min_translation = father_inverse_globtrans * glm::vec4(-res.get_min_translation(), 0);
+
+                node_cursor->transform() = glm::translate(node_cursor->transform(), -local_space_min_translation);
+            }
+            if(col_behaviour.passes_events_to_script) {
+                EXPECTS(node_cursor->m_script.has_value());
+                node_cursor->pass_collision_to_script(res, *this, other);
+            }
+
+            //keep recursing up the node tree if the event needs to be passed to the father
+            if(col_behaviour.passes_events_to_father == true) {
+                node_cursor = &node_cursor->get_father(); //we do not use try_get_father because we do assume the father exists
+            } else {
+                break;
+            }
+        }
+    }
+
+    void node::attach_script(rc<const stateless_script> s) {
+        m_script = script(std::move(s));
+        m_script->attach(*this);
+    }
+
+    void node::process(application_channel_t& app_chan) { if(m_script) m_script->process(*this, app_chan); }
+
+    void node::pass_collision_to_script(collision_result res, node& ev_src, node& other) { if(m_script) m_script->react_to_collision(*this, res, ev_src, other); }
+
     node& node::get_from_path(std::string_view path) {
         std::string_view subpath = path;
         node* current_node = this;
@@ -164,10 +223,10 @@ namespace engine {
     template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
 
 
-    #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
-        template TYPE& node::get<TYPE>(); \
-        template const TYPE& node::get<TYPE>() const; \
-        template bool node::has<TYPE>() const;
+#define INSTANTIATE_NODE_TEMPLATES(TYPE) \
+    template TYPE& node::get<TYPE>(); \
+    template const TYPE& node::get<TYPE>() const; \
+    template bool node::has<TYPE>() const;
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, SPECIAL_NODE_DATA_CONTENTS)
 }

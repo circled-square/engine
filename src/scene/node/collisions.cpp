@@ -1,5 +1,5 @@
 #include <engine/scene/node/collisions.hpp>
-
+#include <engine/scene/node.hpp>
 
 
 template<>
@@ -170,4 +170,35 @@ namespace engine {
     vec3 collision_result::get_min_translation() { EXPECTS(this->operator bool()); return -depth * versor; }
 
     collision_result::operator bool() const { return !std::isnan(depth); }
+
+
+    void notify_of_collision(node& event_src, node& other_node, collision_result collision) {
+        node* this_node_p = &event_src;
+        while(true) {
+            auto& col_behaviour = this_node_p->get_collision_behaviour();
+
+            if(col_behaviour.moves_away_on_collision) {
+                node* father_p = this_node_p->try_get_father();
+                glm::mat4 father_globtrans = father_p ? father_p->compute_global_transform() : glm::mat4(1);
+                glm::mat4 father_inverse_globtrans = father_p ? glm::inverse(father_globtrans) : glm::mat4(1);
+
+                glm::vec3 local_space_translation_versor = father_inverse_globtrans * glm::vec4(collision.get_min_translation(), 0);
+                local_space_translation_versor /= glm::length(local_space_translation_versor);
+
+                glm::vec3 local_space_min_translation = local_space_translation_versor * collision.depth;
+
+                this_node_p->transform() = glm::translate(this_node_p->transform(), local_space_min_translation);
+            }
+            if(col_behaviour.passes_events_to_script) {
+                this_node_p->pass_collision_to_script(collision, event_src, other_node);
+            }
+
+            //keep recursing up the node tree if the event needs to be passed to the father
+            if(col_behaviour.passes_events_to_father == true) {
+                this_node_p = &this_node_p->get_father(); //we do not use try_get_father because we do assume the father exists
+            } else {
+                break;
+            }
+        }
+    }
 }
