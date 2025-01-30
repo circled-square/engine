@@ -1,5 +1,5 @@
-#ifndef STACK_VECTOR_HPP
-#define STACK_VECTOR_HPP
+#ifndef ENGINE_UTILS_STACK_VECTOR_HPP
+#define ENGINE_UTILS_STACK_VECTOR_HPP
 
 #include <limits>
 #include <type_traits>
@@ -57,6 +57,9 @@ namespace engine {
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         stack_vector() : m_size(0) {}
+        stack_vector(const std::initializer_list<T>& il) : m_size(il.size()) {
+            std::copy(il.begin(), il.end(), m_arr.begin());
+        }
         ~stack_vector() { clear(); }
 
         static size_t max_size() { return MAX_SIZE; }
@@ -224,6 +227,13 @@ namespace engine {
             std::swap(this->m_size, o.m_size);
         }
 
+        bool contains(const T& v) {
+            for(const T& e : *this)
+                if(e == v)
+                    return true;
+            return false;
+        }
+
         iterator begin() { return nth(0); }
         const_iterator begin() const { return nth(0); }
         const_iterator cbegin() const { return nth(0); }
@@ -242,4 +252,4 @@ namespace engine {
     };
 }
 
-#endif // STACK_VECTOR_HPP
+#endif // ENGINE_UTILS_STACK_VECTOR_HPP

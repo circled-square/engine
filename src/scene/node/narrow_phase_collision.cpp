@@ -1,4 +1,4 @@
-#include <engine/scene/node/collisions.hpp>
+#include <engine/scene/node/narrow_phase_collision.hpp>
 #include <engine/scene/node.hpp>
 
 
@@ -119,7 +119,7 @@ namespace engine {
     }
 
 
-    collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices){
+    collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layer_index is_layer, collision_layer_mask sees_layers) {
         using namespace glm;
 
         auto get_mesh_vert = [&](size_t i) {
@@ -158,6 +158,8 @@ namespace engine {
         for(vec3 vert : verts)      ret.verts.push_back(vert);
         for(vec3 normal : normals)  ret.face_normals.push_back(normal);
         for(vec3 edge : edges)      ret.edges.push_back(edge);
+        ret.is_layer = is_layer;
+        ret.sees_layers = sees_layers;
 
 
         return ret;

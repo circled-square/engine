@@ -136,10 +136,10 @@ namespace engine {
     }
 
     void scene::update() {
+        process_node(get_root(), glm::mat4(1), m_application_channel);
+
         // TODO: currently resubscribing all colliders at every update: suboptimal
         m_bp_collision_detector.reset_subscriptions();
-
-        process_node(get_root(), glm::mat4(1), m_application_channel);
 
         std::vector<node*> dfs_stack;
         dfs_stack.push_back(&get_root());

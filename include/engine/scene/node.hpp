@@ -9,14 +9,8 @@
 #include "../renderer.hpp"
 #include "../concepts.hpp"
 #include "node/script.hpp"
-#include "node/collisions.hpp"
+#include "node/narrow_phase_collision.hpp"
 #include "node/viewport.hpp"
-
-//TODO: delete this fwd decl
-namespace ImGui {
-    void Text(const char*, ...);
-}
-
 
 //TODO: this file contains too much node-related stuff which ought to have its own place; move other classes out
 

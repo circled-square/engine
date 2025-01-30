@@ -1,6 +1,6 @@
 #include <engine/scene/node/script.hpp>
 
-#include <engine/scene/node/collisions.hpp>
+#include <engine/scene/node/narrow_phase_collision.hpp>
 
 
 namespace engine {

@@ -208,7 +208,7 @@ namespace engine {
         auto& indices_buf = model.buffers[indices_bufview.buffer];
         std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
 
-        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span);
+        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span, 0, {0});
     }
 
     static glm::mat4 get_node_transform(const tinygltf::Node& n) {

@@ -1,5 +1,5 @@
-#ifndef ENGINE_SCENE_NODE_COLLISIONS_HPP
-#define ENGINE_SCENE_NODE_COLLISIONS_HPP
+#ifndef ENGINE_SCENE_NODE_NP_COLLISIONS_HPP
+#define ENGINE_SCENE_NODE_NP_COLLISIONS_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -27,10 +27,10 @@ namespace engine {
         std::vector<glm::vec3> face_normals;
         std::vector<glm::vec3> edges;
         //the correctness of layers in a collision is NOT checked by collision_shape;
+        collision_layer_index is_layer;
         collision_layer_mask sees_layers;
-        collision_layer_index is_layers;
 
-        static collision_shape from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices);   
+        static collision_shape from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layer_index is_layer, collision_layer_mask sees_layers);
     };
 
     struct collision_behaviour {
@@ -56,4 +56,4 @@ namespace engine {
     collision_result check_collision(const collision_shape& a, glm::mat4 a_trans, const collision_shape& b, glm::mat4 b_trans);
 }
 
-#endif // ENGINE_SCENE_NODE_COLLISIONS_HPP
+#endif // ENGINE_SCENE_NODE_NP_COLLISIONS_HPP

@@ -15,7 +15,7 @@ namespace engine {
         struct to_app_t {
             bool wants_mouse_cursor_captured = false;
             rc<scene> scene_to_change_to = rc<scene>();
-        } to_app;
+        };
         struct from_app_t {
             bool scene_is_active = false;
             bool mouse_cursor_is_captured = false;
@@ -23,7 +23,9 @@ namespace engine {
             float delta = 0.f;
             float frame_time = 0.f;
             std::span<const event_variant_t> events;
-        } from_app;
+        };
+        to_app_t to_app;
+        from_app_t from_app;
 
         application_channel_t(const application_channel_t&) = delete;
         application_channel_t(application_channel_t&&) = default;

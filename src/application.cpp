@@ -77,6 +77,7 @@ namespace engine {
         EXPECTS(!m_active_scene && start_scene);
         m_active_scene = std::move(start_scene);
         m_active_scene->prepare();
+        m_active_scene->channel_from_app().scene_is_active = true;
     }
 
     application::~application() {
@@ -100,9 +101,11 @@ namespace engine {
             float frame_time = std::chrono::duration<float>(curr_frame_time - app_start_time).count();
 
             // read and write to the channel to the scene
+            EXPECTS(m_active_scene);
             rc<scene> scene_to_change_to = m_active_scene->get_and_reset_scene_to_change_to();
             if(scene_to_change_to) {
-                EXPECTS(m_active_scene && m_active_scene->channel_from_app().scene_is_active);
+                ASSERTS(m_active_scene->channel_from_app().scene_is_active);
+
                 m_active_scene->channel_from_app().scene_is_active = false;
 
                 m_active_scene = std::move(scene_to_change_to);

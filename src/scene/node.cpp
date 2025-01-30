@@ -159,10 +159,6 @@ namespace engine {
 
     void node::set_collision_behaviour(collision_behaviour col_behaviour) {
         m_col_behaviour = col_behaviour;
-
-        slogga::stdout_log("{}: col_b set to ({}, {})", absolute_path(),
-                           m_col_behaviour.moves_away_on_collision, m_col_behaviour.passes_events_to_father
-                           );
     }
 
     void node::react_to_collision(collision_result res, node& other) {

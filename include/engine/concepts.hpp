@@ -2,8 +2,8 @@
 #define ENGINE_CONCEPTS_HPP
 
 #include <typeinfo>
-#include "meta_utils.hpp"
-#include <slogga/log.hpp>
+#include "utils/meta.hpp"
+#include <slogga/asserts.hpp>
 
 
 // Resource and associated concepts
