@@ -1,5 +1,5 @@
-#ifndef ENGINE_UTILS_STACK_VECTOR_HPP
-#define ENGINE_UTILS_STACK_VECTOR_HPP
+#ifndef ENGINE_UTILS_NOALLOC_VECTOR_HPP
+#define ENGINE_UTILS_NOALLOC_VECTOR_HPP
 
 #include <limits>
 #include <type_traits>
@@ -30,7 +30,7 @@ namespace engine {
     }
 
     template<typename T, size_t MAX_SIZE>
-    class stack_vector {
+    class noalloc_vector {
         alignas(T) std::array<std::uint8_t, MAX_SIZE * sizeof(T)> m_arr;
         detail::smallest_uint_t<MAX_SIZE> m_size;
 
@@ -56,11 +56,11 @@ namespace engine {
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-        stack_vector() : m_size(0) {}
-        stack_vector(const std::initializer_list<T>& il) : m_size(il.size()) {
+        noalloc_vector() : m_size(0) {}
+        noalloc_vector(const std::initializer_list<T>& il) : m_size(il.size()) {
             std::copy(il.begin(), il.end(), m_arr.begin());
         }
-        ~stack_vector() { clear(); }
+        ~noalloc_vector() { clear(); }
 
         static size_t max_size() { return MAX_SIZE; }
         static size_t capacity() { return MAX_SIZE; }
@@ -90,7 +90,7 @@ namespace engine {
 
         T pop_back() {
             if(m_size == 0) {
-                throw empty_error("stack_vector::pop_back called with size() == 0");
+                throw empty_error("noalloc_vector::pop_back called with size() == 0");
             }
             T ret = std::move(nth(m_size-1));
             nth(m_size-1)->~T();
@@ -100,25 +100,25 @@ namespace engine {
 
         T& front() {
             if(m_size == 0) {
-                throw empty_error("stack_vector::front called with size() == 0");
+                throw empty_error("noalloc_vector::front called with size() == 0");
             }
             return *nth(0);
         }
         const T& front() const {
             if(m_size == 0) {
-                throw empty_error("stack_vector::front called with size() == 0");
+                throw empty_error("noalloc_vector::front called with size() == 0");
             }
             return *nth(0);
         }
         T& back() {
             if(m_size == 0) {
-                throw empty_error("stack_vector::back called with size() == 0");
+                throw empty_error("noalloc_vector::back called with size() == 0");
             }
             return *nth(m_size - 1);
         }
         const T& back() const {
             if(m_size == 0) {
-                throw empty_error("stack_vector::back called with size() == 0");
+                throw empty_error("noalloc_vector::back called with size() == 0");
             }
             return *nth(m_size - 1);
         }
@@ -133,12 +133,12 @@ namespace engine {
         }
         T& at(size_t i) {
             if(i >= m_size)
-                throw std::out_of_range("out of range access through stack_vector::at");
+                throw std::out_of_range("out of range access through noalloc_vector::at");
             return this->operator[](i);
         }
         const T& at(size_t i) const {
             if(i >= m_size)
-                throw std::out_of_range("out of range access through stack_vector::at");
+                throw std::out_of_range("out of range access through noalloc_vector::at");
             return this->operator[](i);
         }
 
@@ -170,7 +170,7 @@ namespace engine {
 
         iterator erase(iterator pos) {
             if(pos < begin() || pos >= end())
-                throw std::out_of_range("stack_vector::erase called with an iterator not in [begin, end)");
+                throw std::out_of_range("noalloc_vector::erase called with an iterator not in [begin, end)");
 
             iterator it = pos;
 
@@ -209,7 +209,7 @@ namespace engine {
             }
         }
 
-        void swap(stack_vector& o) {
+        void swap(noalloc_vector& o) {
             // this allows us to assume that this->size() <= o.size()
             if(o.size() < size()) {
                 o.swap(*this);
@@ -252,4 +252,4 @@ namespace engine {
     };
 }
 
-#endif // ENGINE_UTILS_STACK_VECTOR_HPP
+#endif // ENGINE_UTILS_NOALLOC_VECTOR_HPP

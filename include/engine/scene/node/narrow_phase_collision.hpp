@@ -12,12 +12,12 @@
 #include <optional>
 #include <stdexcept>
 #include <slogga/asserts.hpp>
-#include <engine/utils/stack_vector.hpp>
+#include <engine/utils/noalloc_vector.hpp>
 
 namespace engine {
     class node;
     using collision_layer_index = std::uint8_t;
-    using collision_layer_mask = stack_vector<collision_layer_index, 15>;
+    using collision_layer_mask = noalloc_vector<collision_layer_index, 15>;
 
     static_assert(sizeof(collision_layer_mask) == 16);
 
