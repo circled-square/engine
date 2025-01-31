@@ -76,9 +76,9 @@ namespace engine {
         template<Resource T> [[nodiscard]] rc<T> new_mut_from(T&& res);
 
         // get resource loaded from disk
-        [[nodiscard]] rc<const gal::texture>    get_texture(const std::string& path);
-        [[nodiscard]] rc<const nodetree>        get_nodetree_from_gltf(const std::string& path);
-        [[nodiscard]] rc<scene>                 get_scene(const std::string& path);
+        [[nodiscard]] rc<const gal::texture>        get_texture(const std::string& path);
+        [[nodiscard]] rc<const nodetree_blueprint>  get_nodetree_from_gltf(const std::string& path);
+        [[nodiscard]] rc<scene>                     get_scene(const std::string& path);
 
         // get resource generated at runtime
         [[nodiscard]] rc<const gal::vertex_array>   get_whole_screen_vao();

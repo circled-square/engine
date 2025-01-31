@@ -4,62 +4,35 @@
 #include <string>
 #include <variant>
 #include <span>
+#include <optional>
 #include <GAL/framebuffer.hpp>
 #include "../renderer.hpp"
 #include "../concepts.hpp"
 #include "node/script.hpp"
+#include "node/narrow_phase_collision.hpp"
+#include "node/viewport.hpp"
+
+//TODO: this file contains too much node-related stuff which ought to have its own place; move other classes out
+
+/* TODO: the titular node class has too many responsibilities and is too complex, or at least this is what it feels like.
+ * Try to think of ways to split its behaviour into different classes. However, complexity has to lie somewhere; if this
+ * needs to be a complex class then do not split it, but hopefully this is not the case.
+ * A possibility could be to split the generic tree functionality from the engine primitive functionality, somehow.
+ */
 
 namespace engine {
-    using framebuffer = gal::framebuffer<rc<gal::texture>>;
-
-    //later defined in this translation unit
-    class nodetree;
-
-    //currently unimplemented
-    class collision_shape {};
-
-    // a viewport node is composed of the fbo to which its descendants should be rendered, and the shader to be applied when rendering the resulting texture.
-    // the internal fbo texture's size is kept consistent to the resolution it should be rendered to (through the use of output_resolution_changed).
-    class viewport {
-        //members are mutable because output_resolution_changed does not fundamentally change what they are and it needs to be const
-        mutable framebuffer m_fbo;
-        mutable material m_postfx_material;
-        std::optional<glm::vec2> m_dynamic_size_relative_to_output;
-        const camera* m_active_camera = nullptr;
-    public:
-        //note: the postfx material at this stage contains a null pointer to a texture.
-        viewport(framebuffer fbo, rc<const shader> postfx_shader, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
-        viewport(rc<const shader> postfx_shader, glm::vec2 dynamic_size_relative_to_output);
-        viewport(viewport&& o);
-
-        explicit viewport(const viewport& o);
-
-        framebuffer& fbo();
-        const framebuffer& fbo() const;
-        material& postfx_material();
-        const material& postfx_material() const;
-        std::optional<glm::vec2> dynamic_size_relative_to_output() const;
-
-        void bind_draw() const;
-
-        //can be set to null
-        void set_active_camera(const camera* c);
-        //can return null
-        const camera* get_active_camera() const;
-
-        // note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and "leaking" to the gc the old one.
-        void output_resolution_changed(glm::ivec2 native_resolution) const;
-
-        void operator=(viewport&& o);
-    };
-
-    struct null_node_data {};
+    //all type declarations are later defined in this translation unit
+    class nodetree_blueprint;
 
     namespace detail { class internal_node; }
     class node_span;
     class const_node_span;
 
+    struct null_node_data {};
+
     class node {
+        friend class detail::internal_node; // node but with move assignment, allows storing children as a sorted vector
+        node& operator=(node&& o); // for sorting children nodes
         std::vector<detail::internal_node> m_children;
         bool m_children_is_sorted;
         node* m_father;
@@ -67,12 +40,11 @@ namespace engine {
         glm::mat4 m_transform;
 
         special_node_data_variant_t m_other_data;
-        rc<const nodetree> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
+        rc<const nodetree_blueprint> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
+        collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
 
-        friend class detail::internal_node;
-        node& operator=(node&& o); // useful for sorting children nodes, but it is bad for it to be exposed like this
     public:
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
@@ -84,7 +56,7 @@ namespace engine {
         explicit node(const node& o);
 
         // this is expensive (calls deep-copy constructor)
-        node(const rc<const nodetree>& nt, std::string name = std::string());
+        node(const rc<const nodetree_blueprint>& nt, std::string name = std::string());
 
         // children access
         void add_child(node c);
@@ -106,13 +78,54 @@ namespace engine {
         //transform access
         const glm::mat4& transform() const;
         glm::mat4& transform();
+        /* TODO: Create a global transform cache:
+         * - add an attribute
+         *     std::optional<glm::mat4> m_global_transform_cache;
+         * - and a private method
+         *     void invalidate_global_transform_cache();
+         * and a setter for transform, which calls invalidate_global_transform_cache;
+         * a node on which invalidate_global_transform_cache is called checks whether
+         * the cache is currently valid:
+         *   - if it is, it invalidates it and calls invalidate_global_transform_cache
+         *     on all its children;
+         *   - if it isn't it does nothing; it is assumed that a node that has an
+         *     invalid cache will never have descendants with a valid cache, and conversely
+         *     a node with a valid cache will never have ancestors with an invalid cache.
+         * compute_global_transform would then only need to compute the transform if
+         * the global transform cache is invalid, and in that case populate the cache
+         * for all nodes higher than *this in the hierarchy.
+         *
+         * Note:
+         *      a node will only validate the cache of itself and its ANCESTORS, and
+         *      invalidate the cache of itself and its DESCENDANTS
+         *
+         * BEFORE implementing this check whether this just adds complexity without
+         * actually improving performance; keep in mind the average hierarchy to
+         * traverse is not too complex, since most of the complexity comes from bones
+         * which only need a global_transform to be computed if they have a mesh child.
+         * Also keep in mind that currently we already compute global transforms for all
+         * nodes when we render (possibly multiple times), and we could reduce this to only
+         * mesh nodes and their children while also saving the result for the next use.
+         *
+         * This saves computation also for nodes that are always still, like environment
+         * nodes or nodes only useful for grouping nodes while still allowing those nodes
+         * to move should they need to (imagine an elevator), and conversely if a node that
+         * generally moves stops moving its global transform will not need to be recomputed
+         * until it starts moving again.
+         *
+         * When you're at that point rename compute_global_transform to get_global_transform
+         */
+        glm::mat4 compute_global_transform();
+
+        const collision_behaviour& get_collision_behaviour();
+        void set_collision_behaviour(collision_behaviour col_behaviour);
+
+        void react_to_collision(collision_result res, node& other);
 
         //script
-        void attach_script(rc<const stateless_script> s) {
-            m_script = script(std::move(s));
-            m_script->attach(*this);
-        }
-        void process(application_channel_t& app_chan) { if(m_script) m_script->process(*this, app_chan); }
+        void attach_script(rc<const stateless_script> s);
+        void process(application_channel_t& app_chan);
+        void pass_collision_to_script(collision_result res, node& ev_src, node& other);
 
         // special node data access
         template<SpecialNodeData T> bool     has() const;
@@ -180,12 +193,12 @@ namespace engine {
         node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
     };
 
-    // "nodetree" is what we call a preconstructed, immutable subtree of the node tree, generally loaded from file
-    class nodetree {
+    // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
+    class nodetree_blueprint {
         node m_root;
         std::string m_name;
     public:
-        nodetree(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
         const node& root() const { return m_root; }
     };

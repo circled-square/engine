@@ -22,7 +22,7 @@ namespace engine {
     namespace detail {
         template<Resource T>
         class rc_resource {
-            // rc_resource itself does not enforce immutability of the contained resource; it is up to its owner to do it
+            // rc_resource does not enforce immutability of the contained resource; it is up to its owner to do it
             T m_resource;
             std::int64_t m_refcount;
 

@@ -99,8 +99,8 @@ namespace engine {
         });
     }
 
-    rc<const nodetree> resources_manager::get_nodetree_from_gltf(const std::string& path) {
-        return create_or_get_named_resource<nodetree>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
+    rc<const nodetree_blueprint> resources_manager::get_nodetree_from_gltf(const std::string& path) {
+        return create_or_get_named_resource<nodetree_blueprint>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
             return make_rc_ptr(load_nodetree_from_gltf(p.c_str()));
         });
     }
