@@ -1,0 +1,6 @@
+add_subdirectory(mesh/)
+
+#mesh
+add_library(engine__scene_renderer_mesh STATIC mesh.cpp)
+target_link_libraries(engine__scene_renderer_mesh PUBLIC engine__global GAL engine__scene_renderer_mesh_material)
+target_link_libraries(engine__scene_renderer_mesh PRIVATE engine__resources_manager)

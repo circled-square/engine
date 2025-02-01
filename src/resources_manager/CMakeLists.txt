@@ -1,0 +1,9 @@
+#rc_resource
+add_library(engine__resources_manager_rc_resource STATIC detail/rc_resource.cpp)
+target_link_libraries(engine__resources_manager_rc_resource PUBLIC engine__global)
+target_link_libraries(engine__resources_manager_rc_resource PRIVATE engine__scene)
+
+#rc
+add_library(engine__resources_manager_rc STATIC rc.cpp)
+target_link_libraries(engine__resources_manager_rc PUBLIC engine__global)
+target_link_libraries(engine__resources_manager_rc PRIVATE engine__resources_manager_rc_resource engine__scene)

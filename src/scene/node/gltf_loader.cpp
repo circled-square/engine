@@ -1,5 +1,5 @@
-#include <engine/gltf_loader.hpp>
-#include <engine/materials.hpp>
+#include <engine/scene/node/gltf_loader.hpp>
+#include <engine/scene/renderer/mesh/material/materials.hpp>
 #include <engine/resources_manager.hpp>
 
 #include "glm/gtc/quaternion.hpp"

@@ -1,12 +1,12 @@
 #ifndef ENGINE_APPLICATION_HPP
 #define ENGINE_APPLICATION_HPP
 
-#include "window/window.hpp"
 #include <glm/glm.hpp>
-#include <engine/rc.hpp>
+#include <engine/resources_manager/rc.hpp>
 
-#include "scene/scene.hpp"
+#include "scene.hpp"
 #include "application/event.hpp"
+#include "application/window.hpp"
 
 namespace engine {
     class application {

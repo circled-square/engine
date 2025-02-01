@@ -1,45 +1,31 @@
-add_library(engine__include_dirs INTERFACE)
-target_include_directories(engine__include_dirs INTERFACE ../include/)
+add_library(engine__global INTERFACE)
+target_include_directories(engine__global INTERFACE ../include/)
+target_link_libraries(engine__global INTERFACE slogga)
 
-add_subdirectory(window/)
+add_subdirectory(application/)
 add_subdirectory(scene/)
+add_subdirectory(resources_manager/)
 
 #application
 add_library(engine__application STATIC application.cpp)
-target_link_libraries(engine__application PUBLIC engine__scene engine__window engine__include_dirs engine__resources_manager)
-target_link_libraries(engine__application PRIVATE imgui GAL slogga)
+target_link_libraries(engine__application PUBLIC engine__global engine__scene engine__application_window engine__resources_manager)
+target_link_libraries(engine__application PRIVATE imgui GAL)
 
 #entry_point
 add_library(engine__entry_point STATIC entry_point.cpp)
-target_link_libraries(engine__entry_point PUBLIC engine__include_dirs engine__window engine__scene)
+target_link_libraries(engine__entry_point PUBLIC engine__global engine__scene)
 target_link_libraries(engine__entry_point PRIVATE engine__application)
 
-#gltf_loader
-add_library(engine__gltf_loader STATIC gltf_loader.cpp)
-target_link_libraries(engine__gltf_loader PUBLIC engine__scene engine__include_dirs)
-target_link_libraries(engine__gltf_loader PRIVATE GAL tinygltf engine__resources_manager)
-
-#material
-add_library(engine__material STATIC material.cpp)
-target_link_libraries(engine__material PUBLIC engine__include_dirs engine__resources_manager)
-target_link_libraries(engine__material PRIVATE GAL slogga)
-
-#materials
-add_library(engine__materials STATIC materials.cpp)
-target_link_libraries(engine__materials PUBLIC engine__include_dirs engine__material)
-target_link_libraries(engine__materials PRIVATE GAL slogga)
-
 #resources_manager
-add_library(engine__resources_manager STATIC resources_manager.cpp rc.cpp internal/rc_resource.cpp)
-target_link_libraries(engine__resources_manager PUBLIC glm GAL engine__include_dirs engine__materials engine__gltf_loader)
-target_link_libraries(engine__resources_manager PRIVATE slogga)
+add_library(engine__resources_manager STATIC resources_manager.cpp)
+target_link_libraries(engine__resources_manager PUBLIC engine__global glm GAL engine__scene_renderer_mesh_material_materials engine__scene_node_gltf_loader engine__resources_manager_rc)
+target_link_libraries(engine__resources_manager PRIVATE engine__resources_manager_rc_resource)
 
-#renderer
-add_library(engine__renderer STATIC renderer.cpp)
-target_link_libraries(engine__renderer PUBLIC GAL engine__include_dirs engine__material)
-target_link_libraries(engine__renderer PRIVATE GAL glm engine__resources_manager)
-
+#scene
+add_library(engine__scene STATIC scene.cpp)
+target_link_libraries(engine__scene PUBLIC engine__global engine__scene_node engine__scene_bp_collision)
+target_link_libraries(engine__scene PRIVATE engine__resources_manager imgui)
 
 #engine
 add_library(engine INTERFACE)
-target_link_libraries(engine INTERFACE engine__entry_point engine__application engine__gltf_loader engine__material engine__resources_manager engine__renderer imgui GAL)
+target_link_libraries(engine INTERFACE engine__application engine__entry_point engine__resources_manager engine__scene imgui GAL)

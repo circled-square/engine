@@ -1,0 +1,7 @@
+#shader
+add_library(engine__scene_renderer_mesh_material_shader STATIC shader.cpp)
+target_link_libraries(engine__scene_renderer_mesh_material_shader PUBLIC engine__global GAL)
+
+#materials
+add_library(engine__scene_renderer_mesh_material_materials STATIC materials.cpp)
+target_link_libraries(engine__scene_renderer_mesh_material_materials PUBLIC engine__global GAL engine__scene_renderer_mesh_material_shader)

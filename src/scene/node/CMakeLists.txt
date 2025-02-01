@@ -1,22 +1,30 @@
+# camera
+add_library(engine__scene_node_camera STATIC camera.cpp)
+target_link_libraries(engine__scene_node_camera PUBLIC engine__global glm)
+
 # viewport
 add_library(engine__scene_node_viewport STATIC viewport.cpp)
-target_link_libraries(engine__scene_node_viewport PUBLIC engine__include_dirs glm GAL)
-target_link_libraries(engine__scene_node_viewport PRIVATE slogga engine__resources_manager)
+target_link_libraries(engine__scene_node_viewport PUBLIC engine__global glm GAL engine__scene_node_camera)
+target_link_libraries(engine__scene_node_viewport PRIVATE engine__resources_manager)
 
 # collisions
 add_library(engine__scene_node_narrow_phase_collision STATIC narrow_phase_collision.cpp)
-target_link_libraries(engine__scene_node_narrow_phase_collision PUBLIC engine__include_dirs glm GAL)
-target_link_libraries(engine__scene_node_narrow_phase_collision PRIVATE slogga)
+target_link_libraries(engine__scene_node_narrow_phase_collision PUBLIC engine__global glm GAL)
 
 # script
 add_library(engine__scene_node_script STATIC script.cpp)
-target_link_libraries(engine__scene_node_script PUBLIC engine__include_dirs glm GAL)
-target_link_libraries(engine__scene_node_script PRIVATE slogga)
+target_link_libraries(engine__scene_node_script PUBLIC engine__global glm GAL)
+
+#gltf_loader
+add_library(engine__scene_node_gltf_loader STATIC gltf_loader.cpp)
+target_link_libraries(engine__scene_node_gltf_loader PUBLIC engine__scene_node engine__global)
+target_link_libraries(engine__scene_node_gltf_loader PRIVATE GAL tinygltf engine__resources_manager)
 
 # special_node_data interface target
-add_library(engine__scene_node_special_node_data INTERFACE)
-target_link_libraries(engine__scene_node_special_node_data INTERFACE
+add_library(engine__scene_node_node_data INTERFACE)
+target_link_libraries(engine__scene_node_node_data INTERFACE
     engine__scene_node_viewport
+    engine__scene_node_camera
     engine__scene_node_narrow_phase_collision
     engine__scene_node_script
 )

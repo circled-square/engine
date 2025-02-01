@@ -1,10 +1,8 @@
-#ifndef ENGINE_CONCEPTS_HPP
-#define ENGINE_CONCEPTS_HPP
+#ifndef RESOURCE_HPP
+#define RESOURCE_HPP
 
-#include <typeinfo>
-#include "utils/meta.hpp"
-#include <slogga/asserts.hpp>
-
+#include <engine/utils/meta.hpp>
+#include <slogga/log.hpp>
 
 // Resource and associated concepts
 // forward declarations of resource types and declaration of Resource and PolymorphicResource concept
@@ -40,20 +38,6 @@ namespace engine {
     }
 }
 
-// SpecialNodeData concept
-namespace engine {
-    class camera;
-    class mesh;
-    class collision_shape;
-    class viewport;
-    class null_node_data;
 
-    #define SPECIAL_NODE_DATA_CONTENTS null_node_data, camera, mesh, collision_shape, viewport
 
-    using special_node_data_variant_t = std::variant<SPECIAL_NODE_DATA_CONTENTS>;
-
-    template<typename T>
-    concept SpecialNodeData = ContainedInVariant<T, special_node_data_variant_t>;
-}
-
-#endif // ENGINE_CONCEPTS_HPP
+#endif // RESOURCE_HPP

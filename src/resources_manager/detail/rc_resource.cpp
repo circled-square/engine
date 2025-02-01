@@ -1,5 +1,5 @@
-#include <engine/internal/rc_resource.hpp>
-#include <engine/scene/scene.hpp> // to instantiate rc_resource<scene>
+#include <engine/resources_manager/detail/rc_resource.hpp>
+#include <engine/scene.hpp> // to instantiate rc_resource<scene>
 
 namespace engine::detail {
     template<Resource T>

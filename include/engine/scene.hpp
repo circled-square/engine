@@ -5,10 +5,10 @@
 
 #include <glm/glm.hpp>
 
-#include "node.hpp"
-#include "../rc.hpp"
-#include "../application/event.hpp"
-#include "broad_phase_collision.hpp"
+#include "scene/node.hpp"
+#include "scene/broad_phase_collision.hpp"
+#include <engine/resources_manager/rc.hpp>
+#include <engine/application/event.hpp>
 
 namespace engine {
     struct application_channel_t {

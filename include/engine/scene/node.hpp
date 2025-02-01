@@ -6,11 +6,12 @@
 #include <span>
 #include <optional>
 #include <GAL/framebuffer.hpp>
-#include "../renderer.hpp"
-#include "../concepts.hpp"
+#include "renderer.hpp"
+#include "node/node_data_concept.hpp"
 #include "node/script.hpp"
 #include "node/narrow_phase_collision.hpp"
 #include "node/viewport.hpp"
+#include "node/camera.hpp"
 
 //TODO: this file contains too much node-related stuff which ought to have its own place; move other classes out
 

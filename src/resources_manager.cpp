@@ -3,11 +3,11 @@
 #include <GAL/texture.hpp>
 #include <GAL/vertex_array.hpp>
 #include <slogga/log.hpp>
-#include <engine/material.hpp>
-#include <engine/renderer.hpp>
-#include <engine/materials.hpp>
-#include <engine/gltf_loader.hpp>
-#include <engine/scene/scene.hpp>
+#include <engine/scene/renderer.hpp>
+#include <engine/scene/renderer/mesh/material.hpp>
+#include <engine/scene/renderer/mesh/material/materials.hpp>
+#include <engine/scene/node/gltf_loader.hpp>
+#include <engine/scene.hpp>
 #include <engine/scene/node/script.hpp>
 #include <engine/scene/node.hpp>
 

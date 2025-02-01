@@ -1,5 +1,5 @@
-#include <engine/rc.hpp>
-#include <engine/scene/scene.hpp>
+#include <engine/resources_manager/rc.hpp>
+#include <engine/scene.hpp>
 
 namespace engine {
     //private constructor used by resources_manager and rc<const T>

@@ -1,7 +1,7 @@
 #ifndef ENGINE_INTERNAL_RC_RESOURCE_HPP
 #define ENGINE_INTERNAL_RC_RESOURCE_HPP
 
-#include "../concepts.hpp"
+#include "../resource_concept.hpp"
 #include <cstdint>
 #include <slogga/asserts.hpp>
 

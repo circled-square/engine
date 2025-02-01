@@ -1,7 +1,7 @@
 #ifndef ENGINE_MATERIALS_HPP
 #define ENGINE_MATERIALS_HPP
 
-#include "material.hpp"
+#include "shader.hpp"
 
 namespace engine {
     shader make_retro_3d_shader();

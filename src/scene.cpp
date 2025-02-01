@@ -1,5 +1,5 @@
 #include "glm/gtc/matrix_inverse.hpp"
-#include <engine/scene/scene.hpp>
+#include <engine/scene.hpp>
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 

@@ -5,13 +5,13 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <glm/glm.hpp>
-#include "rc.hpp"
+#include "resources_manager/rc.hpp"
 
 #include <GAL/texture.hpp>
 #include <GAL/vertex_array.hpp>
-#include "material.hpp"
+#include "scene/renderer/mesh/material.hpp"
 #include "scene/node.hpp"
-#include "scene/scene.hpp"
+#include "scene.hpp"
 #include <functional>
 
 namespace engine {

@@ -1,8 +1,9 @@
 #ifndef ENGINE_SCENE_NODE_VIEWPORT_HPP
 #define ENGINE_SCENE_NODE_VIEWPORT_HPP
 
-#include <engine/material.hpp>
+#include <engine/scene/renderer.hpp>
 #include <GAL/framebuffer.hpp>
+#include "camera.hpp"
 
 namespace engine {
     using framebuffer = gal::framebuffer<rc<gal::texture>>;

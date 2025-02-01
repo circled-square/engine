@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <any>
-#include "../../rc.hpp"
+#include <engine/resources_manager/rc.hpp>
 
 namespace engine {
     class node;
