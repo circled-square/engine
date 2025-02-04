@@ -25,6 +25,9 @@ namespace engine {
 
         rc(detail::rc_resource<T>* resource);
     public:
+        using element_type = T;
+        using mut_element_type = T;
+
         rc();
         rc(const rc& o);
 
@@ -54,6 +57,9 @@ namespace engine {
         //constructor used by resource manager
         rc(detail::rc_resource<T>* resource);
     public:
+        using element_type = const T;
+        using mut_element_type = T;
+
         rc();
         rc(const rc& o);
         rc(rc&& o);

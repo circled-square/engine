@@ -10,7 +10,7 @@ namespace engine {
         return s;
     }
 
-    node::node(std::string name, special_node_data_variant_t other_data, glm::mat4 transform, std::optional<script> script)
+    node::node(std::string name, node_data_variant_t other_data, glm::mat4 transform, std::optional<script> script)
         : m_children(),
           m_children_is_sorted(true),
           m_father(nullptr),
@@ -213,10 +213,16 @@ namespace engine {
             }
         }
     }
+    template<> bool     node::has<collision_shape>() const { return has<rc<const collision_shape>>(); }
+    template<> const collision_shape& node::get<collision_shape>() const {
+        const rc<const collision_shape>& p = get<rc<const collision_shape>>();
+        EXPECTS(p);
+        return *p;
+    }
 
-    template<SpecialNodeData T> bool     node::has() const { return std::holds_alternative<T>(m_other_data); }
-    template<SpecialNodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
-    template<SpecialNodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+    template<NodeData T> bool     node::has() const { return std::holds_alternative<T>(m_other_data); }
+    template<NodeData T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+    template<NodeData T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
 
 
 #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
@@ -224,6 +230,6 @@ namespace engine {
     template const TYPE& node::get<TYPE>() const; \
     template bool node::has<TYPE>() const;
 
-    CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, SPECIAL_NODE_DATA_CONTENTS)
+    CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, NODE_DATA_CONTENTS)
 }
 

@@ -8,16 +8,16 @@ namespace engine {
         for(size_t i = 0; i < m_subscribers.size(); i++) {
             EXPECTS(m_subscribers[i]);
             node& a = *m_subscribers[i];
-            EXPECTS(a.has<collision_shape>());
+            EXPECTS(a.has<rc<const collision_shape>>());
 
             for(size_t j = i + 1; j < m_subscribers.size(); j++) {
                 EXPECTS(m_subscribers[j]);
                 node& b = *m_subscribers[j];
-                EXPECTS(b.has<collision_shape>());
+                EXPECTS(b.has<rc<const collision_shape>>());
 
                 //TODO: check layer correctness
-                const collision_shape& a_cs = a.get<collision_shape>();
-                const collision_shape& b_cs = b.get<collision_shape>();
+                auto& a_cs = a.get<collision_shape>();
+                auto& b_cs = b.get<collision_shape>();
                 bool a_sees_b = a_cs.sees_layers & b_cs.is_layers;
                 bool b_sees_a = b_cs.sees_layers & a_cs.is_layers;
                 if(!a_sees_b && !b_sees_a)

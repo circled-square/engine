@@ -40,7 +40,7 @@ namespace engine {
         std::string m_name;
         glm::mat4 m_transform;
 
-        special_node_data_variant_t m_other_data;
+        node_data_variant_t m_other_data;
         rc<const nodetree_blueprint> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
         collision_behaviour m_col_behaviour;
 
@@ -50,7 +50,7 @@ namespace engine {
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node(std::string name, special_node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1), std::optional<script> script = {});
+        explicit node(std::string name, node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1), std::optional<script> script = {});
 
         node(node&& o);
         //this is an expensive deep-copy
@@ -129,9 +129,12 @@ namespace engine {
         void pass_collision_to_script(collision_result res, node& ev_src, node& other);
 
         // special node data access
-        template<SpecialNodeData T> bool     has() const;
-        template<SpecialNodeData T> const T& get() const;
-        template<SpecialNodeData T> T&       get();
+        template<Resource T> requires NodeData<rc<const T>> bool     has() const;
+        template<Resource T> requires NodeData<rc<const T>> const T& get() const;
+
+        template<NodeData T> bool     has() const;
+        template<NodeData T> const T& get() const;
+        template<NodeData T> T&       get();
     };
 
     namespace detail {

@@ -168,7 +168,7 @@ namespace engine {
         return engine::mesh(std::move(primitives));
     }
 
-    static engine::collision_shape load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
+    static engine::collision_shape load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh, collision_layers_bitmask is_layers = 0, collision_layers_bitmask sees_layers = 0) {
         //multiple collision_shape primitives are currently unsupported
         EXPECTS(mesh.primitives.size() == 1);
         const tinygltf::Primitive& primitive = mesh.primitives[0];
@@ -208,7 +208,7 @@ namespace engine {
         auto& indices_buf = model.buffers[indices_bufview.buffer];
         std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
 
-        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span, 0, {0});
+        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span, is_layers, sees_layers);
     }
 
     static glm::mat4 get_node_transform(const tinygltf::Node& n) {
@@ -222,12 +222,12 @@ namespace engine {
         return translation_mat * scale_mat * rotation_mat * raw_mat;
     }
 
-    static special_node_data_variant_t load_special_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
+    static node_data_variant_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
         if(node.mesh == -1)
             return null_node_data();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
         if(mesh.name.ends_with("-col")) {
-            return load_mesh_as_collision_shape(model, mesh);
+            return get_rm().new_from(load_mesh_as_collision_shape(model, mesh));
         } else {
             return load_mesh(model, mesh);
         }
@@ -237,10 +237,10 @@ namespace engine {
         const tinygltf::Node& node = model.nodes[idx];
 
 
-        special_node_data_variant_t special_node_data = load_special_node_data(model, node);
+        node_data_variant_t node_data = load_node_data(model, node);
 
         glm::mat4 transform = get_node_transform(node);
-        engine::node root = engine::node(node.name, std::move(special_node_data), transform);
+        engine::node root = engine::node(node.name, std::move(node_data), transform);
 
         for(int child_idx : node.children) {
             root.add_child(load_node_subtree(model, child_idx));

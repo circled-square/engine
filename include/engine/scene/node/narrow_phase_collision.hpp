@@ -22,7 +22,6 @@ namespace engine {
         return collision_layers_bitmask(1) << n;
     }
 
-    //TODO: collision_shape currently is not a resource; it should be, since it is immutable, shared among many nodes and expensive to copy and compute
     //TODO: make collision_shape an abstract class from which others inherit: (mesh|ray|sphere)_collision_shape
     struct collision_shape {
         std::vector<glm::vec3> verts;
