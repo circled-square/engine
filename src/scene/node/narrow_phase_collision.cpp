@@ -119,7 +119,7 @@ namespace engine {
     }
 
 
-    collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layer_index is_layer, collision_layer_mask sees_layers) {
+    collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
         using namespace glm;
 
         auto get_mesh_vert = [&](size_t i) {
@@ -127,7 +127,6 @@ namespace engine {
             return *reinterpret_cast<const glm::vec3*>(reinterpret_cast<const char*>(mesh_verts_ptr) + offset + (stride * i));
         };
 
-        //TODO: make these into unordered_set<vec3> instead
         std::unordered_set<vec3> verts;
         std::unordered_set<vec3> normals;
         std::unordered_set<vec3> edges;
@@ -158,7 +157,7 @@ namespace engine {
         for(vec3 vert : verts)      ret.verts.push_back(vert);
         for(vec3 normal : normals)  ret.face_normals.push_back(normal);
         for(vec3 edge : edges)      ret.edges.push_back(edge);
-        ret.is_layer = is_layer;
+        ret.is_layers = is_layers;
         ret.sees_layers = sees_layers;
 
 
@@ -169,7 +168,7 @@ namespace engine {
 
     bool collision_result::is_shallow() const { EXPECTS(this->operator bool()); return depth == 0.f; }
 
-    vec3 collision_result::get_min_translation() { EXPECTS(this->operator bool()); return -depth * versor; }
+    vec3 collision_result::get_min_translation() const { EXPECTS(this->operator bool()); return -depth * versor; }
 
     collision_result::operator bool() const { return !std::isnan(depth); }
 

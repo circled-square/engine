@@ -16,17 +16,16 @@ namespace engine {
                 EXPECTS(b.has<collision_shape>());
 
                 //TODO: check layer correctness
-                bool a_sees_b = a.get<collision_shape>().sees_layers.contains(b.get<collision_shape>().is_layer);
-                bool b_sees_a = b.get<collision_shape>().sees_layers.contains(a.get<collision_shape>().is_layer);
+                const collision_shape& a_cs = a.get<collision_shape>();
+                const collision_shape& b_cs = b.get<collision_shape>();
+                bool a_sees_b = a_cs.sees_layers & b_cs.is_layers;
+                bool b_sees_a = b_cs.sees_layers & a_cs.is_layers;
                 if(!a_sees_b && !b_sees_a)
                     continue;
 
                 // TODO: global transform should be precomputed, at least for collision_shapes
                 // this is necessary anyway to be able to place them in slots.
-                collision_result res = check_collision(
-                            a.get<collision_shape>(), a.compute_global_transform(),
-                            b.get<collision_shape>(), b.compute_global_transform()
-                            );
+                collision_result res = check_collision(a_cs, a.compute_global_transform(), b_cs, b.compute_global_transform());
 
                 if(res) {
                     if(a_sees_b)
