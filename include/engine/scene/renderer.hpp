@@ -5,7 +5,8 @@
 #include <engine/resources_manager/rc.hpp>
 #include "renderer/mesh.hpp"
 
-namespace engine {    class renderer {
+namespace engine {
+    class renderer {
         gal::renderer m_low_level_renderer;
     public:
         void clear(glm::vec4 c = {0,0,0,1});

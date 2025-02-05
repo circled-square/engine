@@ -15,5 +15,4 @@ namespace engine {
     }
 
     gal::renderer &renderer::get_low_level_renderer() { return m_low_level_renderer; }
-
 }

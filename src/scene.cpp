@@ -104,11 +104,12 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene(std::string name, node root, application_channel_t::to_app_t to_app_chan)
+    scene::scene(std::string name, node root, render_flags flags, application_channel_t::to_app_t to_app_chan)
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),
           m_whole_screen_vao(get_rm().get_whole_screen_vao()),
+          m_render_flags(std::move(flags)),
           m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t()) {
         //the root of a scene's name should always be unnamed.
         EXPECTS(m_root.name().empty());
@@ -119,6 +120,7 @@ namespace engine {
           m_name(std::move(o.m_name)),
           m_renderer(std::move(o.m_renderer)),
           m_whole_screen_vao(std::move(o.m_whole_screen_vao)),
+          m_render_flags(std::move(o.m_render_flags)),
           m_application_channel(std::move(o.m_application_channel)) {}
 
 
@@ -138,7 +140,7 @@ namespace engine {
     void scene::update() {
         process_node(get_root(), glm::mat4(1), m_application_channel);
 
-        // TODO: currently resubscribing all colliders at every update: suboptimal
+        // TODO: currently resubscribing all colliders at every update: is it ok?
         m_bp_collision_detector.reset_subscriptions();
 
         std::vector<node*> dfs_stack;
@@ -156,19 +158,28 @@ namespace engine {
         m_bp_collision_detector.check_collisions_and_trigger_reactions();
     }
 
-    //TODO: make the setting of these options based on scene settings
     void scene::prepare() {
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-        glEnable(GL_BLEND);
+        if(m_render_flags.perform_alpha_blend) {
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendEquation(GL_FUNC_ADD);
+            glEnable(GL_BLEND);
+        }
 
-        // Enable depth test
-        glEnable(GL_DEPTH_TEST);
-        // Accept fragment if it closer to the camera than the former one
-        glDepthFunc(GL_LESS);
+        if(m_render_flags.depth_test == depth_test_t::keep_less) {
+            glEnable(GL_DEPTH_TEST); // Enable depth test
+            glDepthFunc(GL_LESS); // Accept fragment if it closer to the camera than the former one
+        } else if(m_render_flags.depth_test == depth_test_t::keep_more) {
+            glEnable(GL_DEPTH_TEST); // Enable depth test
+            glDepthFunc(GL_LESS); // Accept fragment if it is father from the camera than the former one
+        }
 
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        if(m_render_flags.face_culling == face_culling_t::back) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+        } else if(m_render_flags.face_culling == face_culling_t::front) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
+        }
     }
 
     const application_channel_t::to_app_t &scene::channel_to_app() const {

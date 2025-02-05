@@ -13,8 +13,6 @@
 #include "node/viewport.hpp"
 #include "node/camera.hpp"
 
-//TODO: this file contains too much node-related stuff which ought to have its own place; move other classes out
-
 /* TODO: the titular node class has too many responsibilities and is too complex, or at least this is what it feels like.
  * Try to think of ways to split its behaviour into different classes. However, complexity has to lie somewhere; if this
  * needs to be a complex class then do not split it, but hopefully this is not the case.
@@ -138,7 +136,8 @@ namespace engine {
     };
 
     namespace detail {
-        // this class is a wrapper around node which allows move assignment, exposing to the stdlib and allowing it to keep the children vector sorted
+        // this class is a wrapper around node which allows move assignment, exposing
+        // it to the stdlib and allowing to keep the children vector sorted
         class internal_node {
             node v;
         public:
@@ -152,9 +151,11 @@ namespace engine {
             node& operator*() { return v; }
             const node& operator*() const { return v; }
             node* operator->() { return &v; }
-            const node* operator->() const { return &v; }        };
+            const node* operator->() const { return &v; }
+        };
     }
 
+    //TODO: move this class (and its const variant) outside of this header
     class node_span {
         std::vector<detail::internal_node>& m_vec;
     public:
@@ -197,6 +198,7 @@ namespace engine {
         node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
     };
 
+    //TODO: move this class outside of this header
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
     class nodetree_blueprint {
         node m_root;

@@ -12,12 +12,20 @@ struct std::hash<glm::vec3> {
 
 namespace engine {
     using namespace glm;
+
     //we care not for the orientation of the normal/edge vectors, so we reverse all with y<0 (some with y=0) so vecs inverse to each other are not counted (since everything goes through a unordered_set)
     inline glm::vec3 normalize_without_verse(glm::vec3 v) {
         v = glm::normalize(v);
         if(v.y < 0 || (v.y == 0 && v.x < 0) || (v.x == 0 && v.y == 0 && v.z < 0))
             v = -v;
         return v;
+    }
+
+    inline glm::vec3 fractional_round(glm::vec3 v, float precision) {
+        glm::vec3 ret;
+        for(int i = 0; i < ret.length(); i++)
+            ret[i] = std::roundf(v[i] * precision) / precision;
+        return ret;
     }
 
     static std::optional<float> proj_on_axis_and_find_collision(const vec3& axis, const std::vector<vec3>& a_verts, const std::vector<vec3>& b_verts, mat4 b_to_a_space_trans) {
@@ -118,13 +126,18 @@ namespace engine {
         return collision_result{ min_col_dir, min_col };
     }
 
-
     collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
         using namespace glm;
 
         auto get_mesh_vert = [&](size_t i) {
             EXPECTS(i < mesh_verts_size);
             return *reinterpret_cast<const glm::vec3*>(reinterpret_cast<const char*>(mesh_verts_ptr) + offset + (stride * i));
+        };
+        auto normalize_and_round = [](glm::vec3 v) {
+            // normalize_without_verse ensures 2 parallel vectors are considered the same (for our purposes they are)
+            // fractional_round ensures 2 almost (but not quite) identical vectors are considered the same
+            // these two functions should allow us to dramatically decrease the number of stored edges and normals
+            return fractional_round(normalize_without_verse(v), 256);
         };
 
         std::unordered_set<vec3> verts;
@@ -142,13 +155,13 @@ namespace engine {
 
             vec3 normal = glm::cross(edge_1, edge_2);
 
-            normals.insert(normalize_without_verse(normal));
+            normals.insert(normalize_and_round(normal));
 
 
             //add edges
-            edges.insert(normalize_without_verse(edge_1));
-            edges.insert(normalize_without_verse(edge_2));
-            edges.insert(normalize_without_verse(edge_3));
+            edges.insert(normalize_and_round(edge_1));
+            edges.insert(normalize_and_round(edge_2));
+            edges.insert(normalize_and_round(edge_3));
         }
         // TODO: possible optimization: precalculate min&max for each axis of the shape itself so we don't need to do it every time (but only need it for the other shape's axes
         // TODO: add support for AABB optimization, possibly skipping edge-edge collisions
