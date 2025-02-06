@@ -21,12 +21,13 @@ namespace engine {
                 >;
 
         static_assert(std::same_as<smallest_uint_t<0ull>, std::uint8_t>);
-        static_assert(std::same_as<smallest_uint_t<255ull>, std::uint8_t>);
-        static_assert(std::same_as<smallest_uint_t<256ull>, std::uint16_t>);
-        static_assert(std::same_as<smallest_uint_t<65535ull>, std::uint16_t>);
-        static_assert(std::same_as<smallest_uint_t<65536ull>, std::uint32_t>);
-        static_assert(std::same_as<smallest_uint_t<4294967295ull>, std::uint32_t>);
-        static_assert(std::same_as<smallest_uint_t<std::uint64_t(-1)>, std::uint64_t>);
+        static_assert(std::same_as<smallest_uint_t<0xffull>, std::uint8_t>);
+        static_assert(std::same_as<smallest_uint_t<0x100ull>, std::uint16_t>);
+        static_assert(std::same_as<smallest_uint_t<0xffffull>, std::uint16_t>);
+        static_assert(std::same_as<smallest_uint_t<0x10000ull>, std::uint32_t>);
+        static_assert(std::same_as<smallest_uint_t<0xffffffffull>, std::uint32_t>);
+        static_assert(std::same_as<smallest_uint_t<0x100000000ull>, std::uint64_t>);
+        static_assert(std::same_as<smallest_uint_t<~std::uint64_t(0)>, std::uint64_t>);
     }
 
     template<typename T, size_t MAX_SIZE>

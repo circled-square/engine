@@ -104,7 +104,7 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene(std::string name, node root, render_flags flags, application_channel_t::to_app_t to_app_chan)
+    scene::scene(std::string name, node root, render_flags_t flags, application_channel_t::to_app_t to_app_chan)
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),

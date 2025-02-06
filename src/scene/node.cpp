@@ -13,32 +13,45 @@ namespace engine {
     node::node(std::string name, node_data_variant_t other_data, glm::mat4 transform, std::optional<script> script)
         : m_children(),
           m_children_is_sorted(true),
+          m_currently_sorting_children(false),
           m_father(nullptr),
           m_name(fix_name(std::move(name))),
           m_transform(std::move(transform)),
           m_other_data(std::move(other_data)),
-          m_nodetree_reference(),
+          m_nodetree_bp_reference(),
           m_script(std::move(script)) {
         if(m_script)
             m_script->attach(*this);
     }
 
-    node::node(node&& o)
-        : m_children(std::move(o.m_children)),
-          m_children_is_sorted(o.m_children_is_sorted),
-          m_father(o.m_father),
-          m_name(std::move(o.m_name)),
-          m_transform(std::move(o.m_transform)),
-          m_other_data(std::move(o.m_other_data)),
-          m_nodetree_reference(std::move(o.m_nodetree_reference)),
-          m_col_behaviour(std::move(o.m_col_behaviour)),
-          m_script(std::move(o.m_script))
-    {
-        o.m_father = nullptr;
-        // fix the children's father pointers
-        for(detail::internal_node& child : m_children) {
-            child->m_father = this;
+    node::node(node&& o) : m_currently_sorting_children(false), m_other_data(null_node_data{}) {
+        operator=(std::forward<node&&>(o));
+    }
+
+    node& node::operator=(node&& o) {
+        if(o.m_father != nullptr && !o.m_father->m_currently_sorting_children) {
+            throw nonorphan_node_move_exception(o);
         }
+
+        m_children = std::move(o.m_children);
+        m_children_is_sorted = o.m_children_is_sorted;
+
+        // fix the children's father pointers
+        for(node& child : m_children) {
+            child.m_father = this;
+        }
+
+        m_father = o.m_father;
+        o.m_father = nullptr;
+
+        m_name = std::move(o.m_name);
+        m_transform = std::move(o.m_transform);
+        m_other_data = std::move(o.m_other_data);
+        m_nodetree_bp_reference = std::move(o.m_nodetree_bp_reference);
+        m_col_behaviour = std::move(o.m_col_behaviour);
+        m_script = std::move(o.m_script);
+
+        return *this;
     }
 
     node::node(const node& o)
@@ -48,56 +61,35 @@ namespace engine {
           m_name(o.m_name),
           m_transform(o.m_transform),
           m_other_data(o.m_other_data),
-          m_nodetree_reference(o.m_nodetree_reference),
+          m_nodetree_bp_reference(o.m_nodetree_bp_reference),
           m_col_behaviour(o.m_col_behaviour),
           m_script(o.m_script)
     {
         // fix the children's father pointers
-        for(detail::internal_node& child : m_children) {
-            child->m_father = this;
+        for(node& child : m_children) {
+            child.m_father = this;
         }
     }
 
-    node& node::operator=(node&& o) {
-        m_children = std::move(o.m_children);
-        m_children_is_sorted = o.m_children_is_sorted;
-
-        // fix the children's father pointers
-        for(detail::internal_node& child : m_children) {
-            child->m_father = this;
-        }
-
-        m_father = o.m_father;
-        o.m_father = nullptr;
-
-        m_name = std::move(o.m_name);
-        m_transform = std::move(o.m_transform);
-        m_other_data = std::move(o.m_other_data);
-        m_nodetree_reference = std::move(o.m_nodetree_reference);
-        m_col_behaviour = std::move(o.m_col_behaviour);
-        m_script = std::move(o.m_script);
-
-        return *this;
-    }
 
     node::node(const rc<const nodetree_blueprint>& nt, std::string name) : node(nt->root()) {
-        m_nodetree_reference = std::move(nt);
+        m_nodetree_bp_reference = std::move(nt);
         if(!name.empty()) m_name = fix_name(name);
     }
 
 
-    inline void insert_sorted(std::vector<detail::internal_node>& vec, node item) {
-        auto upper_bound = std::upper_bound(vec.begin(), vec.end(), item,
-            [](const node& n, const detail::internal_node& in) { return n.name() < in->name(); });
-        vec.insert(upper_bound, detail::internal_node{std::move(item)});
-    }
-
-
     void node::add_child(node c) {
+
         c.m_father = this;
 
         if(m_children_is_sorted) {
-            insert_sorted(m_children, std::move(c));
+            m_currently_sorting_children = true;
+            {
+                auto upper_bound = std::upper_bound(m_children.begin(), m_children.end(), c,
+                    [](const node& a, const node& b) { return a.name() < b.name(); });
+                m_children.emplace(upper_bound, std::move(c));
+            }
+            m_currently_sorting_children = false;
         } else {
             m_children.emplace_back(std::move(c));
         }
@@ -105,13 +97,13 @@ namespace engine {
 
     node& node::get_child(std::string_view name) {
         if(m_children_is_sorted) {
-            auto less_than = [](const detail::internal_node& n, const std::string_view& s) { return n->name() < s; };
-            if(auto it = std::lower_bound(m_children.begin(), m_children.end(), name, less_than); it != m_children.end() && (*it)->name() == name) {
-                return **it;
+            auto less_than = [](const node& n, const std::string_view& s) { return n.name() < s; };
+            if(auto it = std::lower_bound(m_children.begin(), m_children.end(), name, less_than); it != m_children.end() && it->name() == name) {
+                return *it;
             }
         } else {
-            if (auto it = std::ranges::find_if(m_children, [&name](const detail::internal_node& n){ return n->name() == name; }); it != m_children.end()) {
-                return **it;
+            if (auto it = std::ranges::find_if(m_children, [&name](const node& n){ return n.name() == name; }); it != m_children.end()) {
+                return *it;
             }
         }
         throw std::runtime_error(std::format("node at path '{}' has no child named '{}'", absolute_path(), name));
@@ -125,12 +117,14 @@ namespace engine {
         else
             throw std::runtime_error(std::format("node with name '{}' has no father, but called node::father()", name()));
     }
-    const_node_span node::children() const { return m_children; }
-    node_span node::children() { return m_children; }
+    std::span<const node> node::children() const { return m_children; }
+    std::span<node> node::children() { return m_children; }
 
     void node::set_children_sorting_preference(bool v) {
         if(v && !m_children_is_sorted) {
-            std::sort(m_children.begin(), m_children.end(), [](const detail::internal_node& a, const detail::internal_node& b) { return a->name() < b->name(); });
+            m_currently_sorting_children = true;
+            std::sort(m_children.begin(), m_children.end(), [](const node& a, const node& b) { return a.name() < b.name(); });
+            m_currently_sorting_children = false;
             m_children_is_sorted = true;
         } else if(!v && m_children_is_sorted) {
             m_children_is_sorted = false;

@@ -23,34 +23,34 @@ namespace engine {
     //all type declarations are later defined in this translation unit
     class nodetree_blueprint;
 
-    namespace detail { class internal_node; }
-    class node_span;
-    class const_node_span;
-
     struct null_node_data {};
 
     class node {
-        friend class detail::internal_node; // node but with move assignment, allows storing children as a sorted vector
-        node& operator=(node&& o); // for sorting children nodes
-        std::vector<detail::internal_node> m_children;
+        std::vector<node> m_children;
         bool m_children_is_sorted;
+        bool m_currently_sorting_children;
         node* m_father;
         std::string m_name;
         glm::mat4 m_transform;
 
         node_data_variant_t m_other_data;
-        rc<const nodetree_blueprint> m_nodetree_reference; // reference to the nodetree this was built from, if any, to keep its refcount up
+        rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
         collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
-
     public:
         //only chars in special_chars_allowed_in_node_name and alphanumeric chars (see std::alnum) are allowed in node names; others are automatically replaced with '_'.
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
         explicit node(std::string name, node_data_variant_t other_data = null_node_data(), glm::mat4 transform = glm::mat4(1), std::optional<script> script = {});
 
+        node() = delete;
+
+        //move construction is only allowed if the argument is an orphan node; otherwise a nonorphan_node_move_exception is thrown
         node(node&& o);
+        //move assignment is only allowed if the argument is an orphan node; otherwise a nonorphan_node_move_exception is thrown
+        node& operator=(node&& o);
+
         //this is an expensive deep-copy
         explicit node(const node& o);
 
@@ -60,8 +60,8 @@ namespace engine {
         // children access
         void add_child(node c);
         node& get_child(std::string_view name);
-        const_node_span children() const;
-        node_span children();
+        std::span<const node> children() const;
+        std::span<node> children();
         void set_children_sorting_preference(bool v); // sets whether the children vector is sorted. sorted -> fast O(logn) retrieval, slow O(n) insertion; unsorted -> slow O(n) retrieval, fast O(1) insertion.
         // get node with relative path
         node& get_from_path(std::string_view path);
@@ -135,67 +135,18 @@ namespace engine {
         template<NodeData T> T&       get();
     };
 
-    namespace detail {
-        // this class is a wrapper around node which allows move assignment, exposing
-        // it to the stdlib and allowing to keep the children vector sorted
-        class internal_node {
-            node v;
-        public:
-            internal_node(internal_node&& o) : v(std::move(o.v)) {}
-            internal_node(const internal_node& o) : v(o.v) {}
-            internal_node(node&& o) : v(std::move(o)) {}
-            internal_node& operator=(internal_node&& o) {
-                v = std::move(o.v);
-                return *this;
-            }
-            node& operator*() { return v; }
-            const node& operator*() const { return v; }
-            node* operator->() { return &v; }
-            const node* operator->() const { return &v; }
-        };
-    }
-
-    //TODO: move this class (and its const variant) outside of this header
-    class node_span {
-        std::vector<detail::internal_node>& m_vec;
+    //thrown when a move constructor/assignment-operator is called with as argument a non-orphan node
+    class nonorphan_node_move_exception : public std::exception {
+        std::string m_what;
     public:
-        struct const_iterator {
-            const detail::internal_node* p;
-            const_iterator(const detail::internal_node* p) : p(p){ }
-            void operator++() { p++; }
-            const node& operator*() { return **p; }
-            bool operator!=(const const_iterator& o) { return p != o.p; }
-        };
-        struct iterator {
-            detail::internal_node* p;
-            iterator(detail::internal_node* p) : p(p){ }
-            void operator++() { p++; }
-            node& operator*() { return **p; }
-            bool operator!=(iterator& o) { return p != o.p; }
-            operator const_iterator() { return const_iterator{p}; }
-        };
-
-        node_span(std::vector<detail::internal_node>& vec) : m_vec(vec) {}
-        node_span(node_span& o) : m_vec(o.m_vec) {}
-
-        node& operator[](size_t i) { return *m_vec[i]; }
-        const node& operator[](size_t i) const { return *m_vec[i]; }
-
-        iterator begin() { return m_vec.data(); }
-        const_iterator begin() const { return m_vec.data(); }
-        iterator end() { return m_vec.data() + m_vec.size(); }
-        const_iterator end() const { return m_vec.data() + m_vec.size(); }
-    };
-    class const_node_span {
-        const std::vector<detail::internal_node>& m_vec;
-    public:
-        const_node_span(const std::vector<detail::internal_node>& vec) : m_vec(vec) {}
-        const_node_span(const_node_span& o) : m_vec(o.m_vec) {}
-
-        const node& operator[](size_t i) const { return *m_vec[i]; }
-
-        node_span::const_iterator begin() const { return m_vec.data(); }
-        node_span::const_iterator end() const { return m_vec.data() + m_vec.size(); }
+        nonorphan_node_move_exception() = delete;
+        nonorphan_node_move_exception(const nonorphan_node_move_exception&) = default;
+        nonorphan_node_move_exception(nonorphan_node_move_exception&&) = default;
+        nonorphan_node_move_exception(node& n)
+            : std::exception(), m_what(std::format("attempted to move node '{}' which is not an orphan", n.name())) {}
+        virtual const char* what() const noexcept {
+            return m_what.c_str();
+        }
     };
 
     //TODO: move this class outside of this header
