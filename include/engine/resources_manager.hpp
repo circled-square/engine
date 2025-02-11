@@ -1,79 +1,74 @@
 #ifndef ENGINE_RESOURCES_MANAGER_HPP
 #define ENGINE_RESOURCES_MANAGER_HPP
 
-#include <memory>
-#include <unordered_map>
-#include <unordered_set>
-#include <glm/glm.hpp>
+#include "scene/node/script.hpp"
 #include "resources_manager/rc.hpp"
+#include "resources_manager/weak.hpp"
+#include "resources_manager/detail/resource_id.hpp"
+#include "resources_manager/detail/typedefs.hpp"
 
+//include all resource types so all their types are included whenever rc is used for that type
 #include <GAL/texture.hpp>
 #include <GAL/vertex_array.hpp>
-#include "scene/renderer/mesh/material.hpp"
-#include "scene/node.hpp"
-#include "scene.hpp"
-#include <functional>
+#include <engine/scene/renderer/mesh/material.hpp>
+#include <engine/scene/node.hpp>
+#include <engine/scene.hpp>
+
+// resources_manager: implements shared ownership of resources and garbage collection of unused ones
+// frequently abbreviated as rm to save keystrokes/screenspace since it is used everywhere
 
 namespace engine {
-    namespace detail {
-        // An owning pointer with reference counting, can be used to construct a rc
-        template<Resource T> using rc_ptr = std::unique_ptr<rc_resource<T>>;
-
-        // The id of a resource, which can be used to retrieve from rm's hashmaps the resource itself, its name and whether it is flagged for deletion.
-        // To be unique to the resource, tied to its type, for std::hash and for simplicity a ptr could be used; however a resource_id is not meant to be derefed or used in math, so this was deemed inappropriate
-        template<Resource T>
-        class resource_id {
-            std::uintptr_t m_id; // if m_id is 0 the id is null
-            friend class resource_id_hash;
-        public:
-            resource_id() : m_id(0) {}
-            resource_id(const rc_resource<T>& resource) : m_id((std::uintptr_t)&resource) {}
-            resource_id(const resource_id& o) : m_id(o.m_id) {}
-            bool operator==(const resource_id& o) const { return m_id == o.m_id; }
-        };
-
-        struct resource_id_hash {
-            std::size_t operator()(const auto& rid) const noexcept {
-                return std::hash<std::uintptr_t>{}(rid.m_id);
-            };
-        };
-
-
-        // these aliases are necessary to compose complex types from resource_tuple_t with map_tuple
-        // map from id to (name, resource)
-        template<Resource T> using id_to_resource_hashmap = std::unordered_map<resource_id<T>, std::pair<std::string, rc_ptr<T>>, resource_id_hash>;
-        // map from name to id
-        template<Resource T> using name_to_id_hashmap = std::unordered_map<std::string, resource_id<T>>;
-        // set of ids for GCion
-        template<Resource T> using deletion_set = std::unordered_set<resource_id<T>, resource_id_hash>;
-    }
-
-    // the class resources_manager implements shared ownership of resources and garbage collection of unused ones
-    // frequently abbreviated as rm
     class resources_manager {
         template<Resource T>
         friend void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
 
-        template<Resource T> friend class rm_templates_instantiator;
-
-        map_tuple<detail::id_to_resource_hashmap, resource_tuple_t> m_active_resources;
+        detail::id_to_resources_hashmaps m_active_resources;
 
         //NOTE: dither texture has name "dither_texture"; retro 3d shader has name "retro_3d_shader"; whole screen vao is "whole_screen_vao"
-        map_tuple<detail::name_to_id_hashmap, resource_tuple_t> m_resources_by_name;
+        detail::name_to_id_hashmaps m_resources_by_name;
 
-        map_tuple<detail::deletion_set, resource_tuple_t> m_marked_for_deletion;
+        detail::id_hashsets m_marked_for_deletion;
 
-        std::unordered_map<std::string, std::function<detail::rc_ptr<scene>()>> m_dbg_scene_ctors;
+        std::unordered_map<std::string, std::function<scene()>> m_dbg_scene_ctors;
 
         resources_manager() = default;
         ~resources_manager() {
             collect_garbage();
         }
     public:
+        template<Resource T> [[nodiscard]] weak<T> alloc() {
+            detail::rc_ptr<T> p(new detail::rc_resource<T>(std::nullopt));
+            weak<T> weak_ptr(p.get());
+            auto& resources_hm = std::get<detail::id_to_resource_hashmap<T>>(m_active_resources);
+            detail::resource_id<T> key = *p;
+            resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
+
+            return weak_ptr;
+        }
 
         // hand over ownership of resource to resources_manager
-        template<Resource T> [[nodiscard]] rc<const T> new_from(T&& res);
-        template<Resource T> [[nodiscard]] rc<T> new_mut_from(T&& res);
+        template<Resource T> [[nodiscard]] rc<const T> new_from(T&& res) {
+            return new_mut_from<T>(std::forward<T&&>(res));
+        }
+        template<Resource T> [[nodiscard]] rc<T> new_mut_from(T&& res) {
+            return new_mut_emplace<T>(std::forward<T&&>(res));
+        }
+
+        // inplace-construct a resource owned by resources_manager; useful for non move-constructible resources
+        template<Resource T, typename... Ts> [[nodiscard]] rc<const T> new_emplace(Ts... args) {
+            return new_mut_emplace<T>(std::forward<Ts>(args)...);
+        }
+        template<Resource T, typename... Ts> [[nodiscard]] rc<T> new_mut_emplace(Ts... args) {
+            weak<T> allocation = alloc<T>();
+
+            allocation.m_resource->resource().emplace(std::forward<Ts>(args)...);
+            return allocation.lock();
+        }
+
+//        template<Resource T> [[nodiscard]]
+//        rc<const T> new_from_fn(const std::function<void(std::optional<T>&)>& emplace);
+//        template<Resource T> [[nodiscard]]
+//        rc<T> new_mut_from_fn(const std::function<void(std::optional<T>&)>& emplace);
 
         // get resource loaded from disk
         [[nodiscard]] rc<const gal::texture>        get_texture(const std::string& path);

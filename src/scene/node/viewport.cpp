@@ -1,4 +1,6 @@
 #include <engine/scene/node/viewport.hpp>
+#include <engine/scene/node/narrow_phase_collision.hpp>
+#include <engine/scene/node.hpp>
 #include <engine/resources_manager.hpp>
 
 namespace engine {

@@ -233,14 +233,13 @@ namespace engine {
         }
     }
 
-    static engine::node load_node_subtree(const tinygltf::Model& model, int idx) {
+    static noderef load_node_subtree(const tinygltf::Model& model, int idx) {
         const tinygltf::Node& node = model.nodes[idx];
-
 
         node_data_variant_t node_data = load_node_data(model, node);
 
         glm::mat4 transform = get_node_transform(node);
-        engine::node root = engine::node(node.name, std::move(node_data), transform);
+        noderef root(node.name, std::move(node_data), transform);
 
         for(int child_idx : node.children) {
             root.add_child(load_node_subtree(model, child_idx));
@@ -258,7 +257,7 @@ namespace engine {
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
-        engine::node root(filepath);
+        noderef root(filepath);
 
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;

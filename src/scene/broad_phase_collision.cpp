@@ -25,7 +25,7 @@ namespace engine {
 
                 // TODO: global transform should be precomputed, at least for collision_shapes
                 // this is necessary anyway to be able to place them in slots.
-                collision_result res = check_collision(a_cs, a.compute_global_transform(), b_cs, b.compute_global_transform());
+                collision_result res = check_collision(a_cs, a.get_global_transform(), b_cs, b.get_global_transform());
 
                 if(res) {
                     if(a_sees_b)

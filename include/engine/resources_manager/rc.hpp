@@ -13,22 +13,30 @@ namespace engine {
         static_assert(false, "rc<T>: T must be a Resource or const Resource type");
     };
 
+    template<class T> class weak;
+
     // mutable resource template specialization
     template<Resource T>
     class rc<T> {
         detail::rc_resource<T>* m_resource;
 
-        //friends which use the private constructor
+        // friends which use the private constructor
         friend class resources_manager;
         friend class rc<const T>;
 
+        // needs to get the resource pointer to be able to construct from an rc,
+        // and uses the private constructor to lock() itself into an rc
+        friend class weak<T>;
 
+        detail::rc_resource<T>* get_resource_ptr() const;
         rc(detail::rc_resource<T>* resource);
     public:
         using element_type = T;
         using mut_element_type = T;
 
         rc();
+        rc(std::nullptr_t);
+
         rc(const rc& o);
 
         rc(rc&& o);
@@ -39,10 +47,9 @@ namespace engine {
         operator bool() const;
         bool operator!() const;
 
-        T& operator*();
-        const T& operator*() const;
-        T* operator->();
-        const T* operator->() const;
+        //note: dereferencing a const rc yields a mutable object!
+        T& operator*() const;
+        T* operator->() const;
 
         bool operator==(const rc& o) const;
         bool operator!=(const rc& o) const;
@@ -61,9 +68,11 @@ namespace engine {
         using mut_element_type = T;
 
         rc();
+        rc(std::nullptr_t);
         rc(const rc& o);
         rc(rc&& o);
-        rc(rc<T> o);
+        rc(const rc<T>& o);
+        rc(rc<T>&& o);
 
         rc& operator=(const rc& o);
 

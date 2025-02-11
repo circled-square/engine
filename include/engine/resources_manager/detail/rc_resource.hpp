@@ -1,8 +1,9 @@
-#ifndef ENGINE_INTERNAL_RC_RESOURCE_HPP
-#define ENGINE_INTERNAL_RC_RESOURCE_HPP
+#ifndef ENGINE_RESOURCES_MANAGER_DETAIL_RC_RESOURCE_HPP
+#define ENGINE_RESOURCES_MANAGER_DETAIL_RC_RESOURCE_HPP
 
 #include "../resource_concept.hpp"
 #include <cstdint>
+#include <optional>
 #include <slogga/asserts.hpp>
 
 // rc_resource<T>: internal type for rc and resources_manager.
@@ -23,13 +24,26 @@ namespace engine {
         template<Resource T>
         class rc_resource {
             // rc_resource does not enforce immutability of the contained resource; it is up to its owner to do it
-            T m_resource;
-            std::int64_t m_refcount;
+            std::optional<T> m_resource;
+            std::int64_t m_refcount; // number of rc<T> pointing to this allocation
+            std::int64_t m_weak_refcount; // number of weak<T> pointing to this allocation
 
         public:
-            template<typename...Args>
-            rc_resource(Args&&... args) : m_resource(std::forward<Args>(args)...), m_refcount(0) {}
+            // construct with an empty resource
+            rc_resource(std::nullopt_t) : m_resource(), m_refcount(0), m_weak_refcount(0) {}
 
+            // construct and emplace the resource with the given args
+            template<typename...Args>
+            rc_resource(Args&&... args) : rc_resource(std::nullopt) {
+                emplace(std::forward<Args>(args)...);
+            }
+
+            template<typename... Args>
+            void emplace(Args&&... args) {
+                m_resource.emplace(std::forward<Args>(args)...);
+            }
+
+            rc_resource() = delete;
             rc_resource(rc_resource&&) = delete;
             rc_resource(const rc_resource&) = delete;
             rc_resource& operator=(rc_resource&&) = delete;
@@ -39,9 +53,13 @@ namespace engine {
             void inc_refcount();
             void dec_refcount();
 
-            T& resource();
+            std::int64_t weak_refcount() const;
+            void inc_weak_refcount();
+            void dec_weak_refcount();
+
+            std::optional<T>& resource();
         };
     }
 }
 
-#endif // ENGINE_INTERNAL_RC_RESOURCE_HPP
+#endif // ENGINE_RESOURCES_MANAGER_DETAIL_RC_RESOURCE_HPP

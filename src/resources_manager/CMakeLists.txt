@@ -7,3 +7,8 @@ target_link_libraries(engine__resources_manager_rc_resource PRIVATE engine__scen
 add_library(engine__resources_manager_rc STATIC rc.cpp)
 target_link_libraries(engine__resources_manager_rc PUBLIC engine__global)
 target_link_libraries(engine__resources_manager_rc PRIVATE engine__resources_manager_rc_resource engine__scene)
+
+#weak
+add_library(engine__resources_manager_weak STATIC weak.cpp)
+target_link_libraries(engine__resources_manager_weak PUBLIC engine__global)
+target_link_libraries(engine__resources_manager_weak PRIVATE engine__resources_manager_rc_resource engine__scene)

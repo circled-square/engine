@@ -2,23 +2,31 @@
 #include <engine/scene.hpp>
 
 namespace engine {
-    //private constructor used by resources_manager and rc<const T>
+    //private constructor used by resources_manager, rc<const T> & weak<T>
     template<Resource T>
-    rc<T>::rc(detail::rc_resource<T> *resource) : m_resource(&*resource) {
-        EXPECTS(m_resource);
+    rc<T>::rc(detail::rc_resource<T>* resource) : m_resource(&*resource) {
+        EXPECTS(resource);
         m_resource->inc_refcount();
     }
+
+
+    //private getter used by weak<T>
+    template<Resource T>
+    detail::rc_resource<T>* rc<T>::get_resource_ptr() const { return m_resource; }
 
     template<Resource T>
     rc<T>::rc() : m_resource(nullptr) {}
 
     template<Resource T>
-    rc<T>::rc(const rc<T> &o) : rc() {
+    rc<T>::rc(std::nullptr_t) : rc() {}
+
+    template<Resource T>
+    rc<T>::rc(const rc<T>& o) : rc() {
         this->operator=(o);
     }
 
     template<Resource T>
-    rc<T>::rc(rc<T> &&o) : m_resource(o.m_resource) {
+    rc<T>::rc(rc<T>&& o) : m_resource(o.m_resource) {
         o.m_resource = nullptr;
     }
 
@@ -32,7 +40,7 @@ namespace engine {
     }
 
     template<Resource T>
-    rc<T> &rc<T>::operator=(const rc<T> &o) {
+    rc<T>& rc<T>::operator=(const rc<T>& o) {
         if(this->m_resource)
             this->m_resource->dec_refcount();
 
@@ -50,27 +58,18 @@ namespace engine {
     bool rc<T>::operator!() const { return !m_resource; }
 
     template<Resource T>
-    T &rc<T>::operator*() {
+    T& rc<T>::operator*() const {
         EXPECTS(m_resource);
-        return m_resource->resource();
+        return *m_resource->resource();
     }
 
     template<Resource T>
-    const T &rc<T>::operator*() const {
-        EXPECTS(m_resource);
-        return m_resource->resource();
-    }
-
-    template<Resource T>
-    T *rc<T>::operator->() {
-        EXPECTS(m_resource);
-        return &m_resource->resource();
-    }
-
-    template<Resource T>
-    const T *rc<T>::operator->() const {
-        EXPECTS(m_resource);
-        return &m_resource->resource();
+    T* rc<T>::operator->() const {
+        if(m_resource) {
+            return &*m_resource->resource();
+        } else {
+            return nullptr;
+        }
     }
 
     template<Resource T>
@@ -90,15 +89,20 @@ namespace engine {
     template<Resource T>
     rc<const T>::rc() : rc<T>() {}
 
+    template<Resource T>
+    rc<const T>::rc(std::nullptr_t) : rc() {}
 
     template<Resource T>
-    rc<const T>::rc(rc<T> o) : rc<T>(std::move(o)) {}
+    rc<const T>::rc(const rc<T>& o) : rc<T>(o) {}
 
     template<Resource T>
-    rc<const T>::rc(rc<const T> &&o) : rc<T>(std::move(o)) {}
+    rc<const T>::rc(rc<T>&& o) : rc<T>(std::forward<rc<T>&&>(o)) {}
 
     template<Resource T>
-    rc<const T>::rc(const rc<const T> &o) : rc<T>(o) {}
+    rc<const T>::rc(rc<const T>&& o) : rc<T>(std::move(o)) {}
+
+    template<Resource T>
+    rc<const T>::rc(const rc<const T>& o) : rc<T>(o) {}
 
 
     template<Resource T>
@@ -109,10 +113,10 @@ namespace engine {
 
 
     template<Resource T>
-    const T *rc<const T>::operator->() const { return rc<T>::operator->(); }
+    const T* rc<const T>::operator->() const { return rc<T>::operator->(); }
 
     template<Resource T>
-    const T &rc<const T>::operator*() const { return rc<T>::operator*(); }
+    const T& rc<const T>::operator*() const { return rc<T>::operator*(); }
 
 
     template<Resource T>
@@ -133,5 +137,4 @@ namespace engine {
         template class rc<const TYPE>;
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_RC_TEMPLATE, RESOURCES)
-
 }

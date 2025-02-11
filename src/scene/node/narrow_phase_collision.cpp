@@ -137,7 +137,8 @@ namespace engine {
             // normalize_without_verse ensures 2 parallel vectors are considered the same (for our purposes they are)
             // fractional_round ensures 2 almost (but not quite) identical vectors are considered the same
             // these two functions should allow us to dramatically decrease the number of stored edges and normals
-            return fractional_round(normalize_without_verse(v), 256);
+            // glm::normalize is reapplied to the output because fractional_round unfortunately denormalizes vectors. (may be unnecessary)
+            return glm::normalize(fractional_round(normalize_without_verse(v), 256));
         };
 
         std::unordered_set<vec3> verts;
@@ -192,8 +193,8 @@ namespace engine {
             auto& col_behaviour = this_node_p->get_collision_behaviour();
 
             if(col_behaviour.moves_away_on_collision) {
-                node* father_p = this_node_p->try_get_father();
-                glm::mat4 father_globtrans = father_p ? father_p->compute_global_transform() : glm::mat4(1);
+                rc<node> father_p = this_node_p->get_father();
+                glm::mat4 father_globtrans = father_p ? father_p->get_global_transform() : glm::mat4(1);
                 glm::mat4 father_inverse_globtrans = father_p ? glm::inverse(father_globtrans) : glm::mat4(1);
 
                 glm::vec3 local_space_translation_versor = father_inverse_globtrans * glm::vec4(collision.get_min_translation(), 0);
@@ -201,7 +202,7 @@ namespace engine {
 
                 glm::vec3 local_space_min_translation = local_space_translation_versor * collision.depth;
 
-                this_node_p->transform() = glm::translate(this_node_p->transform(), local_space_min_translation);
+                this_node_p->set_transform(glm::translate(this_node_p->transform(), local_space_min_translation));
             }
             if(col_behaviour.passes_events_to_script) {
                 this_node_p->pass_collision_to_script(collision, event_src, other_node);
@@ -209,7 +210,7 @@ namespace engine {
 
             //keep recursing up the node tree if the event needs to be passed to the father
             if(col_behaviour.passes_events_to_father == true) {
-                this_node_p = &this_node_p->get_father(); //we do not use try_get_father because we do assume the father exists
+                this_node_p = &*this_node_p->get_father_checked();
             } else {
                 break;
             }

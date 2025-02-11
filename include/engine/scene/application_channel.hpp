@@ -1,0 +1,37 @@
+#ifndef ENGINE_SCENE_APPLICATION_CHANNEL_HPP
+#define ENGINE_SCENE_APPLICATION_CHANNEL_HPP
+
+#include <engine/resources_manager/rc.hpp>
+#include <engine/application/event.hpp>
+#include <glm/glm.hpp>
+
+namespace engine {
+    class scene;
+
+    struct application_channel_t {
+        struct to_app_t {
+            bool wants_mouse_cursor_captured = false;
+            rc<scene> scene_to_change_to = rc<scene>();
+        };
+        struct from_app_t {
+            bool scene_is_active = false;
+            bool mouse_cursor_is_captured = false;
+            glm::ivec2 framebuffer_size = {0,0};
+            float delta = 0.f;
+            float frame_time = 0.f;
+            std::span<const event_variant_t> events;
+        };
+
+        to_app_t to_app;
+        from_app_t from_app;
+
+        application_channel_t(const application_channel_t&) = delete;
+        application_channel_t(application_channel_t&&) = default;
+        application_channel_t() = default;
+        application_channel_t(to_app_t to_app, from_app_t from_app);
+    };
+
+
+}
+
+#endif // ENGINE_SCENE_APPLICATION_CHANNEL_HPP

@@ -10,7 +10,6 @@
 #include <optional>
 #include <stdexcept>
 #include <slogga/asserts.hpp>
-#include <engine/utils/noalloc_vector.hpp>
 
 namespace engine {
     class node;

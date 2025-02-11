@@ -16,4 +16,6 @@ add_library(engine__scene_bp_collision STATIC broad_phase_collision.cpp)
 target_link_libraries(engine__scene_bp_collision PUBLIC engine__global glm GAL)
 target_link_libraries(engine__scene_bp_collision PRIVATE engine__resources_manager engine__scene_node) # by linking with node we also link with the narrow-phase
 
-
+#application_channel
+add_library(engine__scene_application_channel STATIC application_channel.cpp)
+target_link_libraries(engine__scene_application_channel PUBLIC engine__global glm engine__resources_manager)

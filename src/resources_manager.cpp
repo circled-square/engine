@@ -3,6 +3,7 @@
 #include <GAL/texture.hpp>
 #include <GAL/vertex_array.hpp>
 #include <slogga/log.hpp>
+#include <slogga/asserts.hpp>
 #include <engine/scene/renderer.hpp>
 #include <engine/scene/renderer/mesh/material.hpp>
 #include <engine/scene/renderer/mesh/material/materials.hpp>
@@ -18,9 +19,8 @@ namespace engine {
     void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource) {
         using namespace detail;
 
-        resource_id<T> id = *resource;
-        auto& marked_for_deletion_set = std::get<deletion_set<T>>(rm.m_marked_for_deletion);
-        EXPECTS(!marked_for_deletion_set.contains(id));
+        resource_id<T> id(*resource);
+        auto& marked_for_deletion_set = std::get<id_hashset<T>>(rm.m_marked_for_deletion);
         marked_for_deletion_set.insert(id);
     }
 
@@ -28,80 +28,79 @@ namespace engine {
     template<typename T> inline rc_ptr<T> make_rc_ptr(T res) { return rc_ptr<T>(new rc_resource<T>(std::move(res))); }
 
     template<Resource T>
-    static rc_resource<T>* create_or_get_named_resource(auto& active_resources, auto& resources_by_name, auto& marked_for_deletion, const std::string& path, std::function<rc_ptr<T>(const std::string&)> resource_constructor) {
+    static rc_resource<T>* create_or_get_named_resource(auto& active_resources, auto& resources_by_name, auto& marked_for_deletion, const std::string& path, std::function<T(const std::string&)> resource_constructor) {
         auto& id_to_resource_hm = std::get<id_to_resource_hashmap<T>>(active_resources);
         auto& name_to_id_hm = std::get<name_to_id_hashmap<T>>(resources_by_name);
-        auto& marked_for_deletion_set = std::get<detail::deletion_set<T>>(marked_for_deletion);
+        auto& marked_for_deletion_set = std::get<detail::id_hashset<T>>(marked_for_deletion);
 
-        //don't load if already loaded
+        //first retrieve the memory location
+        rc_resource<T>* ret;
         if (auto search = name_to_id_hm.find(path); search != name_to_id_hm.end()) {
+            // we already have the memory
             resource_id<T> id = search->second;
 
             //remove from marked from deletion status
             marked_for_deletion_set.erase(id);
 
-            rc_ptr<T>& ret = id_to_resource_hm[id].second;
+            rc_ptr<T>& p = id_to_resource_hm[id].second;
 
-            return ret.get();
+            ret = p.get();
+        } else {
+            // we do not have the memory
+
+            //create the owning pointer
+            rc_ptr<T> p = rc_ptr<T>(new rc_resource<T>(std::nullopt));
+            ret = p.get();
+
+            //after allocating store the information in the hashmaps
+            //create the resource id (for which we use the address)
+            resource_id<T> id = *p;
+            //associate the name to the id
+            name_to_id_hm[path] = id;
+            //associate the id to the name and owning pointer
+            id_to_resource_hm.insert({id, std::make_pair(path, std::move(p))});
         }
 
-        //otherwise load it
-        //create the owning pointer
-        rc_ptr<T> p = resource_constructor(path.c_str());
-        rc_resource<T>* ret = p.get();
-
-        //after loading store the information in the hashmaps
-        //create the resource id (for which we use the address)
-        resource_id<T> id = *p;
-        //associate the name to the id
-        name_to_id_hm[path] = id;
-        //associate the id to the name and owning pointer
-        id_to_resource_hm.insert({id, std::make_pair(path, std::move(p))});
+        // then, if it is not already loaded, load the resource
+        if(!ret->resource().has_value())
+            ret->emplace(resource_constructor(path));
 
         return ret;
     }
-
-    template <Resource T>
-    rc<const T> resources_manager::new_from(T&& res) {
-        using namespace detail;
-
-        rc_ptr<T> p(new rc_resource<T>(std::move(res)));
-        rc<const T> ret(p.get());
-        auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
-        resource_id<T> key = *p;
-        resources_hm.insert(std::make_pair(key, std::make_pair(std::string(), std::move(p))));
-        return ret;
+    /*
+    template<Resource T> [[nodiscard]]
+    rc<const T> resources_manager::new_from_fn(const std::function<void(std::optional<T>&)>& emplace) {
+        return new_mut_from_fn<T>(emplace);
     }
-    template <Resource T>
-    rc<T> resources_manager::new_mut_from(T&& res) {
+
+    template<Resource T> [[nodiscard]]
+    rc<T> resources_manager::new_mut_from_fn(const std::function<void(std::optional<T>&)>& emplace) {
         using namespace detail;
 
-        auto p = rc_ptr<T>(new rc_resource<T>(std::move(res)));
+        rc_ptr<T> p(new rc_resource<T>(std::nullopt));
+        emplace(p->resource());
+        EXPECTS(p->resource().has_value());
         rc<T> ret(p.get());
         auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
         resource_id<T> key = *p;
         resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
         return ret;
-    }
-
-
+    }*/
 
     #define INSTANTIATE_RM_TEMPLATES(TYPE) \
         template void flag_for_deletion<TYPE>(resources_manager&, rc_resource<TYPE>*); \
-        template rc<const TYPE> resources_manager::new_from<TYPE>(TYPE&&res); \
-        template rc<TYPE> resources_manager::new_mut_from<TYPE>(TYPE&&res);
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_RM_TEMPLATES, RESOURCES)
 
     rc<const gal::texture> resources_manager::get_texture(const std::string& path) {
         return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
-            return make_rc_ptr(gal::texture(gal::image(p.c_str())));
+            return gal::texture(gal::image(p.c_str()));
         });
     }
 
     rc<const nodetree_blueprint> resources_manager::get_nodetree_from_gltf(const std::string& path) {
         return create_or_get_named_resource<nodetree_blueprint>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {
-            return make_rc_ptr(load_nodetree_from_gltf(p.c_str()));
+            return load_nodetree_from_gltf(p.c_str());
         });
     }
 
@@ -125,8 +124,8 @@ namespace engine {
             return gal::vertex_array(std::move(vbo), std::move(ibo), whole_screen_vao_vertex_t::layout_t::to_vertex_layout());
         };
 
-        return create_or_get_named_resource<gal::vertex_array>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "whole_screen_vao", [&](const std::string& p) {
-            return make_rc_ptr(make_whole_screen_vao());
+        return create_or_get_named_resource<gal::vertex_array>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "whole_screen_vao", [&](...) {
+            return make_whole_screen_vao();
         });
     }
 
@@ -140,21 +139,18 @@ namespace engine {
 
     void resources_manager::dbg_add_scene_constructor(std::string name, std::function<scene ()> scene_constructor) {
         using namespace detail;
-        std::function<rc_ptr<scene>()> rc_scene_constructor = [scene_ctor = std::move(scene_constructor)]() {
-            return rc_ptr<scene>(new rc_resource<scene>(scene_ctor()));
-        };
-        m_dbg_scene_ctors.insert({name, std::move(rc_scene_constructor)});
+        m_dbg_scene_ctors.insert({name, std::move(scene_constructor)});
     }
 
     rc<const gal::texture> resources_manager::get_dither_texture() {
-        return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "dither_texture", [&](const std::string& p) -> rc_ptr<gal::texture> {
+        return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "dither_texture", [&](...) -> gal::texture {
             throw std::runtime_error("not implemented");
         });
     }
 
     rc<const shader> resources_manager::get_retro_3d_shader() {
-        return create_or_get_named_resource<shader>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "retro_3d_shader", [&](const std::string& p) {
-            return make_rc_ptr(make_retro_3d_shader());
+        return create_or_get_named_resource<shader>(m_active_resources, m_resources_by_name, m_marked_for_deletion, "retro_3d_shader", [&](...) {
+            return make_retro_3d_shader();
         });
     }
 
@@ -163,31 +159,45 @@ namespace engine {
 
         bool deleted_any;
 
-        auto delete_all_marked = [&]<class T> (deletion_set<T>& marked_for_deletion_set) {
+        auto delete_all_marked = [&]<class T> (id_hashset<T>& marked_for_deletion_set) {
             auto& id_to_resource_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
             auto& name_to_id_hm = std::get<name_to_id_hashmap<T>>(m_resources_by_name);
 
-            for(resource_id<T> id : marked_for_deletion_set) {
-                auto iterator = id_to_resource_hm.find(id);
-                assert(iterator != id_to_resource_hm.end());
+            size_t previous_size = id_to_resource_hm.size();
 
-                //if present remove name-id correspondance
-                const std::string& name = iterator->second.first;
-                if(!name.empty()) {
-                    assert(name_to_id_hm.contains(name));
-                    name_to_id_hm.erase(name);
+            while(!marked_for_deletion_set.empty()) {
+                auto mfds_iterator = marked_for_deletion_set.begin();
+                auto itrh_iterator = id_to_resource_hm.find(*mfds_iterator);
+                EXPECTS(itrh_iterator != id_to_resource_hm.end());
+
+                rc_resource<T>& rc_ref = *itrh_iterator->second.second;
+
+                //refcount can be >0 if the obj was flagged and a weak<T> managed to lock() it before it was deleted, or if a rc<T> to it was obtained through its name
+                if(rc_ref.refcount() == 0) {
+                    if(rc_ref.weak_refcount() == 0) {
+                        //there are neither rc<T> nor weak<T> pointing to this resource
+                        //if present remove name-id correspondance
+                        const std::string& name = itrh_iterator->second.first;
+                        if(!name.empty()) {
+                            EXPECTS(name_to_id_hm.contains(name));
+                            name_to_id_hm.erase(name);
+                        }
+
+                        //delete resource
+                        id_to_resource_hm.erase(itrh_iterator);
+                    } else {
+                        //there are still weak refs to this resource; destroy the contained value
+                        rc_ref.resource().reset();
+                    }
                 }
 
-                //delete resource
-                id_to_resource_hm.erase(iterator);
 
+                //remove from marked for deletion
+                marked_for_deletion_set.erase(mfds_iterator);
                 deleted_any = true;
             }
 
-            slogga::stdout_log("cleared {} out of {} {}", marked_for_deletion_set.size(), id_to_resource_hm.size() + marked_for_deletion_set.size(), get_resource_typename<T>());
-            id_to_resource_hm.size();
-
-            marked_for_deletion_set.clear();
+            slogga::stdout_log("cleared {} out of {} {}", previous_size - id_to_resource_hm.size(), previous_size, get_resource_typename<T>());
         };
 
 
