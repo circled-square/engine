@@ -8,8 +8,8 @@
 #include <slogga/asserts.hpp>
 
 namespace engine::window {
-    inline auto throw_on_error(auto res, const char* what, std::source_location l = std::source_location::current()) {
-        if(!res) throw std::runtime_error(std::format("%:%, %\n\t%", l.file_name(), l.line(), l.function_name(), what));
+    inline auto throw_on_error(auto res, window_exception::code err) {
+        if(!res) throw window_exception(err);
         return res;
     }
 
@@ -18,11 +18,11 @@ namespace engine::window {
     window::window(glm::ivec2 res, const std::string& title, creation_hints hints) {
         //Initialize the library
         if(!window_count)
-            throw_on_error(glfwInit(), "Unable to initialize glfwInit");
+            throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
 
         // Create a windowed mode window and its OpenGL context
-        GLFWmonitor* monitor = throw_on_error(glfwGetPrimaryMonitor(), "Unable to find primary monitor");
-        const GLFWvidmode* mode = throw_on_error(glfwGetVideoMode(monitor), "Unable to get video mode");
+        GLFWmonitor* monitor = throw_on_error(glfwGetPrimaryMonitor(), window_exception::code::MONITOR);
+        const GLFWvidmode* mode = throw_on_error(glfwGetVideoMode(monitor), window_exception::code::VIDEO_MODE);
 
         glfwWindowHint(GLFW_RED_BITS,     mode->redBits);
         glfwWindowHint(GLFW_GREEN_BITS,   mode->greenBits);
@@ -43,7 +43,7 @@ namespace engine::window {
         else
             m_window_ptr = glfwCreateWindow(res.x, res.y, title.c_str(), nullptr, nullptr);
 
-        throw_on_error(m_window_ptr, "Unable to create GLFW3 window\n");
+        throw_on_error(m_window_ptr, window_exception::code::WINDOW_CREATION);
 
         glfwMakeContextCurrent(m_window_ptr);
         glfwSwapInterval(0); // Disable vsync: not locking fps gives us better perspective on the performance of the application during development

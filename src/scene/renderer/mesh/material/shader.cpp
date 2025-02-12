@@ -12,6 +12,24 @@ namespace engine {
         const char mvp[] = "u_mvp";
     }
 
+    class shader_parse_exception : public std::exception {
+        std::string m_what;
+    public:
+        enum type { UNIFORMS_BLOCK };
+    private:
+        type m_type;
+        static std::string preamble_from_type(type t) {
+            switch (t) {
+                case type::UNIFORMS_BLOCK: return "parsing '#uniforms' block: ";
+                default: return "(invalid shader_parse_exception type) ";
+            }
+        }
+    public:
+
+        shader_parse_exception(type t, const std::string& s) : m_type(t), m_what(preamble_from_type(t) + s) {}
+        virtual const char* what() const noexcept { return m_what.c_str(); }
+    };
+
     static uniforms_info parse_uniforms(const std::string& s) {
         auto eat_whitespace = [](std::string_view& str) {
             while(std::isspace(str[0])) {
@@ -32,14 +50,14 @@ namespace engine {
             if(!sv.starts_with(uniform_str)) {
                 size_t show_until = sv.find(';');
                 if(show_until < 0) show_until = sv.length();
-                throw std::runtime_error(
-                    std::format("parsing '#uniforms' block: expected 'uniform', got '{}'", sv.substr(0, show_until))
-                );
+                throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
+                    std::format("expected 'uniform', got '{}'", sv.substr(0, show_until)));
             }
             sv = sv.substr(uniform_str.length());
 
             if(!std::isspace(sv[0])) {
-                throw std::runtime_error(std::format("parsing '#uniforms' block: expected whitespace after 'uniforms', got '{}'", sv[0]));
+                throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
+                    std::format("expected whitespace after 'uniforms', got '{}'", sv[0]));
             }
 
             eat_whitespace(sv);
@@ -52,7 +70,8 @@ namespace engine {
             sv = sv.substr(type_str.length());
 
             if(!std::isspace(sv[0])) {
-                throw std::runtime_error(std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv[0]));
+                throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
+                    std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv[0]));
             }
 
             eat_whitespace(sv);
@@ -68,7 +87,8 @@ namespace engine {
 
             //consume ";" token
             if(!sv.starts_with(';')) {
-                throw std::runtime_error(std::format("parsing '#uniforms' block: expected ';' after uniform name '{}' got '{}'", name_str, sv[0]));
+                throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
+                    std::format("parsing '#uniforms' block: expected ';' after uniform name '{}' got '{}'", name_str, sv[0]));
             }
             sv = sv.substr(1);
 
@@ -90,7 +110,8 @@ namespace engine {
                  if(type_str == "sampler2D") {
                     uniforms_info.sampler_names.push_back(std::string(name_str));
                 } else {
-                    throw std::runtime_error(std::format("could not parse uniform: type='{}', name='{}'", type_str, name_str));
+                    throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
+                        std::format("could not parse uniform: type='{}', name='{}'", type_str, name_str));
                 }
             }
         }
@@ -106,8 +127,7 @@ namespace engine {
     shader shader::from_file(const std::string& path) {
         auto read_file = [](const std::string& fname) {
             std::ifstream fi(fname);
-            if (fi.fail())
-                throw std::runtime_error(std::format("shader::from_file could not read file at path '{}'", fname));
+            fi.exceptions(std::ifstream::failbit); // causes exceptions to be thrown in case of errors
             std::string contents((std::istreambuf_iterator<char>(fi)), std::istreambuf_iterator<char>());
             return contents;
         };

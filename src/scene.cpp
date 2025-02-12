@@ -195,7 +195,7 @@ namespace engine {
 
     noderef scene::get_node(std::string_view path) {
         if(path[0] != '/')
-            throw std::runtime_error(std::format("the first character of a path passed to scene::get_node must be '/'; instead path = \"{}\"", path));
+            throw invalid_path_exception(path);
 
         std::string_view subpath(path.begin()+1, path.end());
         return m_root->get_from_path(subpath);

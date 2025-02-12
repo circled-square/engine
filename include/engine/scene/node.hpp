@@ -149,14 +149,19 @@ namespace engine {
         template<NodeData T> T&       get();
     };
 
-    //thrown when a move constructor/assignment-operator is called with as argument a non-orphan node
-    class nonorphan_node_move_exception : public std::exception {
-        std::string m_what;
+    class node_exception : public std::exception {
+        std::string m_name, m_child_name;
+        mutable std::string m_what;
     public:
-        nonorphan_node_move_exception() = delete;
-        nonorphan_node_move_exception(const nonorphan_node_move_exception&) = default;
-        nonorphan_node_move_exception(nonorphan_node_move_exception&&) = default;
-        nonorphan_node_move_exception(node& n);
+        enum class type { NO_SUCH_CHILD, NO_FATHER };
+    private:
+        type m_type;
+
+    public:
+        node_exception(type t, std::string name, std::string child_name = "") : m_type(t), m_name(std::move(name)), m_child_name(std::move(child_name)) {}
+
+        type get_type() { return m_type; }
+
         virtual const char* what() const noexcept;
     };
 

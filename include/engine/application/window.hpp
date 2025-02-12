@@ -59,6 +59,34 @@ namespace engine::window {
         operator bool     () { return  m_window_ptr; }
         bool operator!    () { return !m_window_ptr; }
     };
+
+    struct window_exception : public std::exception {
+        enum class code {
+            BACKEND_INIT,    //GLFW3 was unable to initialize
+            MONITOR,         //GLFW3 was unable to find primary monitor
+            VIDEO_MODE,      //GLFW3 was unable to get video mode
+            WINDOW_CREATION, //GLFW3 was unable to create the window
+        };
+        code error;
+
+        window_exception(window_exception::code err) : error(err) {}
+
+        virtual const char* what() const noexcept {
+            switch(error) {
+            case code::BACKEND_INIT:
+                return "GLFW3 was unable to initialize!\n";
+            case code::MONITOR:
+                return "GLFW3 was unable to find primary monitor!\n";
+            case code::VIDEO_MODE:
+                return "GLFW3 was unable to get video mode!\n";
+            case code::WINDOW_CREATION:
+                return "GLFW3 was unable to create the window!\n";
+            default:
+                return "(invalid window exception error code)";
+            }
+        }
+    };
+
     namespace key_codes {
         extern const int MOUSE_1;
         extern const int MOUSE_2;

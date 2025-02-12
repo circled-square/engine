@@ -118,7 +118,7 @@ namespace engine {
                 return *it;
             }
         }
-        throw std::runtime_error(std::format("node at path '{}' has no child named '{}'", absolute_path(), name));
+        throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name, (std::string)name);
     }
 
 
@@ -134,7 +134,7 @@ namespace engine {
         if(rc<node> f = m_father.lock(); f)
             return std::move(f);
         else
-            throw std::runtime_error(std::format("node with name '{}' has no father, but called node::get_father()", name()));
+            throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name);
     }
 
 
@@ -142,7 +142,7 @@ namespace engine {
         if(rc<node> f = m_father.lock(); f)
             return std::move(f);
         else
-            throw std::runtime_error(std::format("node with name '{}' has no father, but called node::get_father()", name()));
+            throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name);
     }
 
     const_children_span node::children() const {
@@ -277,12 +277,16 @@ namespace engine {
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, NODE_DATA_CONTENTS)
 
-
-
-    nonorphan_node_move_exception::nonorphan_node_move_exception(node& n)
-        : std::exception(), m_what(std::format("attempted to move node '{}' which is not an orphan", n.name())) {}
-
-    const char* nonorphan_node_move_exception::what() const noexcept {
+    const char* node_exception::what() const noexcept {
+        if(m_what.empty()) {
+            switch(m_type) {
+            case type::NO_SUCH_CHILD:
+                m_what = std::format("node at path '{}' has no child named '{}'", m_name, m_child_name);
+                break;
+            case type::NO_FATHER:
+                m_what = std::format("node with name '{}' has no father, but called node::get_father_checked()", m_name);
+            }
+        }
         return m_what.c_str();
     }
 

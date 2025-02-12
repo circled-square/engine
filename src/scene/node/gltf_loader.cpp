@@ -32,7 +32,7 @@ namespace engine {
             slogga::stdout_log.error("{}", err);
 
         if(!success)
-            throw runtime_error(std::format("Fatal error: Failed to parse glTF file at path {}", path));
+            throw gltf_load_error(gltf_load_error::PARSE_ERROR, path, err);
 
         return model;
     }
@@ -253,7 +253,7 @@ namespace engine {
         bool binary = string_view(filepath).ends_with(".glb");
 
         if(!binary && !string_view(filepath).ends_with(".gltf"))
-            throw std::runtime_error(std::format("file {} is not a gltf file: extension is not .glb or .gltf (error at engine::load_nodetree_from_gltf)", filepath));
+            throw gltf_load_error(gltf_load_error::FILE_EXTENSION_ERROR, filepath);
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
@@ -266,4 +266,22 @@ namespace engine {
 
         return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }
+
+    const char* gltf_load_error::what() const noexcept {
+        if(m_what.empty()) {
+            switch(m_type) {
+            case PARSE_ERROR:
+                m_what = std::format("Failed to parse glTF file at path {};\nerror: {}", m_filepath, m_err);
+                break;
+            case FILE_EXTENSION_ERROR:
+                m_what = std::format("File {} is not a gltf file: extension is not .glb or .gltf", m_filepath);
+                break;
+            default:
+                m_what = std::format("(invalid gltf_load_error type; path={}, err={})", m_filepath, m_err);
+            }
+        }
+
+        return m_what.c_str();
+    }
+
 }

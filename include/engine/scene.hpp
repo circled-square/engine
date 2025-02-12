@@ -55,6 +55,13 @@ namespace engine {
         rc<scene> get_and_reset_scene_to_change_to();
         application_channel_t::from_app_t& channel_from_app();
     };
+
+    class invalid_path_exception : public std::exception {
+        std::string m_what;
+    public:
+        invalid_path_exception(std::string_view path) : m_what(std::format("the first character of a path passed to scene::get_node must be '/'; instead path = \"{}\"", path)) {}
+        virtual const char* what() const noexcept { return m_what.c_str(); }
+    };
 }
 
 #endif // ENGINE_SCENE_HPP
