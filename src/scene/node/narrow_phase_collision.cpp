@@ -131,7 +131,7 @@ namespace engine {
 
         auto get_mesh_vert = [&](size_t i) {
             EXPECTS(i < mesh_verts_size);
-            return *reinterpret_cast<const glm::vec3*>(reinterpret_cast<const char*>(mesh_verts_ptr) + offset + (stride * i));
+            return *reinterpret_cast<const glm::vec3*>(reinterpret_cast<const std::byte*>(mesh_verts_ptr) + offset + (stride * i));
         };
         auto normalize_and_round = [](glm::vec3 v) {
             // normalize_without_verse ensures 2 parallel vectors are considered the same (for our purposes they are)

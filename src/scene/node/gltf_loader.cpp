@@ -16,7 +16,7 @@
 using namespace std;
 
 namespace engine {
-    static tinygltf::Model load_gltf_from_file(const char *path, bool binary) {
+    static tinygltf::Model load_gltf_from_file(const std::string& path, bool binary) {
         tinygltf::TinyGLTF loader;
         tinygltf::Model model;
         string err, warn;
@@ -32,7 +32,7 @@ namespace engine {
             slogga::stdout_log.error("{}", err);
 
         if(!success)
-            throw runtime_error("Fatal error: Failed to parse glTF");
+            throw runtime_error(std::format("Fatal error: Failed to parse glTF file at path {}", path));
 
         return model;
     }
@@ -248,8 +248,8 @@ namespace engine {
         return root;
     }
 
-    engine::nodetree_blueprint load_nodetree_from_gltf(const char* filepath, const char* nodetree_name) {
-        nodetree_name = nodetree_name ? nodetree_name : filepath;
+    engine::nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, const std::string& nodetree_name) {
+        const std::string& nonempty_nodetree_name = !nodetree_name.empty() ? nodetree_name : filepath;
         bool binary = string_view(filepath).ends_with(".glb");
 
         if(!binary && !string_view(filepath).ends_with(".gltf"))
@@ -264,6 +264,6 @@ namespace engine {
         for (int node_idx : scene.nodes)
             root.add_child(load_node_subtree(model, node_idx));
 
-        return engine::nodetree_blueprint(std::move(root), nodetree_name);
+        return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }
 }

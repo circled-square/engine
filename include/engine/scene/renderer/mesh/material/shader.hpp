@@ -22,8 +22,8 @@ namespace engine {
     public:
         shader(gal::shader_program program, uniforms_info uniforms);
 
-        static shader from_file(const char* path);
-        static shader from_source(const char* source);
+        static shader from_file(const std::string& path);
+        static shader from_source(const std::string& source);
 
         gal::shader_program& get_program();
         const gal::shader_program& get_program() const;
@@ -32,9 +32,9 @@ namespace engine {
     };
 
     namespace uniform_names {
-        extern const char* output_resolution; // = "u_output_resolution";
-        extern const char* time; // = "u_time";
-        extern const char* mvp; // = "u_mvp";
+        extern const char output_resolution[]; // = "u_output_resolution";
+        extern const char time[]; // = "u_time";
+        extern const char mvp[]; // = "u_mvp";
     }
 }
 

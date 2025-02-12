@@ -7,9 +7,9 @@
 
 namespace engine {
     namespace uniform_names {
-        const char* output_resolution = "u_output_resolution";
-        const char* time = "u_time";
-        const char* mvp = "u_mvp";
+        const char output_resolution[] = "u_output_resolution";
+        const char time[] = "u_time";
+        const char mvp[] = "u_mvp";
     }
 
     static uniforms_info parse_uniforms(const std::string& s) {
@@ -103,8 +103,8 @@ namespace engine {
     }
 
 
-    shader shader::from_file(const char* path) {
-        auto read_file = [](const char* fname) {
+    shader shader::from_file(const std::string& path) {
+        auto read_file = [](const std::string& fname) {
             std::ifstream fi(fname);
             if (fi.fail())
                 throw std::runtime_error(std::format("shader::from_file could not read file at path '{}'", fname));
@@ -115,11 +115,11 @@ namespace engine {
         return shader::from_source(content.c_str());
     }
 
-    shader shader::from_source(const char* source) {
+    shader shader::from_source(const std::string& source) {
         std::string_view content = source;
-        const char* uniforms_str = "#uniforms";
-        const char* vert_str = "#vertex";
-        const char* frag_str = "#fragment";
+        std::string_view uniforms_str = "#uniforms";
+        std::string_view vert_str = "#vertex";
+        std::string_view frag_str = "#fragment";
 
         size_t uniforms_str_pos = content.find(uniforms_str);
         size_t vert_str_pos = content.find(vert_str);
@@ -132,11 +132,11 @@ namespace engine {
         ASSERTS(uniforms_str_pos < vert_str_pos);
         ASSERTS(vert_str_pos < frag_str_pos);
 
-        size_t uniforms_start = uniforms_str_pos + std::strlen(uniforms_str);
+        size_t uniforms_start = uniforms_str_pos + uniforms_str.length();
         size_t uniforms_end = vert_str_pos;
-        size_t vert_start = vert_str_pos + std::strlen(vert_str);
+        size_t vert_start = vert_str_pos + vert_str.length();
         size_t vert_end = frag_str_pos;
-        size_t frag_start = frag_str_pos + std::strlen(frag_str);
+        size_t frag_start = frag_str_pos + frag_str.length();
         size_t frag_end = content.size();
 
         std::string uniforms = std::string(content.substr(uniforms_start, uniforms_end - uniforms_start));
