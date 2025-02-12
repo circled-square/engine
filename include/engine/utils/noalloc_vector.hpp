@@ -1,38 +1,16 @@
 #ifndef ENGINE_UTILS_NOALLOC_VECTOR_HPP
 #define ENGINE_UTILS_NOALLOC_VECTOR_HPP
 
-#include <limits>
 #include <type_traits>
 #include <cstdint>
 #include <array>
 #include <stdexcept>
+#include "detail/smallest_uint.hpp"
 
 namespace engine {
-    namespace detail {
-        template <typename T, std::uintmax_t X> concept UintCanHold = X <= std::numeric_limits<T>::max();
-        template <std::uintmax_t X>
-        using smallest_uint_t =
-                std::conditional_t<UintCanHold<uint8_t, X>, uint8_t,
-                    std::conditional_t<UintCanHold<uint16_t, X>, uint16_t,
-                        std::conditional_t<UintCanHold<uint32_t, X>, uint32_t,
-                            std::conditional_t<UintCanHold<uint64_t, X>, uint64_t, void>
-                        >
-                    >
-                >;
-
-        static_assert(std::same_as<smallest_uint_t<0ull>, std::uint8_t>);
-        static_assert(std::same_as<smallest_uint_t<0xffull>, std::uint8_t>);
-        static_assert(std::same_as<smallest_uint_t<0x100ull>, std::uint16_t>);
-        static_assert(std::same_as<smallest_uint_t<0xffffull>, std::uint16_t>);
-        static_assert(std::same_as<smallest_uint_t<0x10000ull>, std::uint32_t>);
-        static_assert(std::same_as<smallest_uint_t<0xffffffffull>, std::uint32_t>);
-        static_assert(std::same_as<smallest_uint_t<0x100000000ull>, std::uint64_t>);
-        static_assert(std::same_as<smallest_uint_t<~std::uint64_t(0)>, std::uint64_t>);
-    }
-
     template<typename T, size_t MAX_SIZE>
     class noalloc_vector {
-        alignas(T) std::array<std::uint8_t, MAX_SIZE * sizeof(T)> m_arr;
+        alignas(T) std::array<std::byte, MAX_SIZE * sizeof(T)> m_arr;
         detail::smallest_uint_t<MAX_SIZE> m_size;
 
         T* nth(size_t i) {
