@@ -1,5 +1,5 @@
-#ifndef ENGINE_WINDOW_HPP
-#define ENGINE_WINDOW_HPP
+#ifndef ENGINE_APPLICATION_WINDOW_HPP
+#define ENGINE_APPLICATION_WINDOW_HPP
 /*
 engine::window::window is a RAII and OO wrapper for glfw windows, thread unsafe because glfw is (unfortunately).
 Construction and destruction may only be invoked in the main thread but some other functions *might* be 
@@ -212,4 +212,4 @@ namespace engine::window {
 
 }
 
-#endif //ENGINE_WINDOW_HPP
+#endif //ENGINE_APPLICATION_WINDOW_HPP

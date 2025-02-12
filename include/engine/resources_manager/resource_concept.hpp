@@ -1,5 +1,5 @@
-#ifndef RESOURCE_HPP
-#define RESOURCE_HPP
+#ifndef ENGINE_RESOURCES_MANAGER_RESOURCE_CONCEPT_HPP
+#define ENGINE_RESOURCES_MANAGER_RESOURCE_CONCEPT_HPP
 
 #include <engine/utils/meta.hpp>
 #include <slogga/log.hpp>
@@ -44,4 +44,4 @@ namespace engine {
 
 
 
-#endif // RESOURCE_HPP
+#endif // ENGINE_RESOURCES_MANAGER_RESOURCE_CONCEPT_HPP

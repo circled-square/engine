@@ -1,5 +1,5 @@
-#ifndef ENGINE_SCENE_NODE_NP_COLLISIONS_HPP
-#define ENGINE_SCENE_NODE_NP_COLLISIONS_HPP
+#ifndef ENGINE_SCENE_NODE_NARROW_PHASE_COLLISION_HPP
+#define ENGINE_SCENE_NODE_NARROW_PHASE_COLLISION_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -59,4 +59,4 @@ namespace engine {
     collision_result check_collision(const collision_shape& a, glm::mat4 a_trans, const collision_shape& b, glm::mat4 b_trans);
 }
 
-#endif // ENGINE_SCENE_NODE_NP_COLLISIONS_HPP
+#endif // ENGINE_SCENE_NODE_NARROW_PHASE_COLLISION_HPP

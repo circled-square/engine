@@ -1,5 +1,5 @@
-#ifndef ENGINE_SCENE_RENDERER_CAMERA_HPP
-#define ENGINE_SCENE_RENDERER_CAMERA_HPP
+#ifndef ENGINE_SCENE_NODE_CAMERA_HPP
+#define ENGINE_SCENE_NODE_CAMERA_HPP
 
 #include <glm/glm.hpp>
 
@@ -14,4 +14,4 @@ namespace engine {
 }
 
 
-#endif // ENGINE_SCENE_RENDERER_CAMERA_HPP
+#endif // ENGINE_SCENE_NODE_CAMERA_HPP

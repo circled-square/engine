@@ -1,5 +1,5 @@
-#ifndef ENGINE_META_UTILS_HPP
-#define ENGINE_META_UTILS_HPP
+#ifndef ENGINE_UTILS_META_HPP
+#define ENGINE_UTILS_META_HPP
 
 #include <concepts>
 #include <tuple>
@@ -79,4 +79,4 @@ namespace engine {
 
     #define CALL_MACRO_FOR_EACH(MACRO,...) _GET_NTH_ARG(__VA_ARGS__, __FE_9, __FE_8, __FE_7, __FE_6, __FE_5, __FE_4, __FE_3, __FE_2, __FE_1, __FE_0)(MACRO, __VA_ARGS__)
 }
-#endif // ENGINE_META_UTILS_HPP
+#endif // ENGINE_UTILS_META_HPP

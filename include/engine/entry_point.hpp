@@ -1,5 +1,5 @@
-#ifndef ENTRY_POINT_HPP
-#define ENTRY_POINT_HPP
+#ifndef ENGINE_ENTRY_POINT_HPP
+#define ENGINE_ENTRY_POINT_HPP
 
 #include <engine/application/window.hpp>
 #include <engine/scene.hpp>
@@ -10,4 +10,4 @@ namespace engine {
     void entry_point(glm::ivec2 wnd_res, const char* wnd_name, window::creation_hints wnd_hints, std::function<rc<scene>()> get_start_scene);
 }
 
-#endif // ENTRY_POINT_HPP
+#endif // ENGINE_ENTRY_POINT_HPP
