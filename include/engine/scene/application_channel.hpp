@@ -7,6 +7,7 @@
 
 namespace engine {
     class scene;
+    class application;
 
     struct application_channel_t {
         struct to_app_t {
@@ -22,8 +23,15 @@ namespace engine {
             std::span<const event_variant_t> events;
         };
 
-        to_app_t to_app;
-        from_app_t from_app;
+    private:
+        from_app_t m_from_app;
+        to_app_t m_to_app;
+
+        friend class application;
+        from_app_t& from_app_mut() { return m_from_app; }
+    public:
+        const from_app_t& from_app() const { return m_from_app; }
+        to_app_t& to_app() { return m_to_app; }
 
         application_channel_t(const application_channel_t&) = delete;
         application_channel_t(application_channel_t&&) = default;

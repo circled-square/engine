@@ -129,8 +129,8 @@ namespace engine {
 
 
     void scene::render() {
-        glm::ivec2 resolution = m_application_channel.from_app.framebuffer_size;
-        float frame_time = m_application_channel.from_app.frame_time;
+        glm::ivec2 resolution = m_application_channel.from_app().framebuffer_size;
+        float frame_time = m_application_channel.from_app().frame_time;
 
         const camera* default_fb_camera = set_cameras(get_root(), nullptr);
 
@@ -178,17 +178,6 @@ namespace engine {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_FRONT);
         }
-    }
-
-    rc<scene> scene::get_and_reset_scene_to_change_to() { return std::move(m_application_channel.to_app.scene_to_change_to); }
-
-
-    const application_channel_t::to_app_t &scene::channel_to_app() const {
-        return m_application_channel.to_app;
-    }
-
-    application_channel_t::from_app_t &scene::channel_from_app() {
-        return m_application_channel.from_app;
     }
 
     noderef scene::get_root() { return m_root; }

@@ -51,9 +51,8 @@ namespace engine {
         noderef get_node(std::string_view path);
 
         //used by engine::application to communicate with the scene
-        const application_channel_t::to_app_t& channel_to_app() const;
-        rc<scene> get_and_reset_scene_to_change_to();
-        application_channel_t::from_app_t& channel_from_app();
+        const application_channel_t& app_channel() const { return m_application_channel; }
+        application_channel_t& app_channel() { return m_application_channel; }
     };
 
     class invalid_path_exception : public std::exception {

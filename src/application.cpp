@@ -77,7 +77,7 @@ namespace engine {
         EXPECTS(!m_active_scene && start_scene);
         m_active_scene = std::move(start_scene);
         m_active_scene->prepare();
-        m_active_scene->channel_from_app().scene_is_active = true;
+        m_active_scene->app_channel().from_app_mut().scene_is_active = true;
     }
 
     application::~application() {
@@ -102,19 +102,19 @@ namespace engine {
 
             // read and write to the channel to the scene
             EXPECTS(m_active_scene);
-            rc<scene> scene_to_change_to = m_active_scene->get_and_reset_scene_to_change_to();
+            rc<scene> scene_to_change_to = std::move(m_active_scene->app_channel().to_app().scene_to_change_to);
             if(scene_to_change_to) {
-                ASSERTS(m_active_scene->channel_from_app().scene_is_active);
+                ASSERTS(m_active_scene->app_channel().from_app_mut().scene_is_active);
 
-                m_active_scene->channel_from_app().scene_is_active = false;
+                m_active_scene->app_channel().from_app_mut().scene_is_active = false;
 
                 m_active_scene = std::move(scene_to_change_to);
-                m_active_scene->channel_from_app().scene_is_active = true;
+                m_active_scene->app_channel().from_app_mut().scene_is_active = true;
                 m_active_scene->prepare();
             }
 
             bool cursor_is_captured = m_window.is_mouse_cursor_captured();
-            bool wants_cursor_captured = m_active_scene->channel_to_app().wants_mouse_cursor_captured;
+            bool wants_cursor_captured = m_active_scene->app_channel().to_app().wants_mouse_cursor_captured;
             if(wants_cursor_captured && !cursor_is_captured) {
                 m_window.capture_mouse_cursor();
                 m_ignore_mouse_move_on_next_event = true;
@@ -127,13 +127,13 @@ namespace engine {
 
 
             ASSERTS(m_window.is_mouse_cursor_captured() == cursor_is_captured);
-            m_active_scene->channel_from_app().mouse_cursor_is_captured = cursor_is_captured;
-            m_active_scene->channel_from_app().framebuffer_size = m_window.get_framebuf_size();
-            m_active_scene->channel_from_app().delta = delta;
-            m_active_scene->channel_from_app().frame_time = frame_time;
+            m_active_scene->app_channel().from_app_mut().mouse_cursor_is_captured = cursor_is_captured;
+            m_active_scene->app_channel().from_app_mut().framebuffer_size = m_window.get_framebuf_size();
+            m_active_scene->app_channel().from_app_mut().delta = delta;
+            m_active_scene->app_channel().from_app_mut().frame_time = frame_time;
             m_events_this_frame.clear();
             m_window.poll_events(); // populates m_events_this_frame
-            m_active_scene->channel_from_app().events = m_events_this_frame;
+            m_active_scene->app_channel().from_app_mut().events = m_events_this_frame;
 
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
