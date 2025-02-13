@@ -32,6 +32,7 @@ namespace engine {
             operator const_iterator() { return const_iterator(m_p, m_stride); }
         };
 
+        stride_span() = delete;
         stride_span(void* base, std::size_t offset, std::size_t stride, std::size_t size)
             : m_base(reinterpret_cast<char*>(base)), m_offset(offset), m_stride(stride), m_size(size) {}
         stride_span(const stride_span& o)

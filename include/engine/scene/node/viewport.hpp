@@ -15,7 +15,7 @@ namespace engine {
         mutable framebuffer m_fbo;
         mutable material m_postfx_material;
         std::optional<glm::vec2> m_dynamic_size_relative_to_output;
-        const camera* m_active_camera = nullptr;
+        std::optional<camera> m_active_camera;
     public:
         //note: the postfx material at this stage contains a null pointer to a texture.
         viewport(framebuffer fbo, rc<const shader> postfx_shader, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
@@ -33,9 +33,9 @@ namespace engine {
         void bind_draw() const;
 
         //can be set to null
-        void set_active_camera(const camera* c);
+        void set_active_camera(const std::optional<camera>& c);
         //can return null
-        const camera* get_active_camera() const;
+        const std::optional<camera>& get_active_camera() const;
 
         // note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and "leaking" to the gc the old one.
         void output_resolution_changed(glm::ivec2 native_resolution) const;

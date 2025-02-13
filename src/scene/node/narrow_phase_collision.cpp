@@ -126,13 +126,9 @@ namespace engine {
         return collision_result{ min_col_dir, min_col };
     }
 
-    collision_shape collision_shape::from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
+    collision_shape collision_shape::from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
         using namespace glm;
 
-        auto get_mesh_vert = [&](size_t i) {
-            EXPECTS(i < mesh_verts_size);
-            return *reinterpret_cast<const glm::vec3*>(reinterpret_cast<const std::byte*>(mesh_verts_ptr) + offset + (stride * i));
-        };
         auto normalize_and_round = [](glm::vec3 v) {
             // normalize_without_verse ensures 2 parallel vectors are considered the same (for our purposes they are)
             // fractional_round ensures 2 almost (but not quite) identical vectors are considered the same
@@ -147,12 +143,12 @@ namespace engine {
 
         for(uvec3 indices : mesh_indices) {
             for(int i = 0; i < 3; i++) {
-                verts.insert(get_mesh_vert(indices[i]));
+                verts.insert(mesh_verts[indices[i]]);
             }
 
-            vec3 edge_1 = get_mesh_vert(indices.y) - get_mesh_vert(indices.x);
-            vec3 edge_2 = get_mesh_vert(indices.z) - get_mesh_vert(indices.x);
-            vec3 edge_3 = get_mesh_vert(indices.z) - get_mesh_vert(indices.y);
+            vec3 edge_1 = mesh_verts[indices.y] - mesh_verts[indices.x];
+            vec3 edge_2 = mesh_verts[indices.z] - mesh_verts[indices.x];
+            vec3 edge_3 = mesh_verts[indices.z] - mesh_verts[indices.y];
 
             vec3 normal = glm::cross(edge_1, edge_2);
 

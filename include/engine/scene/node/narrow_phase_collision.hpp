@@ -10,6 +10,7 @@
 #include <optional>
 #include <stdexcept>
 #include <slogga/asserts.hpp>
+#include <engine/utils/stride_span.hpp>
 
 namespace engine {
     class node;
@@ -30,7 +31,7 @@ namespace engine {
         collision_layers_bitmask is_layers;
         collision_layers_bitmask sees_layers;
 
-        static collision_shape from_mesh(const void* mesh_verts_ptr, size_t mesh_verts_size, ptrdiff_t offset, ptrdiff_t stride, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
+        static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
     };
 
     struct collision_behaviour {

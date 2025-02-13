@@ -20,28 +20,31 @@ namespace engine {
         }
     }
 
+    constexpr std::nullptr_t default_framebuffer = nullptr;
+
     static void render_node(renderer& r, const gal::vertex_array& whole_screen_vao, rc<const node> n, const mat4& viewproj_mat,
-                            glm::ivec2 output_resolution, float frame_time, const viewport* output_vp) {
+                            glm::ivec2 output_resolution, float frame_time, rc<const node> output_vp_node) {
         glm::ivec2 children_out_res;
         mat4 children_viewproj;
-        const viewport* children_vp;
+        rc<const node> children_vp_node;
 
-        // if n is a viewport first setup rendering of children
+        // if n is a viewport first setup rendering of children,
+        // otherwise render them to the same viewport as n
         if (n->has<viewport>()) {
             n->get<viewport>().output_resolution_changed(output_resolution);
 
-            children_vp = &n->get<viewport>();
-            children_out_res = children_vp->fbo().resolution();
+            children_vp_node = n;
+            children_out_res = children_vp_node->get<viewport>().fbo().resolution();
 
-            children_vp->bind_draw();
+            children_vp_node->get<viewport>().bind_draw();
 
             mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_out_res.x / children_out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
-            mat4 view_mat = children_vp->get_active_camera() ?  children_vp->get_active_camera()->get_view_mat() : mat4(1);
+            mat4 view_mat = children_vp_node->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
             children_viewproj = proj_mat * view_mat;
             r.clear();
         } else {
             children_out_res = output_resolution;
-            children_vp = output_vp;
+            children_vp_node = output_vp_node;
             children_viewproj = viewproj_mat;
         }
 
@@ -54,7 +57,7 @@ namespace engine {
 
         // render children
         for(rc<const node> child : n->children())
-            render_node(r, whole_screen_vao, child, children_viewproj, children_out_res, frame_time, children_vp);
+            render_node(r, whole_screen_vao, child, children_viewproj, children_out_res, frame_time, children_vp_node);
 
         /* TODO: viewports are always automatically rendered, without any transformation, to the first viewport in their ancestors.
          * This should probably configurable, for example it should be possible to use them as textures for another material or something like that
@@ -62,9 +65,10 @@ namespace engine {
         // if n is a viewport render it to the output_vp
         if (n->has<viewport>()) {
             //bind the correct output fbo
-            if(output_vp)
-                output_vp->bind_draw();
-            else
+            if(output_vp_node) {
+                EXPECTS(output_vp_node->has<viewport>());
+                output_vp_node->get<viewport>().bind_draw();
+            } else
                 framebuffer::unbind();
 
             glViewport(0,0, output_resolution.x,  output_resolution.y);
@@ -79,24 +83,27 @@ namespace engine {
         }
     }
 
+    //sets the cameras for all viewports in the hierarchy, and returns the camera to use for the default framebuffer.
     [[nodiscard]]
-    static const camera* set_cameras(noderef n, viewport* forefather_vp) {
-        const camera* default_fb_camera = nullptr;
+    static std::optional<camera> set_cameras(noderef n, rc<node> forefather_vp_node) {
+        std::optional<camera> default_fb_camera = std::nullopt;
 
         //if this is a camera set it as active for it forefather (/default) viewport
         if(n->has<camera>()) {
             n->get<camera>().set_view_mat(glm::inverse(n->get_global_transform()));
 
-            if(forefather_vp)
-                forefather_vp->set_active_camera(&n->get<camera>());
-            else
-                default_fb_camera = &n->get<camera>();
+            if(forefather_vp_node) {
+                EXPECTS(forefather_vp_node->has<viewport>());
+                forefather_vp_node->get<viewport>().set_active_camera(n->get<camera>());
+            } else {
+                default_fb_camera = n->get<camera>();
+            }
         }
 
         //if this is a viewport set its camera to null and use it for its children
         if(n->has<viewport>())
-            n->get<viewport>().set_active_camera(nullptr);
-        viewport* children_vp = n->has<viewport>() ? &n->get<viewport>() : forefather_vp;
+            n->get<viewport>().set_active_camera(std::nullopt);
+        rc<node> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
 
         // process children
         for(noderef child : n->children()) {
@@ -132,7 +139,7 @@ namespace engine {
         glm::ivec2 resolution = m_application_channel.from_app().framebuffer_size;
         float frame_time = m_application_channel.from_app().frame_time;
 
-        const camera* default_fb_camera = set_cameras(get_root(), nullptr);
+        std::optional<camera> default_fb_camera = set_cameras(get_root(), nullptr);
 
         m_renderer.clear();
         mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)

@@ -77,11 +77,11 @@ namespace engine {
         const tinygltf::Primitive& primitive = mesh.primitives[primitive_idx];
         const tinygltf::Accessor& indices_accessor = model.accessors[primitive.indices];
         // TODO: support other modes other than TRIANGLES
-        EXPECTS(primitive.mode == TINYGLTF_MODE_TRIANGLES);
+        UNIMPLEMENTED(primitive.mode == TINYGLTF_MODE_TRIANGLES);
         // TODO: currently only supporting indexed data; if primitive.indices is undefined(-1) then the primitive is non-indexed
-        EXPECTS(primitive.indices != -1);
+        UNIMPLEMENTED(primitive.indices != -1);
         // TODO: currently the only types supported by gal::index_buffer are unsigned int and unsigned short; are there others we should be supporting?
-        EXPECTS(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
+        UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
             || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
         // TODO: currently all mesh primitives must have distinct vbos, which may cause duplication of data in VRAM
@@ -141,7 +141,7 @@ namespace engine {
         EXPECTS(image_idx != -1);
         const tinygltf::Image& image = model.images[image_idx];
 
-        EXPECTS(image.bits == 8);
+        UNIMPLEMENTED(image.bits == 8);
 
         gal::texture::specification spec {
             .res = { image.width, image.height },
@@ -170,16 +170,16 @@ namespace engine {
 
     static engine::collision_shape load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh, collision_layers_bitmask is_layers = 0, collision_layers_bitmask sees_layers = 0) {
         //multiple collision_shape primitives are currently unsupported
-        EXPECTS(mesh.primitives.size() == 1);
+        UNIMPLEMENTED(mesh.primitives.size() == 1);
         const tinygltf::Primitive& primitive = mesh.primitives[0];
 
         const tinygltf::Accessor& indices_accessor = model.accessors[primitive.indices];
         // TODO: support other modes other than TRIANGLES for collision_shape
-        EXPECTS(primitive.mode == TINYGLTF_MODE_TRIANGLES);
+        UNIMPLEMENTED(primitive.mode == TINYGLTF_MODE_TRIANGLES);
         // TODO: currently only supporting indexed data for collision_shape; if primitive.indices is undefined(-1) then the primitive is non-indexed
-        EXPECTS(primitive.indices != -1);
+        UNIMPLEMENTED(primitive.indices != -1);
         // TODO: currently the only type supported for indices for collision_shape is unsigned int
-        EXPECTS(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT);
+        UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT);
 
         int position_accessor_idx = -1;
         for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
@@ -189,8 +189,8 @@ namespace engine {
             break;
         }
 
-        //there must be a position accessor
-        ASSERTS(position_accessor_idx != -1);
+        //there must be a position accessor, otherwise there can be no collision shape
+        EXPECTS(position_accessor_idx != -1);
         const tinygltf::Accessor& position_accessor = model.accessors[position_accessor_idx];
         //only vec3 are supported for position since we only support 3d collision
         EXPECTS(position_accessor.type == 3);
@@ -199,7 +199,6 @@ namespace engine {
 
         const void* verts_ptr = &position_buf.data[position_bufview.byteOffset];
         size_t number_of_verts = position_bufview.byteLength / position_bufview.byteStride;
-        size_t verts_offset = position_accessor.byteOffset;
         size_t verts_stride = position_bufview.byteStride;
 
 
@@ -207,8 +206,9 @@ namespace engine {
         EXPECTS(indices_bufview.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER);
         auto& indices_buf = model.buffers[indices_bufview.buffer];
         std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
+        stride_span<const glm::vec3> verts_span(verts_ptr, 0, verts_stride, number_of_verts);
 
-        return engine::collision_shape::from_mesh(verts_ptr, number_of_verts, verts_offset, verts_stride, indices_span, is_layers, sees_layers);
+        return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
     }
 
     static glm::mat4 get_node_transform(const tinygltf::Node& n) {

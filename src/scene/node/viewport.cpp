@@ -35,9 +35,9 @@ namespace engine {
 
     void viewport::bind_draw() const { m_fbo.bind_draw(); }
 
-    void viewport::set_active_camera(const camera *c) { m_active_camera = c; }
+    void viewport::set_active_camera(const std::optional<camera>& c) { m_active_camera = c; }
 
-    const camera *viewport::get_active_camera() const { return m_active_camera; }
+    const std::optional<camera>& viewport::get_active_camera() const { return m_active_camera; }
 
     void viewport::output_resolution_changed(glm::ivec2 output_resolution) const {
         if(!m_dynamic_size_relative_to_output)
