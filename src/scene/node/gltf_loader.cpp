@@ -168,8 +168,10 @@ namespace engine {
         return engine::mesh(std::move(primitives));
     }
 
-    static engine::collision_shape load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh, collision_layers_bitmask is_layers = 0, collision_layers_bitmask sees_layers = 0) {
-        //multiple collision_shape primitives are currently unsupported
+    enum class colshape_load_error { NO_POSITION_ACCESSOR, POSITION_IS_NOT_VEC3 };
+    using colshape_or_error = std::variant<collision_shape, colshape_load_error>;
+    static colshape_or_error load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Value& extras) {
+        //TODO: multiple collision_shape primitives are currently unsupported
         UNIMPLEMENTED(mesh.primitives.size() == 1);
         const tinygltf::Primitive& primitive = mesh.primitives[0];
 
@@ -178,8 +180,39 @@ namespace engine {
         UNIMPLEMENTED(primitive.mode == TINYGLTF_MODE_TRIANGLES);
         // TODO: currently only supporting indexed data for collision_shape; if primitive.indices is undefined(-1) then the primitive is non-indexed
         UNIMPLEMENTED(primitive.indices != -1);
-        // TODO: currently the only type supported for indices for collision_shape is unsigned int
-        UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT);
+        // TODO: currently the only types supported for indices for collision_shape is unsigned int and unsigned short
+        UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
+                   || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
+
+        auto load_32bit_from_bool_array_extra = [&](const char* attrib_name) -> uint32_t {
+            uint32_t ret = 0;
+            if(extras.Has(attrib_name)) {
+                tinygltf::Value arr = extras.Get(attrib_name);
+                if(!arr.IsArray() || arr.ArrayLen() != 32) {
+                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a 32-long bool array", attrib_name);
+                } else {
+                    for(int i = 0; i < 32; i++) {
+                        tinygltf::Value v = arr.Get(i);
+                        if(!v.IsBool()) {
+                            slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a 32-long bool array", attrib_name);
+                            continue;
+                        } else {
+                            if(v.Get<bool>()) {
+                                ret |= collision_layer(i);
+                            }
+                        }
+                    }
+                }
+            }
+            return ret;
+        };
+        auto load_64bit_from_2_char_array_extras = [&](const char* low_name, const char* high_name) -> uint64_t {
+            return uint64_t(load_32bit_from_bool_array_extra(low_name))
+                | (uint64_t(load_32bit_from_bool_array_extra(high_name)) << 32);
+        };
+        collision_layers_bitmask is_layers = load_64bit_from_2_char_array_extras("is_layers__0_31", "is_layers__32_63");
+        collision_layers_bitmask sees_layers = load_64bit_from_2_char_array_extras("sees_layers__0_31", "sees_layers__32_63");
+        //TODO: also load collision behaviour from gltf extras field
 
         int position_accessor_idx = -1;
         for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
@@ -189,26 +222,51 @@ namespace engine {
             break;
         }
 
+
         //there must be a position accessor, otherwise there can be no collision shape
-        EXPECTS(position_accessor_idx != -1);
+        if(position_accessor_idx == -1) return colshape_load_error::NO_POSITION_ACCESSOR;
+
         const tinygltf::Accessor& position_accessor = model.accessors[position_accessor_idx];
+
         //only vec3 are supported for position since we only support 3d collision
-        EXPECTS(position_accessor.type == 3);
+        if(position_accessor.type != 3) return colshape_load_error::POSITION_IS_NOT_VEC3;
+
         const tinygltf::BufferView& position_bufview = model.bufferViews[position_accessor.bufferView];
         const tinygltf::Buffer& position_buf = model.buffers[position_bufview.buffer];
 
-        const void* verts_ptr = &position_buf.data[position_bufview.byteOffset];
-        size_t number_of_verts = position_bufview.byteLength / position_bufview.byteStride;
-        size_t verts_stride = position_bufview.byteStride;
+        // get stride of the buffer containing the POSITION attrib
+        size_t verts_stride =  position_bufview.byteStride;
+        //if it is 0 deduce it
+        if(verts_stride == 0) {
+            for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+                const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
+                int bufview_idx = accessor.bufferView;
+                if(bufview_idx == position_accessor.bufferView) {
+                    uint vec_len = accessor.type == TINYGLTF_TYPE_SCALAR ?  1 : accessor.type;
 
+                    size_t attrib_size = vec_len * gal::typeid_to_size(accessor.componentType);
+
+                    verts_stride += attrib_size;
+                }
+            }
+        }
+
+        const void* verts_ptr = &position_buf.data[position_bufview.byteOffset];
+        size_t number_of_verts = position_bufview.byteLength / verts_stride;
+        stride_span<const glm::vec3> verts_span(verts_ptr, 0, verts_stride, number_of_verts);
 
         auto& indices_bufview = model.bufferViews[indices_accessor.bufferView];
         EXPECTS(indices_bufview.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER);
         auto& indices_buf = model.buffers[indices_bufview.buffer];
-        std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
-        stride_span<const glm::vec3> verts_span(verts_ptr, 0, verts_stride, number_of_verts);
 
-        return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
+        if(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+            std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
+            return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
+        } else if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT){
+            std::span<const glm::u16vec3> indices_span((glm::u16vec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::u16vec3));
+            return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
+        }
+        throw std::runtime_error("given prior assertions this should be unreachable");
     }
 
     static glm::mat4 get_node_transform(const tinygltf::Node& n) {
@@ -226,8 +284,26 @@ namespace engine {
         if(node.mesh == -1)
             return null_node_data();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
-        if(mesh.name.ends_with("-col")) {
-            return get_rm().new_from(load_mesh_as_collision_shape(model, mesh));
+        slogga::stdout_log.warn("loading node data for node '{}'", node.name);
+        if(node.name.ends_with("-col")) {
+            auto colshape_or_err = load_mesh_as_collision_shape(model, mesh, node.extras);
+            if(std::holds_alternative<collision_shape>(colshape_or_err)) {
+                return get_rm().new_from(std::move(std::get<collision_shape>(colshape_or_err)));
+            } else {
+                auto err = std::get<colshape_load_error>(colshape_or_err);
+                std::string_view errstr;
+                switch(err) {
+                case colshape_load_error::NO_POSITION_ACCESSOR:
+                    errstr = "no position vertex attribute accessor";
+                    break;
+                case colshape_load_error::POSITION_IS_NOT_VEC3:
+                    errstr = "position vertex attribute is not vec3";
+                default:
+                    errstr = "(invalid error code)";
+                }
+                slogga::stdout_log.warn("Error while attempting to load collision shape from node \"{}\" from gltf: {}", node.name, errstr);
+                return null_node_data();
+            }
         } else {
             return load_mesh(model, mesh);
         }

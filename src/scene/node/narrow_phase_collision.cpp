@@ -126,7 +126,11 @@ namespace engine {
         return collision_result{ min_col_dir, min_col };
     }
 
-    collision_shape collision_shape::from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
+
+
+
+    template<AnyOneOf<glm::uvec3, u16vec3> T>
+    inline collision_shape from_mesh_impl(stride_span<const glm::vec3> mesh_verts, std::span<const T> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
         using namespace glm;
 
         auto normalize_and_round = [](glm::vec3 v) {
@@ -141,7 +145,7 @@ namespace engine {
         std::unordered_set<vec3> normals;
         std::unordered_set<vec3> edges;
 
-        for(uvec3 indices : mesh_indices) {
+        for(T indices : mesh_indices) {
             for(int i = 0; i < 3; i++) {
                 verts.insert(mesh_verts[indices[i]]);
             }
@@ -172,6 +176,13 @@ namespace engine {
 
 
         return ret;
+    }
+
+    collision_shape collision_shape::from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
+        return from_mesh_impl<glm::uvec3>(mesh_verts, mesh_indices, is_layers, sees_layers);
+    }
+    collision_shape collision_shape::from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::u16vec3> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
+        return from_mesh_impl<glm::u16vec3>(mesh_verts, mesh_indices, is_layers, sees_layers);
     }
 
     collision_result collision_result::null() { return {glm::vec3(0), std::numeric_limits<float>::quiet_NaN()}; }

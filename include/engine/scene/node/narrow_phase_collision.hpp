@@ -16,8 +16,10 @@ namespace engine {
     class node;
     using collision_layers_bitmask = std::uint64_t;
 
+    // layers go from 0 to 63
     inline collision_layers_bitmask collision_layer(int n) {
-        EXPECTS(0 <= n && n < (sizeof(collision_layers_bitmask) * CHAR_BIT));
+        static_assert(sizeof(collision_layers_bitmask) * CHAR_BIT == 64);
+        EXPECTS(0 <= n && n < 64);
 
         return collision_layers_bitmask(1) << n;
     }
@@ -32,6 +34,7 @@ namespace engine {
         collision_layers_bitmask sees_layers;
 
         static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
+        static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::u16vec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
     };
 
     struct collision_behaviour {
