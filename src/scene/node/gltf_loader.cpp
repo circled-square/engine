@@ -237,6 +237,7 @@ namespace engine {
         // get stride of the buffer containing the POSITION attrib
         size_t verts_stride =  position_bufview.byteStride;
         //if it is 0 deduce it
+        //TODO: merge the logic of deduce_vbo_strides() (which is unfortunately closely tied with GAL) with what follows, so the logic is only implemented once
         if(verts_stride == 0) {
             for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
                 const tinygltf::Accessor& accessor = model.accessors[accessor_idx];

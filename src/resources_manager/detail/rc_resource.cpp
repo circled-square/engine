@@ -1,6 +1,7 @@
 #include <engine/resources_manager/detail/rc_resource.hpp>
 #include <engine/scene.hpp> // to instantiate rc_resource<scene>
 #include <engine/scene/node.hpp>
+#include <engine/resources_manager/detail/resource_id.hpp>
 
 namespace engine::detail {
     template<Resource T>
@@ -16,7 +17,7 @@ namespace engine::detail {
         EXPECTS(m_refcount > 0);
         m_refcount--;
         if(m_refcount <= 0) {
-            engine::flag_for_deletion(get_rm(), this);
+            engine::flag_for_deletion(get_rm(), resource_id(this));
         }
     }
 
@@ -33,7 +34,7 @@ namespace engine::detail {
         EXPECTS(m_weak_refcount > 0);
         m_weak_refcount--;
         if(m_weak_refcount <= 0) {
-            engine::flag_for_deletion(get_rm(), this);
+            engine::flag_for_deletion(get_rm(), resource_id(this));
         }
     }
 

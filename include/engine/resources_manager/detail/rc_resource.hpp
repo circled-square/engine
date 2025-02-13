@@ -14,11 +14,11 @@ namespace engine {
     resources_manager& get_rm();
 
     namespace detail {
-        template<Resource T> class rc_resource;
+        template<Resource T> class resource_id;
     }
 
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
+    void flag_for_deletion(resources_manager& rm, detail::resource_id<T> resource);
 
     namespace detail {
         template<Resource T>

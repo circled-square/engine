@@ -15,7 +15,8 @@ namespace engine::detail {
         friend class resource_id_hash;
     public:
         resource_id() : m_id(0) {}
-        resource_id(const rc_resource<T>& resource) : m_id((std::uintptr_t)&resource) {}
+        resource_id(const rc_resource<T>* resource) : m_id((std::uintptr_t)resource) {}
+        resource_id(const rc_resource<T>& resource) : resource_id(&resource) {}
         resource_id(const resource_id& o) : m_id(o.m_id) {}
         bool operator==(const resource_id& o) const { return m_id == o.m_id; }
     };

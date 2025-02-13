@@ -20,7 +20,7 @@
 namespace engine {
     class resources_manager {
         template<Resource T>
-        friend void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
+        friend void flag_for_deletion(resources_manager& rm, detail::resource_id<T> resource);
 
         detail::id_to_resources_hashmaps m_active_resources;
 
@@ -32,9 +32,7 @@ namespace engine {
         std::unordered_map<std::string, std::function<scene()>> m_dbg_scene_ctors;
 
         resources_manager() = default;
-        ~resources_manager() {
-            collect_garbage();
-        }
+        ~resources_manager();
     public:
         template<Resource T> [[nodiscard]] weak<T> alloc() {
             detail::rc_ptr<T> p(new detail::rc_resource<T>(std::nullopt));
@@ -60,9 +58,10 @@ namespace engine {
         }
         template<Resource T, typename... Ts> [[nodiscard]] rc<T> new_mut_emplace(Ts... args) {
             weak<T> allocation = alloc<T>();
+            rc<T> lock = allocation.lock(); // semantically more correct to first lock it and then write into it
 
             allocation.m_resource->resource().emplace(std::forward<Ts>(args)...);
-            return allocation.lock();
+            return lock;
         }
 
 //        template<Resource T> [[nodiscard]]
@@ -96,7 +95,7 @@ namespace engine {
     };
 
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, detail::rc_resource<T>* resource);
+    void flag_for_deletion(resources_manager& rm, detail::resource_id<T> resource);
 
     [[nodiscard]]
     resources_manager& get_rm();

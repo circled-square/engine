@@ -14,7 +14,7 @@ callable from other threads.
 struct GLFWwindow; // forward declaration to avoid needlessly including glfw everywhere
 
 namespace engine::window {
-    enum creation_hints {
+    enum hints {
         NO_HINTS = 0,
         FULLSCREEN = 1 << 0,
         MAXIMIZED = 1 << 1,
@@ -28,13 +28,13 @@ namespace engine::window {
         window(window&&) = delete;
         window(const window&) = delete;
 
-        window(glm::ivec2 res, const std::string& title, creation_hints hints = creation_hints::NO_HINTS);
+        window(glm::ivec2 res, const std::string& title, hints window_hints = hints::NO_HINTS);
         ~window();
 
         bool should_close();
         void swap_buffers();
         void make_ctx_current();
-        static void  poll_events();
+        static void poll_events();
 
         void capture_mouse_cursor();
         void uncapture_mouse_cursor();
@@ -69,22 +69,9 @@ namespace engine::window {
         };
         code error;
 
-        window_exception(window_exception::code err) : error(err) {}
+        window_exception(window_exception::code err);
 
-        virtual const char* what() const noexcept {
-            switch(error) {
-            case code::BACKEND_INIT:
-                return "GLFW3 was unable to initialize!\n";
-            case code::MONITOR:
-                return "GLFW3 was unable to find primary monitor!\n";
-            case code::VIDEO_MODE:
-                return "GLFW3 was unable to get video mode!\n";
-            case code::WINDOW_CREATION:
-                return "GLFW3 was unable to create the window!\n";
-            default:
-                return "(invalid window exception error code)";
-            }
-        }
+        virtual const char* what() const noexcept;
     };
 
     namespace key_codes {

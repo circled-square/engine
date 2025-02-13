@@ -16,10 +16,9 @@ namespace engine {
     using namespace detail;
 
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, rc_resource<T>* resource) {
+    void flag_for_deletion(resources_manager& rm, resource_id<T> id) {
         using namespace detail;
 
-        resource_id<T> id(*resource);
         auto& marked_for_deletion_set = std::get<id_hashset<T>>(rm.m_marked_for_deletion);
         marked_for_deletion_set.insert(id);
     }
@@ -67,30 +66,15 @@ namespace engine {
 
         return ret;
     }
-    /*
-    template<Resource T> [[nodiscard]]
-    rc<const T> resources_manager::new_from_fn(const std::function<void(std::optional<T>&)>& emplace) {
-        return new_mut_from_fn<T>(emplace);
-    }
-
-    template<Resource T> [[nodiscard]]
-    rc<T> resources_manager::new_mut_from_fn(const std::function<void(std::optional<T>&)>& emplace) {
-        using namespace detail;
-
-        rc_ptr<T> p(new rc_resource<T>(std::nullopt));
-        emplace(p->resource());
-        EXPECTS(p->resource().has_value());
-        rc<T> ret(p.get());
-        auto& resources_hm = std::get<id_to_resource_hashmap<T>>(m_active_resources);
-        resource_id<T> key = *p;
-        resources_hm.insert({ key, std::make_pair(std::string(), std::move(p)) });
-        return ret;
-    }*/
 
     #define INSTANTIATE_RM_TEMPLATES(TYPE) \
-        template void flag_for_deletion<TYPE>(resources_manager&, rc_resource<TYPE>*); \
+        template void flag_for_deletion<TYPE>(resources_manager&, resource_id<TYPE>); \
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_RM_TEMPLATES, RESOURCES)
+
+    resources_manager::~resources_manager() {
+        collect_garbage();
+    }
 
     rc<const gal::texture> resources_manager::get_texture(const std::string& path) {
         return create_or_get_named_resource<gal::texture>(m_active_resources, m_resources_by_name, m_marked_for_deletion, path, [](const std::string& p) {

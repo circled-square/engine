@@ -15,7 +15,7 @@ namespace engine::window {
 
     std::int64_t window::window_count = 0;
 
-    window::window(glm::ivec2 res, const std::string& title, creation_hints hints) {
+    window::window(glm::ivec2 res, const std::string& title, hints win_hints) {
         //Initialize the library
         if(!window_count)
             throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
@@ -29,7 +29,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
-        if(hints & creation_hints::MAXIMIZED)
+        if(win_hints & hints::MAXIMIZED)
             glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
         /*
         //taken care of by glad's generator, only causes problems if done alongside it
@@ -38,7 +38,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         */
 
-        if(hints & creation_hints::FULLSCREEN)
+        if(win_hints & hints::FULLSCREEN)
             m_window_ptr = glfwCreateWindow(mode->width, mode->height, title.c_str(), monitor, nullptr);
         else
             m_window_ptr = glfwCreateWindow(res.x, res.y, title.c_str(), nullptr, nullptr);
@@ -112,6 +112,29 @@ namespace engine::window {
         glfwGetFramebufferSize(m_window_ptr, &ret.x, &ret.y);
         return ret;
     }
+
+
+
+
+    window_exception::window_exception(code err) : error(err) {}
+
+    const char* window_exception::what() const noexcept {
+        switch(error) {
+        case code::BACKEND_INIT:
+            return "GLFW3 was unable to initialize!\n";
+        case code::MONITOR:
+            return "GLFW3 was unable to find primary monitor!\n";
+        case code::VIDEO_MODE:
+            return "GLFW3 was unable to get video mode!\n";
+        case code::WINDOW_CREATION:
+            return "GLFW3 was unable to create the window!\n";
+        default:
+            return "(invalid window exception error code)";
+        }
+    }
+
+
+
 
     namespace key_codes {
         const int MOUSE_1 = GLFW_MOUSE_BUTTON_1;
@@ -263,5 +286,4 @@ namespace engine::window {
         const int PRESS = GLFW_PRESS;
         const int REPEAT = GLFW_REPEAT;
     }
-
 } // namespace glfw
