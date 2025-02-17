@@ -2,6 +2,13 @@
 #include <engine/application.hpp>
 #include <slogga/log.hpp>
 
+extern "C" {
+    #include <lua.h>
+    #include <lualib.h>
+    #include <lauxlib.h>
+}
+
+
 namespace engine {
     static void terminate_handler();
 
@@ -11,6 +18,12 @@ namespace engine {
         #else
             slogga::stdout_log.set_log_level(slogga::log_level::TRACE);
         #endif
+
+
+        lua_State* L = luaL_newstate();
+        luaL_dostring(L, "a = 5 + 5");
+
+
 
         std::set_terminate(terminate_handler);
 

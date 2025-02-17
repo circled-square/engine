@@ -13,8 +13,8 @@ target_link_libraries(engine__application PRIVATE imgui GAL)
 
 #entry_point
 add_library(engine__entry_point STATIC entry_point.cpp)
-target_link_libraries(engine__entry_point PUBLIC engine__global engine__scene)
-target_link_libraries(engine__entry_point PRIVATE engine__application)
+target_link_libraries(engine__entry_point PUBLIC engine__global engine__application_window engine__scene)
+target_link_libraries(engine__entry_point PRIVATE engine__application lua)
 
 #resources_manager
 add_library(engine__resources_manager STATIC resources_manager.cpp)
@@ -28,4 +28,4 @@ target_link_libraries(engine__scene PRIVATE engine__resources_manager imgui)
 
 #engine
 add_library(engine INTERFACE)
-target_link_libraries(engine INTERFACE engine__application engine__entry_point engine__resources_manager engine__scene imgui GAL)
+target_link_libraries(engine INTERFACE engine__application engine__entry_point engine__resources_manager engine__scene engine__global imgui GAL)
