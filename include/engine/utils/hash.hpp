@@ -2,8 +2,6 @@
 #define ENGINE_UTILS_HASH_HPP
 
 #include <ankerl/unordered_dense.h>
-#include <unordered_set>
-#include <unordered_map>
 #include <glm/glm.hpp>
 
 namespace engine {
