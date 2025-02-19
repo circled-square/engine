@@ -9,11 +9,8 @@
 // it can be locked to obtain an rc, which will point to a Resource.
 
 namespace engine {
-    // unused base template
     template<typename T>
-    class weak {
-        static_assert(false, "weak<T>: T must be a Resource or const Resource type");
-    };
+    class weak;
 
     // mutable resource template specialization
     template<Resource T>

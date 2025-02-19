@@ -1,12 +1,11 @@
 #include <engine/scene/node/gltf_loader.hpp>
 #include <engine/scene/renderer/mesh/material/materials.hpp>
 #include <engine/resources_manager.hpp>
+#include <engine/utils/hash.hpp>
 
 #include "glm/gtc/quaternion.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#include <unordered_map>
-#include <unordered_set>
 #include <list>
 #include <slogga/log.hpp>
 #include <slogga/asserts.hpp>
@@ -37,22 +36,59 @@ namespace engine {
         return model;
     }
 
-    //BufferViews can have a byteStride of 0 if they are tightly packed, in which case we need to deduce their stride
-    static void deduce_vbo_strides(vector<gal::vertex_buffer>& vbos, const gal::vertex_layout& vertex_layout) {
-        unordered_set<size_t> vbos_to_deduce_stride_of;
-        for(size_t i = 0; i < vbos.size(); i++) {
-            if(vbos[i].get_stride() == 0)
-                vbos_to_deduce_stride_of.insert(i);
-        }
+    // BufferViews can have a byteStride of 0 if they are tightly packed, in which case we need to deduce their stride
+    // given a set of vbos to deduce the stride of this function returns a map from
+    static hashmap<size_t, size_t> deduce_bufview_strides(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+                                                                 const hashset<size_t>& bufviews) {
+        using bufview_to_stride_t = hashmap<size_t, size_t>;
+        bufview_to_stride_t bufview_to_stride;
+        for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+            const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
+            int bufview_idx = accessor.bufferView;
+            if(bufviews.contains(bufview_idx)) {
+                uint vec_len = accessor.type == TINYGLTF_TYPE_SCALAR ? 1 : accessor.type;
 
-        for(const auto& attrib : vertex_layout.attribs) {
-            size_t vbo_index = attrib.vao_vbo_bind_index;
-            if(vbos_to_deduce_stride_of.contains(vbo_index)) {
-                size_t attrib_size = attrib.size * gal::typeid_to_size(attrib.type_id);
-                vbos[vbo_index].set_stride(vbos[vbo_index].get_stride() + attrib_size);
+                size_t attrib_size = vec_len * gal::typeid_to_size(accessor.componentType);
+
+                bufview_to_stride_t::iterator iterator;
+                if(!bufview_to_stride.contains(bufview_idx)) {
+                    auto pair = bufview_to_stride.insert({bufview_idx, 0});
+                    EXPECTS(pair.second);
+                    iterator = pair.first;
+                } else {
+                    iterator = bufview_to_stride.find(bufview_idx);
+                }
+
+                iterator->second += attrib_size;
             }
         }
+
+        return bufview_to_stride;
     }
+
+    static void deduce_vbo_strides(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+                                   std::vector<gal::vertex_buffer>& vbos, const hashmap<int, int>& bufview_to_vbo) {
+        hashset<size_t> vbos_to_deduce_strides_of;
+        for(int i = 0; i < vbos.size(); i++) {
+            if(vbos[i].get_stride() == 0) {
+                vbos_to_deduce_strides_of.insert(i);
+            }
+        }
+
+        hashset<size_t> bufviews_to_deduce_strides_of;
+        for(auto[bufview_idx, vbo_idx] : bufview_to_vbo) {
+            if(vbos_to_deduce_strides_of.contains(vbo_idx)) {
+                bufviews_to_deduce_strides_of.insert(bufview_idx);
+            }
+        }
+        hashmap<size_t, size_t> strides = deduce_bufview_strides(model, primitive, bufviews_to_deduce_strides_of);
+
+        for(auto[bufview_idx, stride] : strides) {
+            size_t vbo_idx = bufview_to_vbo.find(bufview_idx)->second;
+            vbos[vbo_idx].set_stride(stride);
+        }
+    }
+
     static gal::vertex_buffer make_vbo_from_bufview(const tinygltf::Model& model, int bufview_idx) {
         auto& bufview = model.bufferViews[bufview_idx];
         auto& buf = model.buffers[bufview.buffer];
@@ -84,10 +120,10 @@ namespace engine {
         UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
             || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
-        // TODO: currently all mesh primitives must have distinct vbos, which may cause duplication of data in VRAM
+        // TODO: currently all mesh primitives must have distinct vbos, which may cause duplication of data in VRAM. fix this.
         vector<gal::vertex_buffer> vbos;
         vector<gal::index_buffer> ibos;
-        unordered_map<int, int> bufview_to_vbo_map;
+        hashmap<int, int> bufview_to_vbo_map;
 
         using vertex_array_attrib = gal::vertex_layout::vertex_array_attrib;
         gal::vertex_layout layout;
@@ -123,7 +159,7 @@ namespace engine {
             }
         }
 
-        deduce_vbo_strides(vbos, layout);
+        deduce_vbo_strides(model, primitive, vbos, bufview_to_vbo_map);
 
         // TODO: currently only 1 ibo per vao is supported; does GLTF support more? (is that how you do LOD?)
         gal::index_buffer ibo = make_ibo_from_bufview(model, indices_accessor.bufferView, indices_accessor.componentType);
@@ -184,72 +220,63 @@ namespace engine {
         UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
                    || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
-        auto load_32bit_from_bool_array_extra = [&](const char* attrib_name) -> uint32_t {
-            uint32_t ret = 0;
+        // unfortunately blender does not support arrays of 64 bools but only up to 32
+
+        auto load_u64_from_hex_string_extra = [&](const char* attrib_name) -> uint64_t {
+            uint64_t ret = 0;
             if(extras.Has(attrib_name)) {
-                tinygltf::Value arr = extras.Get(attrib_name);
-                if(!arr.IsArray() || arr.ArrayLen() != 32) {
-                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a 32-long bool array", attrib_name);
-                } else {
-                    for(int i = 0; i < 32; i++) {
-                        tinygltf::Value v = arr.Get(i);
-                        if(!v.IsBool()) {
-                            slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a 32-long bool array", attrib_name);
-                            continue;
-                        } else {
-                            if(v.Get<bool>()) {
-                                ret |= collision_layer(i);
-                            }
-                        }
-                    }
+                tinygltf::Value attrib = extras.Get(attrib_name);
+                if(!attrib.IsString()) {
+                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a string (it wasn't) containing a hex number up to 64 bits", attrib_name);
+                    return 0;
+                }
+                std::string string = attrib.Get<std::string>();
+                try {
+                    ret = std::stoull(string, nullptr, 16);
+                    // Exceptions from cppreference:
+                    // std::invalid_argument if no conversion could be performed.
+                    // std::out_of_range if the converted value would fall out of the range of the result type or if the underlying function
+                } catch(std::invalid_argument& e) {
+                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string could not be parsed as a hex number", attrib_name);
+                    return 0;
+                } catch(std::out_of_range& e) {
+                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string's value could not be contained in 64 bits", attrib_name);
+                    return 0;
                 }
             }
             return ret;
         };
-        auto load_64bit_from_2_char_array_extras = [&](const char* low_name, const char* high_name) -> uint64_t {
-            return uint64_t(load_32bit_from_bool_array_extra(low_name))
-                | (uint64_t(load_32bit_from_bool_array_extra(high_name)) << 32);
-        };
-        collision_layers_bitmask is_layers = load_64bit_from_2_char_array_extras("is_layers__0_31", "is_layers__32_63");
-        collision_layers_bitmask sees_layers = load_64bit_from_2_char_array_extras("sees_layers__0_31", "sees_layers__32_63");
-        //TODO: also load collision behaviour from gltf extras field
+
+        collision_layers_bitmask is_layers = load_u64_from_hex_string_extra("is_layers");
+        collision_layers_bitmask sees_layers = load_u64_from_hex_string_extra("sees_layers");
+        // TODO: also load collision behaviour from gltf extras field
 
         int position_accessor_idx = -1;
         for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
-            //the only relevant attribute for collision_shape is the position
+            // the only relevant attribute for collision_shape is the position
             if(attrib_name != "POSITION") continue;
             position_accessor_idx = accessor_idx;
             break;
         }
 
 
-        //there must be a position accessor, otherwise there can be no collision shape
+        // there must be a position accessor, otherwise there can be no collision shape
         if(position_accessor_idx == -1) return colshape_load_error::NO_POSITION_ACCESSOR;
 
         const tinygltf::Accessor& position_accessor = model.accessors[position_accessor_idx];
 
-        //only vec3 are supported for position since we only support 3d collision
+        // only vec3 are supported for position since we only support 3d collision
         if(position_accessor.type != 3) return colshape_load_error::POSITION_IS_NOT_VEC3;
 
         const tinygltf::BufferView& position_bufview = model.bufferViews[position_accessor.bufferView];
         const tinygltf::Buffer& position_buf = model.buffers[position_bufview.buffer];
 
         // get stride of the buffer containing the POSITION attrib
-        size_t verts_stride =  position_bufview.byteStride;
+        size_t verts_stride = position_bufview.byteStride;
         //if it is 0 deduce it
-        //TODO: merge the logic of deduce_vbo_strides() (which is unfortunately closely tied with GAL) with what follows, so the logic is only implemented once
         if(verts_stride == 0) {
-            for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
-                const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
-                int bufview_idx = accessor.bufferView;
-                if(bufview_idx == position_accessor.bufferView) {
-                    uint vec_len = accessor.type == TINYGLTF_TYPE_SCALAR ?  1 : accessor.type;
-
-                    size_t attrib_size = vec_len * gal::typeid_to_size(accessor.componentType);
-
-                    verts_stride += attrib_size;
-                }
-            }
+            auto stride_map = deduce_bufview_strides(model, primitive, {(size_t)position_accessor.bufferView});
+            verts_stride = stride_map[position_accessor.bufferView];
         }
 
         const void* verts_ptr = &position_buf.data[position_bufview.byteOffset];

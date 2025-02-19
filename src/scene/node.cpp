@@ -46,6 +46,7 @@ namespace engine {
         : m_node(get_rm().new_mut_emplace<node>(std::move(name), std::move(other_data), transform)) {
         if(script)
             attach_script(std::move(script));
+        ENSURES(m_node);
     }
 
     noderef::noderef(rc<const nodetree_blueprint> nt, std::string name)
@@ -53,15 +54,26 @@ namespace engine {
         if(!name.empty())
             m_node->m_name = name;
         m_node->m_nodetree_bp_reference = std::move(nt);
+        ENSURES(m_node);
     }
 
     noderef::noderef(noderef&& o) : m_node(std::move(o.m_node)) {}
 
-    noderef& noderef::operator=(noderef&& o) { m_node = std::move(o.m_node); return *this; }
+    noderef& noderef::operator=(noderef&& o) {
+        m_node = std::move(o.m_node);
+        EXPECTS(m_node);
+        return *this;
+    }
 
-    noderef& noderef::operator=(const noderef& o) { m_node = o.m_node; return *this; }
+    noderef& noderef::operator=(const noderef& o) {
+        m_node = o.m_node;
+        EXPECTS(m_node);
+        return *this;
+    }
 
-    noderef::noderef(const noderef& o) : m_node(o.m_node) {}
+    noderef::noderef(const noderef& o) : m_node(o.m_node) {
+        EXPECTS(m_node);
+    }
 
     noderef::noderef(rc<node> n) : m_node(std::move(n)) {
         EXPECTS(m_node);

@@ -30,11 +30,11 @@ namespace engine {
 
         public:
             // construct with an empty resource
-            rc_resource(std::nullopt_t) : m_resource(), m_refcount(0), m_weak_refcount(0) {}
+            explicit rc_resource(std::nullopt_t) : m_resource(), m_refcount(0), m_weak_refcount(0) {}
 
             // construct and emplace the resource with the given args
             template<typename...Args>
-            rc_resource(Args&&... args) : rc_resource(std::nullopt) {
+            explicit rc_resource(Args&&... args) : rc_resource(std::nullopt) {
                 emplace(std::forward<Args>(args)...);
             }
 

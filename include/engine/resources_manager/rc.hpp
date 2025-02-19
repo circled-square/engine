@@ -7,11 +7,8 @@
 // rc is a reference counted pointer managed by the engine's resources manager, which points to a Resource
 
 namespace engine {
-    // unused base template
     template<typename T>
-    class rc {
-        static_assert(false, "rc<T>: T must be a Resource or const Resource type");
-    };
+    class rc;
 
     template<class T> class weak;
 

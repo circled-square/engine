@@ -25,7 +25,15 @@ namespace engine {
     using map_pack = detail::map_pack__struct<Template, InTuple, OutTuple, Tuple>::type;
 
     //takes a Tuple=std::tuple<Ts...> type and returns std::tuple<Template<Ts>...>
-    template<template<class> class Template, class Tuple> using map_tuple = map_pack<Template, std::tuple, std::tuple, Tuple>;
+    template<template<class> class Template, class Tuple>
+    using map_tuple = map_pack<Template, std::tuple, std::tuple, Tuple>;
+
+    //takes Tuples of the form Tuple(i)=TupleTemplate<Args(i)...> and returns TupleTemplate<Args(0)...,Args(1)..., etc>
+    template<template<typename...> class TupleTemplate, class...Tuples>
+    using merge_packs = detail::merge_packs__struct<TupleTemplate, Tuples...>::type;
+
+    template<class...Variants>
+    using merge_variants = merge_packs<std::variant, Variants...>;
 
     //like std::visit but with multiple overloads; will cause a compile error if not all of the variant's cases are covered
     template<typename...Ts>

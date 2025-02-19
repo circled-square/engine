@@ -69,7 +69,7 @@ namespace engine::window {
         };
         code error;
 
-        window_exception(window_exception::code err);
+        explicit window_exception(window_exception::code err);
 
         virtual const char* what() const noexcept;
     };
