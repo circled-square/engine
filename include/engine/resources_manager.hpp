@@ -13,6 +13,7 @@
 #include <engine/scene/renderer/mesh/material.hpp>
 #include <engine/scene/node.hpp>
 #include <engine/scene.hpp>
+#include <engine/utils/hash.hpp>
 
 // resources_manager: implements shared ownership of resources and garbage collection of unused ones
 // frequently abbreviated as rm to save keystrokes/screenspace since it is used everywhere
@@ -29,7 +30,7 @@ namespace engine {
 
         detail::id_hashsets m_marked_for_deletion;
 
-        std::unordered_map<std::string, std::function<scene()>> m_dbg_scene_ctors;
+        hashmap<std::string, std::function<scene()>> m_dbg_scene_ctors;
 
         resources_manager() = default;
         ~resources_manager();
@@ -58,16 +59,12 @@ namespace engine {
         }
         template<Resource T, typename... Ts> [[nodiscard]] rc<T> new_mut_emplace(Ts... args) {
             weak<T> allocation = alloc<T>();
-            rc<T> lock = allocation.lock(); // semantically more correct to first lock it and then write into it
+            // it would be semantically more correct to first lock the allocation and then write to it,
+            // unfortunately locking a weak which points to an "empty" allocation like this yields null
 
             allocation.m_resource->resource().emplace(std::forward<Ts>(args)...);
-            return lock;
+            return allocation.lock();
         }
-
-//        template<Resource T> [[nodiscard]]
-//        rc<const T> new_from_fn(const std::function<void(std::optional<T>&)>& emplace);
-//        template<Resource T> [[nodiscard]]
-//        rc<T> new_mut_from_fn(const std::function<void(std::optional<T>&)>& emplace);
 
         // get resource loaded from disk
         [[nodiscard]] rc<const gal::texture>        get_texture(const std::string& path);

@@ -5,7 +5,7 @@ namespace engine {
     //private constructor used by resources_manager, rc<const T> & weak<T>
     template<Resource T>
     rc<T>::rc(detail::rc_resource<T>* resource) : m_resource(resource) {
-        EXPECTS(resource);
+        EXPECTS(m_resource);
         m_resource->inc_refcount();
     }
 
@@ -60,16 +60,15 @@ namespace engine {
     template<Resource T>
     T& rc<T>::operator*() const {
         EXPECTS(m_resource);
+        EXPECTS(m_resource->resource().has_value());
         return *m_resource->resource();
     }
 
     template<Resource T>
     T* rc<T>::operator->() const {
-        if(m_resource) {
-            return &*m_resource->resource();
-        } else {
-            return nullptr;
-        }
+        EXPECTS(m_resource);
+        EXPECTS(m_resource->resource().has_value());
+        return &*m_resource->resource();
     }
 
     template<Resource T>

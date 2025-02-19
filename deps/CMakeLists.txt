@@ -1,5 +1,16 @@
 include(FetchContent)
 
+add_library(murmurhash3 STATIC murmurhash3/MurmurHash3.cpp)
+target_include_directories(murmurhash3 PUBLIC murmurhash3/)
+
+#fetch ankerl::unordered_dense::{map,set}
+FetchContent_Declare(
+    ankerl
+    GIT_REPOSITORY https://github.com/martinus/unordered_dense.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(ankerl)
+
 #fetch gal
 FetchContent_Declare(
     gal

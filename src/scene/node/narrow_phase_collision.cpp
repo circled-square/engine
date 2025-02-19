@@ -1,19 +1,10 @@
 #include <engine/scene/node/narrow_phase_collision.hpp>
 #include <engine/scene/node.hpp>
 
-
-template<>
-struct std::hash<glm::vec3> {
-    std::size_t operator()(const glm::vec3& v) const noexcept {
-        std::hash<float> h;
-        return h(v.x) ^ (h(v.y) << 1) ^ (h(v.z) << 2); // or use boost::hash_combine
-    }
-};
-
 namespace engine {
     using namespace glm;
 
-    //we care not for the orientation of the normal/edge vectors, so we reverse all with y<0 (some with y=0) so vecs inverse to each other are not counted (since everything goes through a unordered_set)
+    //we care not for the orientation of the normal/edge vectors, so we reverse all with y<0 (some with y=0) so vecs inverse to each other are not counted (since everything goes through a hashset)
     inline glm::vec3 normalize_without_verse(glm::vec3 v) {
         v = glm::normalize(v);
         if(v.y < 0 || (v.y == 0 && v.x < 0) || (v.x == 0 && v.y == 0 && v.z < 0))
@@ -64,7 +55,7 @@ namespace engine {
         }
     }
 
-    static bool project_and_update_min(const vec3& ax, const std::vector<vec3>& a_v, const std::vector<vec3> b_v, mat4 b_to_a, std::unordered_set<vec3>& dont_repeat, float& min_coll, vec3& min_coll_vec, mat4 trans_b4_saving) {
+    static bool project_and_update_min(const vec3& ax, const std::vector<vec3>& a_v, const std::vector<vec3> b_v, mat4 b_to_a, hashset<vec3>& dont_repeat, float& min_coll, vec3& min_coll_vec, mat4 trans_b4_saving) {
         if(dont_repeat.contains(ax))
             return true;
         dont_repeat.insert(ax);
@@ -81,7 +72,7 @@ namespace engine {
     }
 
     collision_result check_collision(const collision_shape& a, mat4 a_trans, const collision_shape& b, mat4 b_trans) {
-        std::unordered_set<vec3> dont_repeat;
+        hashset<vec3> dont_repeat;
 
         mat4 b_to_a_space_trans = inverse(a_trans) * b_trans;
 
@@ -141,9 +132,9 @@ namespace engine {
             return glm::normalize(fractional_round(normalize_without_verse(v), 256));
         };
 
-        std::unordered_set<vec3> verts;
-        std::unordered_set<vec3> normals;
-        std::unordered_set<vec3> edges;
+        hashset<vec3> verts;
+        hashset<vec3> normals;
+        hashset<vec3> edges;
 
         for(T indices : mesh_indices) {
             for(int i = 0; i < 3; i++) {

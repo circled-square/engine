@@ -29,6 +29,44 @@ namespace engine::detail {
     struct map_pack__struct<Template, InTuple, OutTuple, InTuple<Ts...>> {
         using type = OutTuple<Template<Ts>...>;
     };
+
+
+    template<template<typename...> class TupleTemplate, class Tuple1, class Tuple2>
+    struct merge_2_packs__struct {
+        static_assert(false, "Tuple1 and Tuple2 must be instantiations of TupleTemplate");
+    };
+    template<template<typename...> class TupleTemplate, class...Args1, class...Args2>
+    struct merge_2_packs__struct<TupleTemplate, TupleTemplate<Args1...>, TupleTemplate<Args2...>> {
+        using type = TupleTemplate<Args1..., Args2...>;
+    };
+
+    //test
+    static_assert(std::same_as<
+        std::tuple<int, unsigned, float, double>,
+        merge_2_packs__struct<std::tuple,
+            std::tuple<int, unsigned>, std::tuple<float, double>
+        >::type
+    >);
+
+    template<template<typename...> class TupleTemplate, class Tuple1, class Tuple2, class... Tuples>
+    struct merge_packs__struct {
+        using type = merge_packs__struct<TupleTemplate, typename merge_2_packs__struct<TupleTemplate,Tuple1,Tuple2>::type, Tuples...>::type;
+    };
+
+    template<template<typename...> class TupleTemplate, class Tuple1, class Tuple2>
+    struct merge_packs__struct<TupleTemplate, Tuple1, Tuple2> {
+        using type = merge_2_packs__struct<TupleTemplate,Tuple1,Tuple2>::type;
+    };
+
+
+    //test
+    static_assert(std::same_as<
+        std::tuple<int, unsigned, float, double, char, short, long>,
+        merge_packs__struct<std::tuple,
+            std::tuple<int, unsigned>, std::tuple<float, double>, std::tuple<char, short, long>
+        >::type
+    >);
+
     
     // turns a bunch of callables into a single overloaded callable
     template<class... Ts>

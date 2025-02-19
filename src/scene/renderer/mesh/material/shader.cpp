@@ -1,4 +1,5 @@
 #include <engine/scene/renderer/mesh/material/shader.hpp>
+#include <engine/utils/read_file.hpp>
 #include <slogga/asserts.hpp>
 #include <string_view>
 #include <cstring>
@@ -125,12 +126,6 @@ namespace engine {
 
 
     shader shader::from_file(const std::string& path) {
-        auto read_file = [](const std::string& fname) {
-            std::ifstream fi(fname);
-            fi.exceptions(std::ifstream::failbit); // causes exceptions to be thrown in case of errors
-            std::string contents((std::istreambuf_iterator<char>(fi)), std::istreambuf_iterator<char>());
-            return contents;
-        };
         std::string content = read_file(path);
         return shader::from_source(content.c_str());
     }
