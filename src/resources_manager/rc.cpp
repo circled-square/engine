@@ -131,6 +131,7 @@ namespace engine {
     template<Resource T>
     bool rc<const T>::operator==(const rc<const T> &o) const { return rc<T>::operator==(o); }
 
+
     #define INSTANTIATE_RC_TEMPLATE(TYPE) \
         template class rc<TYPE>; \
         template class rc<const TYPE>;

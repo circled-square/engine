@@ -204,6 +204,46 @@ namespace engine {
         return engine::mesh(std::move(primitives));
     }
 
+    static uint64_t load_u64_from_hex_string_from_gltf_extras(const tinygltf::Value& extras, const char* attrib_name) {
+        if(extras.Has(attrib_name)) {
+            tinygltf::Value attrib = extras.Get(attrib_name);
+            if(!attrib.IsString()) {
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a string (it wasn't) containing a hex number up to 64 bits", attrib_name);
+                return 0;
+            }
+            std::string string = attrib.Get<std::string>();
+            uint64_t ret;
+            try {
+                ret = std::stoull(string, nullptr, 16);
+                // Exceptions from cppreference:
+                // std::invalid_argument if no conversion could be performed.
+                // std::out_of_range if the converted value would fall out of the range of the result type or if the underlying function
+            } catch(std::invalid_argument& e) {
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string could not be parsed as a hex number", attrib_name);
+                return 0;
+            } catch(std::out_of_range& e) {
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string's value could not be contained in 64 bits", attrib_name);
+                return 0;
+            }
+            return ret;
+        }
+        return 0;
+    }
+
+    static bool load_bool_from_gltf_extras(const tinygltf::Value& extras, const char* attrib_name) {
+        bool ret = false;
+        if(extras.Has(attrib_name)) {
+            tinygltf::Value attrib = extras.Get(attrib_name);
+            if(!attrib.IsBool()) {
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a boolean", attrib_name);
+                return false;
+            }
+            return attrib.Get<bool>();
+        }
+        return ret;
+    }
+
+
     enum class colshape_load_error { NO_POSITION_ACCESSOR, POSITION_IS_NOT_VEC3 };
     using colshape_or_error = std::variant<collision_shape, colshape_load_error>;
     static colshape_or_error load_mesh_as_collision_shape(const tinygltf::Model& model, const tinygltf::Mesh& mesh, const tinygltf::Value& extras) {
@@ -220,36 +260,8 @@ namespace engine {
         UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
                    || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
-        // unfortunately blender does not support arrays of 64 bools but only up to 32
-
-        auto load_u64_from_hex_string_extra = [&](const char* attrib_name) -> uint64_t {
-            uint64_t ret = 0;
-            if(extras.Has(attrib_name)) {
-                tinygltf::Value attrib = extras.Get(attrib_name);
-                if(!attrib.IsString()) {
-                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': must be a string (it wasn't) containing a hex number up to 64 bits", attrib_name);
-                    return 0;
-                }
-                std::string string = attrib.Get<std::string>();
-                try {
-                    ret = std::stoull(string, nullptr, 16);
-                    // Exceptions from cppreference:
-                    // std::invalid_argument if no conversion could be performed.
-                    // std::out_of_range if the converted value would fall out of the range of the result type or if the underlying function
-                } catch(std::invalid_argument& e) {
-                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string could not be parsed as a hex number", attrib_name);
-                    return 0;
-                } catch(std::out_of_range& e) {
-                    slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string's value could not be contained in 64 bits", attrib_name);
-                    return 0;
-                }
-            }
-            return ret;
-        };
-
-        collision_layers_bitmask is_layers = load_u64_from_hex_string_extra("is_layers");
-        collision_layers_bitmask sees_layers = load_u64_from_hex_string_extra("sees_layers");
-        // TODO: also load collision behaviour from gltf extras field
+        collision_layers_bitmask is_layers = load_u64_from_hex_string_from_gltf_extras(extras, "is_layers");
+        collision_layers_bitmask sees_layers = load_u64_from_hex_string_from_gltf_extras(extras, "sees_layers");
 
         int position_accessor_idx = -1;
         for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
@@ -312,7 +324,7 @@ namespace engine {
         if(node.mesh == -1)
             return null_node_data();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
-        slogga::stdout_log.warn("loading node data for node '{}'", node.name);
+
         if(node.name.ends_with("-col")) {
             auto colshape_or_err = load_mesh_as_collision_shape(model, mesh, node.extras);
             if(std::holds_alternative<collision_shape>(colshape_or_err)) {
@@ -344,10 +356,21 @@ namespace engine {
 
         glm::mat4 transform = get_node_transform(node);
         noderef root(node.name, std::move(node_data), transform);
+        { // set collision behaviour
+            collision_behaviour col_behaviour {
+                .moves_away_on_collision = load_bool_from_gltf_extras(node.extras, "moves_away_on_collision"),
+                .passes_events_to_script = load_bool_from_gltf_extras(node.extras, "pass_collision_event_to_script"),
+                .passes_events_to_father = load_bool_from_gltf_extras(node.extras, "pass_collision_event_to_father"),
+            };
+            root->set_collision_behaviour(col_behaviour);
+        }
 
+
+        slogga::stdout_log("found node {}; its children:", node.name);
         for(int child_idx : node.children) {
             root.add_child(load_node_subtree(model, child_idx));
         }
+        slogga::stdout_log("end of children of node {}:", node.name);
 
         return root;
     }

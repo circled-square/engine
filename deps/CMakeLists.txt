@@ -1,8 +1,5 @@
 include(FetchContent)
 
-add_library(murmurhash3 STATIC murmurhash3/MurmurHash3.cpp)
-target_include_directories(murmurhash3 PUBLIC murmurhash3/)
-
 #fetch ankerl::unordered_dense::{map,set}
 FetchContent_Declare(
     ankerl

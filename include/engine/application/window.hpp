@@ -14,10 +14,11 @@ callable from other threads.
 struct GLFWwindow; // forward declaration to avoid needlessly including glfw everywhere
 
 namespace engine::window {
-    enum hints {
-        NO_HINTS = 0,
-        FULLSCREEN = 1 << 0,
-        MAXIMIZED = 1 << 1,
+    namespace hints {
+        constexpr int NO_HINTS = 0;
+        constexpr int FULLSCREEN = 1 << 0;
+        constexpr int MAXIMIZED = 1 << 1;
+        constexpr int VSYNC = 1 << 2; // vsync disabled by default: not locking fps gives us better perspective on the performance of the application during development
     };
 
     class window {
@@ -28,7 +29,7 @@ namespace engine::window {
         window(window&&) = delete;
         window(const window&) = delete;
 
-        window(glm::ivec2 res, const std::string& title, hints window_hints = hints::NO_HINTS);
+        window(glm::ivec2 res, const std::string& title, int window_hints = hints::NO_HINTS);
         ~window();
 
         bool should_close();
@@ -49,6 +50,7 @@ namespace engine::window {
         void set_resize_cb(void (*f)(GLFWwindow*, int, int));
         void set_key_cb(void (*f)(GLFWwindow*, int, int, int, int));
         void set_mouse_cb(void (*position_cb)(GLFWwindow*, double, double), void (*button_cb)(GLFWwindow*, int, int, int));
+        void set_vsync(bool value);
 
         void set_user_ptr(void* p);
         static void* get_user_ptr(GLFWwindow* w);

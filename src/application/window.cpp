@@ -1,9 +1,6 @@
 #include <engine/application/window.hpp>
 #include <glad/glad.h> // this MUST be included before glfw, so this file will include it here even though it does not need to
 #include <GLFW/glfw3.h>
-#include <stdexcept>
-#include <format>
-#include <source_location>
 #include <slogga/log.hpp>
 #include <slogga/asserts.hpp>
 
@@ -15,10 +12,16 @@ namespace engine::window {
 
     std::int64_t window::window_count = 0;
 
-    window::window(glm::ivec2 res, const std::string& title, hints win_hints) {
+    window::window(glm::ivec2 res, const std::string& title, int win_hints) {
         //Initialize the library
         if(!window_count)
             throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
+
+
+        //Log on error
+        glfwSetErrorCallback([](int code, const char* msg) {
+            slogga::stdout_log.error("GLFW3 error {}!: {}", code, msg);
+        });
 
         // Create a windowed mode window and its OpenGL context
         GLFWmonitor* monitor = throw_on_error(glfwGetPrimaryMonitor(), window_exception::code::MONITOR);
@@ -31,6 +34,7 @@ namespace engine::window {
 
         if(win_hints & hints::MAXIMIZED)
             glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+
         /*
         //taken care of by glad's generator, only causes problems if done alongside it
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -46,9 +50,13 @@ namespace engine::window {
         throw_on_error(m_window_ptr, window_exception::code::WINDOW_CREATION);
 
         glfwMakeContextCurrent(m_window_ptr);
-        glfwSwapInterval(0); // Disable vsync: not locking fps gives us better perspective on the performance of the application during development
 
-
+        // Unfortunately multiple windows will not respect this feature correctly, but since GLFW is not
+        // thread-safe I'm not sure this would be useful in any way.
+        if(win_hints & hints::VSYNC)
+            glfwSwapInterval(1);
+        else
+            glfwSwapInterval(0);
 
         window::window_count++;
     }
@@ -57,7 +65,7 @@ namespace engine::window {
         glfwDestroyWindow(m_window_ptr);
         window::window_count--;
 
-        //if no windows are left terminate glfw
+        // If no windows are left terminate glfw
         if(!window::window_count)
             glfwTerminate();
 
@@ -111,6 +119,10 @@ namespace engine::window {
         glm::ivec2 ret;
         glfwGetFramebufferSize(m_window_ptr, &ret.x, &ret.y);
         return ret;
+    }
+
+    void window::set_vsync(bool value) {
+        glfwSwapInterval(value ? 1 : 0);
     }
 
 

@@ -1,6 +1,6 @@
 add_library(engine__global INTERFACE)
 target_include_directories(engine__global INTERFACE ../include/)
-target_link_libraries(engine__global INTERFACE slogga engine__utils unordered_dense)
+target_link_libraries(engine__global INTERFACE slogga engine__utils)
 
 add_subdirectory(application/)
 add_subdirectory(scene/)
