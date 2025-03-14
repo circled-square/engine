@@ -48,10 +48,14 @@ namespace engine {
 
     template<Resource T>
     rc<T> weak<T>::lock() const {
-        if(m_resource && m_resource->resource())
+        if(m_resource && !m_resource->resource()) {
+            m_resource->dec_weak_refcount();
+            m_resource = nullptr;
+        }
+        if(m_resource)
             return rc<T>(m_resource);
         else
-            return rc<T>();
+            return rc<T>(); // constructing a rc<T> from a null ptr not of type nullptr_t is incorrect and triggers an assertion
     }
 
 
@@ -79,6 +83,12 @@ namespace engine {
 
     template<Resource T>
     weak<const T>::weak(weak<T> o) : weak<T>(std::move(o)) {}
+
+    template<Resource T>
+    weak<const T>::weak(const rc<T>& o) : weak<T>(o) {}
+
+    template<Resource T>
+    weak<const T>::weak(const rc<const T>& o) : weak(o.get_resource_ptr()) {}
 
     template<Resource T>
     weak<const T>& weak<const T>::operator=(const weak<const T>& o) {
