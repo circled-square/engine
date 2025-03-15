@@ -12,7 +12,7 @@ namespace engine::window {
 
     std::int64_t window::window_count = 0;
 
-    window::window(glm::ivec2 res, const std::string& title, int win_hints) {
+    window::window(glm::ivec2 res, const std::string& title, hints win_hints) {
         //Initialize the library
         if(!window_count)
             throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
@@ -32,7 +32,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
-        if(win_hints & hints::MAXIMIZED)
+        if(win_hints.maximised)
             glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
         /*
@@ -42,7 +42,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         */
 
-        if(win_hints & hints::FULLSCREEN)
+        if(win_hints.fullscreen)
             m_window_ptr = glfwCreateWindow(mode->width, mode->height, title.c_str(), monitor, nullptr);
         else
             m_window_ptr = glfwCreateWindow(res.x, res.y, title.c_str(), nullptr, nullptr);
@@ -53,7 +53,7 @@ namespace engine::window {
 
         // Unfortunately multiple windows will not respect this feature correctly, but since GLFW is not
         // thread-safe I'm not sure this would be useful in any way.
-        if(win_hints & hints::VSYNC)
+        if(win_hints.vsync)
             glfwSwapInterval(1);
         else
             glfwSwapInterval(0);
@@ -94,11 +94,15 @@ namespace engine::window {
 
     bool window::get_mouse_btn(int btn) { return glfwGetMouseButton(m_window_ptr, btn) != GLFW_RELEASE; }
 
-    void window::set_resize_cb(GLFWwindowsizefun f) { glfwSetWindowSizeCallback(m_window_ptr, f); }
+    static_assert(std::same_as<window::resize_cb_t, GLFWwindowsizefun>);
+    void window::set_resize_cb(resize_cb_t f) { glfwSetWindowSizeCallback(m_window_ptr, f); }
 
-    void window::set_key_cb(GLFWkeyfun f) { glfwSetKeyCallback(m_window_ptr, f); }
+    static_assert(std::same_as<window::key_cb_t, GLFWkeyfun>);
+    void window::set_key_cb(key_cb_t f) { glfwSetKeyCallback(m_window_ptr, f); }
 
-    void window::set_mouse_cb(GLFWcursorposfun pf, GLFWmousebuttonfun bf) {
+    static_assert(std::same_as<window::mouse_position_cb_t, GLFWcursorposfun>);
+    static_assert(std::same_as<window::mouse_button_cb_t, GLFWmousebuttonfun>);
+    void window::set_mouse_cb(mouse_position_cb_t pf, mouse_button_cb_t bf) {
         glfwSetCursorPosCallback(m_window_ptr, pf);
         glfwSetMouseButtonCallback(m_window_ptr, bf);
     }
@@ -122,6 +126,7 @@ namespace engine::window {
     }
 
     void window::set_vsync(bool value) {
+        make_ctx_current(); // the window's context must be current on the calling thread, otherwise an error is thrown
         glfwSwapInterval(value ? 1 : 0);
     }
 

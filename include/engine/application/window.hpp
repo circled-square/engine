@@ -2,23 +2,20 @@
 #define ENGINE_APPLICATION_WINDOW_HPP
 /*
 engine::window::window is a RAII and OO wrapper for glfw windows, thread unsafe because glfw is (unfortunately).
-Construction and destruction may only be invoked in the main thread but some other functions *might* be 
+Construction and destruction may only be invoked in the main thread but some other functions *might* be
 callable from other threads.
 */
 #include <string>
-#include <array>
 #include <cstdint>
-#include <tuple>
 #include <glm/glm.hpp>
 
 struct GLFWwindow; // forward declaration to avoid needlessly including glfw everywhere
 
 namespace engine::window {
-    namespace hints {
-        constexpr int NO_HINTS = 0;
-        constexpr int FULLSCREEN = 1 << 0;
-        constexpr int MAXIMIZED = 1 << 1;
-        constexpr int VSYNC = 1 << 2; // vsync disabled by default: not locking fps gives us better perspective on the performance of the application during development
+    struct hints {
+        bool fullscreen = false;
+        bool maximised = false;
+        bool vsync = false; // vsync disabled by default: not locking fps gives us better perspective on the performance of the application during development
     };
 
     class window {
@@ -29,7 +26,7 @@ namespace engine::window {
         window(window&&) = delete;
         window(const window&) = delete;
 
-        window(glm::ivec2 res, const std::string& title, int window_hints = hints::NO_HINTS);
+        window(glm::ivec2 res, const std::string& title, hints window_hints = {});
         ~window();
 
         bool should_close();
@@ -44,18 +41,28 @@ namespace engine::window {
         bool get_key(int key);
         bool get_mouse_btn(int btn);
         glm::dvec2 get_cursor_pos();
-        
+
         glm::ivec2 get_framebuf_size() const;
 
-        void set_resize_cb(void (*f)(GLFWwindow*, int, int));
-        void set_key_cb(void (*f)(GLFWwindow*, int, int, int, int));
-        void set_mouse_cb(void (*position_cb)(GLFWwindow*, double, double), void (*button_cb)(GLFWwindow*, int, int, int));
         void set_vsync(bool value);
+
+
+        // set callbacks
+        using resize_cb_t = void (*)(GLFWwindow*, int, int);
+        void set_resize_cb(resize_cb_t f);
+
+        using key_cb_t = void (*)(GLFWwindow*, int, int, int, int);
+        void set_key_cb(key_cb_t f);
+
+        using mouse_position_cb_t = void (*)(GLFWwindow*, double, double);
+        using mouse_button_cb_t = void (*)(GLFWwindow*, int, int, int);
+        void set_mouse_cb(mouse_position_cb_t, mouse_button_cb_t);
+
 
         void set_user_ptr(void* p);
         static void* get_user_ptr(GLFWwindow* w);
 
-        
+
         //access and conversion of the internal GLFWwindow*
         operator GLFWwindow* () { return  m_window_ptr; }
         operator bool     () { return  m_window_ptr; }
