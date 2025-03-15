@@ -34,7 +34,7 @@ namespace engine {
 
         resources_manager() = default;
         ~resources_manager();
-    public:
+
         template<Resource T> [[nodiscard]] weak<T> alloc() {
             detail::rc_ptr<T> p(new detail::rc_resource<T>(std::nullopt));
             weak<T> weak_ptr(p.get());
@@ -45,6 +45,7 @@ namespace engine {
             return weak_ptr;
         }
 
+    public:
         // hand over ownership of resource to resources_manager
         template<Resource T> [[nodiscard]] rc<const T> new_from(T&& res) {
             return new_mut_from<T>(std::forward<T&&>(res));

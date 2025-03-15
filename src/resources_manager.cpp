@@ -204,7 +204,7 @@ namespace engine {
      *   is definitely undesirable if we wish to make correct use of constructor and destructor;
      * - a Meyers singleton was avoided because lazily initing a rm seems like a bad idea, and because the destruction still
      *   happens at an unspecified time;
-     * - a pointer which either points to the heap requires a heap alloc/dealloc, which is a little weird, but not terrible;
+     * - a pointer to the heap requires a heap alloc/dealloc, which is a little weird, but not terrible;
      * - a optional<rm> destructs the object upon program shutdown, which will cause a crash if no opengl context is available;
      *
      * optional<rm> might be preferable if we wish to make deinit of rm mandatory, but as it currently stands deinit of rm is

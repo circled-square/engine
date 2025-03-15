@@ -15,7 +15,8 @@ namespace engine {
     // mutable resource template specialization
     template<Resource T>
     class weak<T> {
-        detail::rc_resource<T>* m_resource;
+        //m_resource is mutable because this allows us to have lock() be const, while still setting m_resource to null if it is empty.
+        mutable detail::rc_resource<T>* m_resource;
 
         //friend which uses the private constructor
         friend class weak<const T>;
@@ -31,8 +32,8 @@ namespace engine {
         weak();
         weak(std::nullptr_t);
         weak(const weak& o);
-        weak(const rc<T>& o);
         weak(weak&& o);
+        weak(const rc<T>& o);
         ~weak();
 
         weak& operator=(const weak& o);
@@ -40,6 +41,7 @@ namespace engine {
         // if the weak<T> points to an allocation with a resource that is alive, locks it
         // if it points to null or to an allocation with a destroyed resource, returns null
         rc<T> lock() const;
+    private:
 
         bool operator==(const weak& o) const;
         bool operator!=(const weak& o) const;
@@ -61,12 +63,14 @@ namespace engine {
         weak(const weak& o);
         weak(weak&& o);
         weak(weak<T> o);
+        weak(const rc<const T>& o);
+        weak(const rc<T>& o);
 
         weak& operator=(const weak& o);
 
         rc<const T> lock() const;
 
-
+    private:
         bool operator==(const weak& o) const;
         bool operator!=(const weak& o) const;
     };

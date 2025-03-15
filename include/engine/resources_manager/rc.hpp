@@ -25,8 +25,9 @@ namespace engine {
         // and uses the private constructor to lock() itself into an rc
         friend class weak<T>;
 
-        detail::rc_resource<T>* get_resource_ptr() const;
         rc(detail::rc_resource<T>* resource);
+    protected:
+        detail::rc_resource<T>* get_resource_ptr() const;
     public:
         using element_type = T;
         using mut_element_type = T;
@@ -57,6 +58,8 @@ namespace engine {
     template<Resource T>
     class rc<const T> : rc<T> {
         friend class resources_manager;
+
+        friend class weak<const T>;
 
         //constructor used by resource manager
         rc(detail::rc_resource<T>* resource);

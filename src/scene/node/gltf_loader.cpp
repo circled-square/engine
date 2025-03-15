@@ -260,7 +260,6 @@ namespace engine {
         UNIMPLEMENTED(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT
                    || indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT);
 
-
         collision_layers_bitmask is_layers = load_u64_from_hex_string_from_gltf_extras(extras, "is_layers");
         collision_layers_bitmask sees_layers = load_u64_from_hex_string_from_gltf_extras(extras, "sees_layers");
 
