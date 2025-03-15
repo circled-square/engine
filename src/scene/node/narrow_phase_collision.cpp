@@ -89,6 +89,7 @@ namespace engine {
 
         for(vec3 face_normal_b_space : b.face_normals) {
             vec3 face_normal = b_to_a_space_trans * vec4(face_normal_b_space, 0.0);
+            face_normal = normalize_without_verse(face_normal);
 
             if(!project_and_update_min(face_normal, a.verts, b.verts, b_to_a_space_trans, dont_repeat, min_col, min_col_dir, a_trans))
                 return collision_result::null();
@@ -98,12 +99,12 @@ namespace engine {
         }
 
 
-        for(vec3 a_edge : a.edges) {
-            for(vec3 b_edge_b_space : b.edges) {
+        for(vec3 b_edge_b_space : b.edges) {
+            vec3 b_edge = b_to_a_space_trans * vec4(b_edge_b_space, 0.0);
+
+            for(vec3 a_edge : a.edges) {
                 if(min_col == 0.f)
                     return collision_result { min_col_dir, min_col };
-
-                vec3 b_edge = b_to_a_space_trans * vec4(b_edge_b_space, 0.0);
 
                 vec3 axis = normalize_without_verse(glm::cross(vec3(a_edge), vec3(b_edge)));
                 if (std::isnan(axis.x)) { continue; }
@@ -120,16 +121,19 @@ namespace engine {
 
 
 
-    template<AnyOneOf<glm::uvec3, u16vec3> T>
-    inline collision_shape from_mesh_impl(stride_span<const glm::vec3> mesh_verts, std::span<const T> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
+    template<AnyOneOf<uvec3, u16vec3> T>
+    inline collision_shape from_mesh_impl(stride_span<const vec3> mesh_verts, std::span<const T> mesh_indices, collision_layers_bitmask is_layers, collision_layers_bitmask sees_layers) {
         using namespace glm;
 
-        auto normalize_and_round = [](glm::vec3 v) {
+        auto prepare_for_hashtable = [](glm::vec3 v) {
             // normalize_without_verse ensures 2 parallel vectors are considered the same (for our purposes they are)
             // fractional_round ensures 2 almost (but not quite) identical vectors are considered the same
             // these two functions should allow us to dramatically decrease the number of stored edges and normals
-            // glm::normalize is reapplied to the output because fractional_round unfortunately denormalizes vectors. (may be unnecessary)
-            return glm::normalize(fractional_round(normalize_without_verse(v), 256));
+
+            // Note: although the output will have len=~1.0, it is NOT normalized, since fractional_round does not
+            // preserve normalization. glm::normalize should be reapplied to the output if normalization is necessary,
+            // but it was not deemed to be.
+            return fractional_round(normalize_without_verse(v), 128);
         };
 
         hashset<vec3> verts;
@@ -147,21 +151,22 @@ namespace engine {
 
             vec3 normal = glm::cross(edge_1, edge_2);
 
-            normals.insert(normalize_and_round(normal));
+            normals.insert(prepare_for_hashtable(normal));
 
 
             //add edges
-            edges.insert(normalize_and_round(edge_1));
-            edges.insert(normalize_and_round(edge_2));
-            edges.insert(normalize_and_round(edge_3));
+            edges.insert(prepare_for_hashtable(edge_1));
+            edges.insert(prepare_for_hashtable(edge_2));
+            edges.insert(prepare_for_hashtable(edge_3));
         }
         // TODO: possible optimization: precalculate min&max for each axis of the shape itself so we don't need to do it every time (but only need it for the other shape's axes
         // TODO: add support for AABB optimization, possibly skipping edge-edge collisions
 
         collision_shape ret;
-        for(vec3 vert : verts)      ret.verts.push_back(vert);
-        for(vec3 normal : normals)  ret.face_normals.push_back(normal);
-        for(vec3 edge : edges)      ret.edges.push_back(edge);
+        //copy the hashsets into the collision_shape's vectors
+        ret.verts.insert(ret.verts.begin(), verts.begin(), verts.end());
+        ret.face_normals.insert(ret.face_normals.begin(), normals.begin(), normals.end());
+        ret.edges.insert(ret.edges.begin(), edges.begin(), edges.end());
         ret.is_layers = is_layers;
         ret.sees_layers = sees_layers;
 
