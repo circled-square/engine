@@ -33,7 +33,7 @@ FetchContent_MakeAvailable(slogga)
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    CONFIGURE_COMMAND "" BUILD_COMMAND ""
+    CONFIGURE_COMMAND ""
 )
 FetchContent_GetProperties(imgui)
 if(NOT imgui_POPULATED)
@@ -57,7 +57,7 @@ if(NOT TARGET stb) # stb has not already been included by someone else
     FetchContent_Declare(
         stb
         GIT_REPOSITORY https://github.com/nothings/stb.git
-        CONFIGURE_COMMAND "" BUILD_COMMAND ""
+        CONFIGURE_COMMAND ""
     )
     FetchContent_GetProperties(stb)
     if(NOT stb_POPULATED)
@@ -77,6 +77,6 @@ endif()
 FetchContent_Declare(
     tinygltf
     GIT_REPOSITORY https://github.com/syoyo/tinygltf GIT_TAG release
-    CONFIGURE_COMMAND "" BUILD_COMMAND ""
+    CONFIGURE_COMMAND ""
 )
 FetchContent_MakeAvailable(tinygltf)
