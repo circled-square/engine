@@ -2,7 +2,6 @@
 #define ENGINE_RESOURCES_MANAGER_RC_HPP
 
 #include "detail/rc_resource.hpp"
-#include <type_traits>
 
 // rc is a reference counted pointer managed by the engine's resources manager, which points to a Resource
 

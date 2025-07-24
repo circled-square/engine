@@ -3,13 +3,11 @@
 
 #include "rc_resource.hpp"
 #include "../resource_concept.hpp"
-#include <string> // to include std::hash
-
-// resource_id<T>: The id of a resource, which can be used to retrieve from rm's hashmaps the resource itself, its name and whether it is flagged for deletion.
-// Note: To be unique to the resource, tied to its type, for hashing and for simplicity a ptr could have been used;
-// however a resource_id is not meant to be derefed or used in ptr arithmetic, so this was deemed inappropriate
 
 namespace engine::detail {
+    // The id of a resource, which can be used to retrieve from rm's hashmaps the resource itself, its name and whether it is flagged for deletion.
+    // Note: To be unique to the resource, tied to its type, for hashing and for simplicity a ptr could have been used;
+    // however a resource_id is not meant to be derefed or used in ptr arithmetic, so this was deemed inappropriate
     template<Resource T>
     class resource_id {
         std::uintptr_t m_id; // if m_id is 0 the id is null

@@ -1,7 +1,8 @@
 #ifndef ENGINE_UTILS_STRIDE_SPAN_HPP
 #define ENGINE_UTILS_STRIDE_SPAN_HPP
 
-#include <cstdint>
+#include <cstddef> // std::size_t
+#include <slogga/asserts.hpp>
 
 namespace engine {
     template<typename T>

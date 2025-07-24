@@ -1,7 +1,6 @@
 #ifndef ENGINE_RESOURCES_MANAGER_HPP
 #define ENGINE_RESOURCES_MANAGER_HPP
 
-#include "scene/node/script.hpp"
 #include "resources_manager/rc.hpp"
 #include "resources_manager/weak.hpp"
 #include "resources_manager/detail/resource_id.hpp"

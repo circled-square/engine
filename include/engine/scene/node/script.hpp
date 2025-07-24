@@ -1,7 +1,6 @@
 #ifndef ENGINE_SCENE_NODE_SCRIPT_HPP
 #define ENGINE_SCENE_NODE_SCRIPT_HPP
 
-#include <memory>
 #include <any>
 #include <engine/resources_manager/rc.hpp>
 

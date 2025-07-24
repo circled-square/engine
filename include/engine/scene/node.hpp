@@ -2,16 +2,12 @@
 #define ENGINE_SCENE_NODE_HPP
 
 #include <string>
-#include <variant>
 #include <span>
 #include <optional>
 #include <GAL/framebuffer.hpp>
-#include "renderer.hpp"
-#include "node/node_data_concept.hpp"
 #include "node/script.hpp"
+#include "node/node_data_concept.hpp"
 #include "node/narrow_phase_collision.hpp"
-#include "node/viewport.hpp"
-#include "node/camera.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
 
@@ -25,8 +21,6 @@ namespace engine {
     //all type declarations are later defined in this translation unit
     class nodetree_blueprint;
     class const_children_span;
-
-    struct null_node_data {};
 
     class noderef {
         rc<node> m_node;
@@ -46,7 +40,7 @@ namespace engine {
         noderef& operator=(const noderef& o);
         noderef(const noderef& o);
         explicit noderef(rc<node> n);
-        explicit noderef(std::string name, node_data_variant_t other_data = null_node_data(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
+        explicit noderef(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
         //this is expensive (calls deep_copy)
         explicit noderef(rc<const nodetree_blueprint> nt, std::string name = "");
         noderef deep_copy() const;

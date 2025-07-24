@@ -3,7 +3,6 @@
 
 #include "detail/rc_resource.hpp"
 #include "rc.hpp"
-#include <type_traits>
 
 // weak is a weak reference counted pointer managed by the engine's resources manager;
 // it can be locked to obtain an rc, which will point to a Resource.

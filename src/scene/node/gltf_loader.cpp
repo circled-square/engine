@@ -322,7 +322,7 @@ namespace engine {
 
     static node_data_variant_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
         if(node.mesh == -1)
-            return null_node_data();
+            return std::monostate();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
         if(node.name.ends_with("-col")) {
@@ -342,7 +342,7 @@ namespace engine {
                     errstr = "(invalid error code)";
                 }
                 slogga::stdout_log.warn("Error while attempting to load collision shape from node \"{}\" from gltf: {}", node.name, errstr);
-                return null_node_data();
+                return std::monostate();
             }
         } else {
             return load_mesh(model, mesh);

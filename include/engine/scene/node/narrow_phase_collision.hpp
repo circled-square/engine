@@ -6,8 +6,6 @@
 #include <vector>
 #include <climits> // CHAR_BIT
 
-#include <optional>
-#include <stdexcept>
 #include <slogga/asserts.hpp>
 #include <engine/utils/stride_span.hpp>
 

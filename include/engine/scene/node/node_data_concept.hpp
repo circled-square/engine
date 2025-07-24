@@ -2,16 +2,16 @@
 #define ENGINE_SCENE_NODE_NODE_DATA_CONCEPT_HPP
 
 #include <engine/utils/meta.hpp>
+#include <variant>
+#include <engine/resources_manager/rc.hpp>
+#include <engine/scene/renderer/mesh.hpp>
+#include "viewport.hpp"
+#include "camera.hpp"
+#include "narrow_phase_collision.hpp"
 
 // SpecialNodeData concept
 namespace engine {
-    class camera;
-    class mesh;
-    class collision_shape;
-    class viewport;
-    class null_node_data;
-
-    #define NODE_DATA_CONTENTS null_node_data, camera, mesh, rc<const collision_shape>, viewport
+    #define NODE_DATA_CONTENTS std::monostate, camera, mesh, rc<const collision_shape>, viewport
 
     using node_data_variant_t = std::variant<NODE_DATA_CONTENTS>;
 

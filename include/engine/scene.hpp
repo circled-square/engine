@@ -1,8 +1,6 @@
 #ifndef ENGINE_SCENE_HPP
 #define ENGINE_SCENE_HPP
 
-#include <bit>
-
 #include "scene/node.hpp"
 #include "scene/broad_phase_collision.hpp"
 #include "scene/application_channel.hpp"

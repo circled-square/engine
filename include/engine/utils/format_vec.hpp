@@ -1,6 +1,8 @@
 #ifndef ENGINE_UTILS_FORMAT_VEC_HPP
 #define ENGINE_UTILS_FORMAT_VEC_HPP
 #include <sstream>
+#include <format>
+#include <glm/glm.hpp>
 
 template<typename T, int N, glm::qualifier Q>
 struct std::formatter<glm::vec<N, T, Q>, char>

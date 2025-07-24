@@ -1,7 +1,6 @@
 #include <engine/resources_manager.hpp>
 #include <engine/application/window.hpp>
 #include <GAL/init.hpp>
-#include <new>
 
 //fool resources_manager into thinking we are their friend (class)
 namespace engine {

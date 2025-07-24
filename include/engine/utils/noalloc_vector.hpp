@@ -1,8 +1,6 @@
 #ifndef ENGINE_UTILS_NOALLOC_VECTOR_HPP
 #define ENGINE_UTILS_NOALLOC_VECTOR_HPP
 
-#include <type_traits>
-#include <cstdint>
 #include <array>
 #include <stdexcept>
 #include "detail/smallest_uint.hpp"
