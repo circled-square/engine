@@ -349,28 +349,28 @@ namespace engine {
         }
     }
 
-    static noderef load_node_subtree(const tinygltf::Model& model, int idx) {
-        const tinygltf::Node& node = model.nodes[idx];
+    static node load_node_subtree(const tinygltf::Model& model, int idx) {
+        const tinygltf::Node& gltf_node = model.nodes[idx];
 
-        node_data_variant_t node_data = load_node_data(model, node);
+        node_data_variant_t node_data_variant = load_node_data(model, gltf_node);
 
-        glm::mat4 transform = get_node_transform(node);
-        noderef root(node.name, std::move(node_data), transform);
+        glm::mat4 transform = get_node_transform(gltf_node);
+        node root(gltf_node.name, std::move(node_data_variant), transform);
         { // set collision behaviour
-            collision_behaviour col_behaviour {
-                .moves_away_on_collision = load_bool_from_gltf_extras(node.extras, "moves_away_on_collision"),
-                .passes_events_to_script = load_bool_from_gltf_extras(node.extras, "pass_collision_event_to_script"),
-                .passes_events_to_father = load_bool_from_gltf_extras(node.extras, "pass_collision_event_to_father"),
+            node_collision_behaviour col_behaviour {
+                .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "moves_away_on_collision"),
+                .passes_events_to_script = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_script"),
+                .passes_events_to_father = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_father"),
             };
             root->set_collision_behaviour(col_behaviour);
         }
 
 
-        slogga::stdout_log("found node {}; its children:", node.name);
-        for(int child_idx : node.children) {
+        slogga::stdout_log("found node {}; its children:", gltf_node.name);
+        for(int child_idx : gltf_node.children) {
             root.add_child(load_node_subtree(model, child_idx));
         }
-        slogga::stdout_log("end of children of node {}:", node.name);
+        slogga::stdout_log("end of children of node {}:", gltf_node.name);
 
         return root;
     }
@@ -384,7 +384,7 @@ namespace engine {
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
-        noderef root(filepath);
+        node root(filepath);
 
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;

@@ -10,7 +10,7 @@
 #include <engine/utils/stride_span.hpp>
 
 namespace engine {
-    class node;
+    class node_data;
     using collision_layers_bitmask = std::uint64_t;
 
     // layers go from 0 to 63
@@ -34,11 +34,6 @@ namespace engine {
         static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::u16vec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
     };
 
-    struct collision_behaviour {
-        bool moves_away_on_collision : 1 = false;
-        bool passes_events_to_script : 1 = false;
-        bool passes_events_to_father : 1 = false;
-    };
 
     struct collision_result {
         glm::vec3 versor;

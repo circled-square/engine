@@ -5,16 +5,16 @@
 #include <engine/resources_manager/rc.hpp>
 
 namespace engine {
+    class node_data;
     class node;
-    class noderef;
     class application_channel_t;
     class collision_result;
 
     struct stateless_script {
-        std::any (*construct)(const noderef&) = [](const noderef&) { return std::any(std::monostate()); };
-        void (*process)(const noderef&, std::any&, application_channel_t&) = [](const noderef&, std::any&, application_channel_t&) {};
+        std::any (*construct)(const node&) = [](const node&) { return std::any(std::monostate()); };
+        void (*process)(const node&, std::any&, application_channel_t&) = [](const node&, std::any&, application_channel_t&) {};
         // NOTE: this method takes "const node&"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
-        void (*react_to_collision)(const node&, std::any&, collision_result, const node& event_src, const node& other) = nullptr;
+        void (*react_to_collision)(const node_data&, std::any&, collision_result, const node_data& event_src, const node_data& other) = nullptr;
     };
 
     class script {
@@ -26,7 +26,7 @@ namespace engine {
         script() = delete;
         script(const script& o) = default;
         script(script&& o) = default;
-        script(rc<const stateless_script> sl_script, const noderef& n);
+        script(rc<const stateless_script> sl_script, const node& n);
         static script from_state(rc<const stateless_script> sl_script, std::any state);
 
         script& operator=(script&& o) = default;
@@ -35,8 +35,8 @@ namespace engine {
         void set_state(std::any s) { m_state = std::move(s); }
         const rc<const stateless_script> get_underlying_stateless_script() const;
 
-        void process(const noderef& n, application_channel_t& app_chan);
-        void react_to_collision(const node& self, collision_result res, const node& event_src, const node& other);
+        void process(const node& n, application_channel_t& app_chan);
+        void react_to_collision(const node_data& self, collision_result res, const node_data& event_src, const node_data& other);
     };
 }
 

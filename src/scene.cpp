@@ -5,27 +5,30 @@
 namespace engine {
     using glm::mat4;
 
-    //pre-order dfs
-    inline void depth_first_traversal(noderef root, const auto& callable) {
-        std::vector<noderef> stack;
+    //pre-order dfs, without explicit recursion
+    template<typename node_t>
+    inline void depth_first_traversal(node_t root, const auto& callable)
+        requires(std::same_as<node_t, node> || std::same_as<node_t, const_node>)
+    {
+        std::vector<node_t> stack;
         stack.push_back(root);
         while(!stack.empty()) {
-            noderef n = stack.back();
+            node n = stack.back();
             stack.pop_back();
-            for(noderef c : n->children())
+            for(node c : n->children())
                 stack.push_back(std::move(c));
 
-            callable(n);
+            callable(std::move(n));
         }
     }
 
     constexpr std::nullptr_t default_framebuffer = nullptr;
 
-    static void render_node(renderer& r, const gal::vertex_array& whole_screen_vao, rc<const node> n, const mat4& viewproj_mat,
-                            glm::ivec2 output_resolution, float frame_time, rc<const node> output_vp_node) {
+    static void render_node(renderer& r, const gal::vertex_array& whole_screen_vao, rc<const node_data> n, const mat4& viewproj_mat,
+                            glm::ivec2 output_resolution, float frame_time, rc<const node_data> output_vp_node) {
         glm::ivec2 children_out_res;
         mat4 children_viewproj;
-        rc<const node> children_vp_node;
+        rc<const node_data> children_vp_node;
 
         // if n is a viewport first setup rendering of children,
         // otherwise render them to the same viewport as n
@@ -55,7 +58,7 @@ namespace engine {
             r.draw(n->get<mesh>(), children_out_res, viewproj_mat * n->get_global_transform(), frame_time);
 
         // render children
-        for(rc<const node> child : n->children())
+        for(rc<const node_data> child : n->children())
             render_node(r, whole_screen_vao, child, children_viewproj, children_out_res, frame_time, children_vp_node);
 
         /* TODO: viewports are always automatically rendered, without any transformation, to the first viewport in their ancestors.
@@ -84,7 +87,7 @@ namespace engine {
 
     //sets the cameras for all viewports in the hierarchy, and returns the camera to use for the default framebuffer.
     [[nodiscard]]
-    static std::optional<camera> set_cameras(noderef n, rc<node> forefather_vp_node) {
+    static std::optional<camera> set_cameras(node n, rc<node_data> forefather_vp_node) {
         std::optional<camera> default_fb_camera = std::nullopt;
 
         //if this is a camera set it as active for it forefather (/default) viewport
@@ -102,10 +105,10 @@ namespace engine {
         //if this is a viewport set its camera to null and use it for its children
         if(n->has<viewport>())
             n->get<viewport>().set_active_camera(std::nullopt);
-        rc<node> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
+        rc<node_data> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
 
         // process children
-        for(noderef child : n->children()) {
+        for(node child : n->children()) {
             auto other_camera = set_cameras(child, children_vp);
 
             if(!default_fb_camera)
@@ -114,7 +117,7 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene(std::string name, noderef root, render_flags_t flags, application_channel_t::to_app_t to_app_chan)
+    scene::scene(std::string name, node root, render_flags_t flags, application_channel_t::to_app_t to_app_chan)
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),
@@ -149,12 +152,12 @@ namespace engine {
 
     void scene::update() {
         // process nodes
-        depth_first_traversal(get_root(), [&](const noderef& n){ n.process(m_application_channel); });
+        depth_first_traversal(get_root(), [&](node n){ node_data::process(n, m_application_channel); });
 
         // TODO: currently resubscribing all colliders at every update: is it ok? ideally colliders would subscribe/unsubscribe themselves, making this unnecessary
         m_bp_collision_detector.reset_subscriptions();
 
-        depth_first_traversal(get_root(), [&](const noderef& n){
+        depth_first_traversal(get_root(), [&](node n){
             if(n->has<collision_shape>())
                 m_bp_collision_detector.subscribe(*n);
         });
@@ -186,9 +189,9 @@ namespace engine {
         }
     }
 
-    noderef scene::get_root() { return m_root; }
+    node scene::get_root() { return m_root; }
 
-    noderef scene::get_node(std::string_view path) {
+    node scene::get_node(std::string_view path) {
         if(path[0] != '/')
             throw invalid_path_exception(path);
 

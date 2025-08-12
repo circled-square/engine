@@ -11,21 +11,21 @@
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
 
-/* TODO: the titular node class has too many responsibilities and is too complex, or at least this is what it feels like.
- * Try to think of ways to split its behaviour into different classes. However, complexity has to lie somewhere; if this
- * needs to be a complex class then do not split it, but hopefully this is not the case.
- * A possibility could be to split the generic tree functionality from the engine primitive functionality, somehow.
- */
+// TODO: consider splitting different classes in this header into separate headers
 
 namespace engine {
-    //all type declarations are later defined in this translation unit
     class nodetree_blueprint;
-    class const_children_span;
+    class const_node_span;
 
-    class noderef {
-        rc<node> m_node;
 
-        static noderef deep_copy_internal(rc<const node> o);
+    /* A node in the scene graph.
+     * TODO: better doc comment
+     */
+    class node {
+        friend class const_node;
+        rc<node_data> m_node_data;
+
+        static node deep_copy_internal(rc<const node_data> o);
 
     public:
         //this class's responsibilities are the following:
@@ -34,39 +34,67 @@ namespace engine {
         // - everything in node still accessible through operators *, ->
         // - unlike rc<node> or rc<const node> it is valid to assume that a noderef always points to something, except after it was just moved out of
 
-        noderef() = delete;
-        noderef(noderef&& o);
-        noderef& operator=(noderef&& o);
-        noderef& operator=(const noderef& o);
-        noderef(const noderef& o);
-        explicit noderef(rc<node> n);
-        explicit noderef(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
+        // constructors and assignment operators
+        node() = delete;
+        node(node&& o);
+        node& operator=(node&& o);
+        node& operator=(const node& o);
+        node(const node& o);
+        explicit node(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
         //this is expensive (calls deep_copy)
-        explicit noderef(rc<const nodetree_blueprint> nt, std::string name = "");
-        noderef deep_copy() const;
+        explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
+        node deep_copy() const;
 
-        operator rc<node>() const;
-        operator rc<const node>() const;
-        operator weak<node>() const;
-        operator weak<const node>() const;
+        operator rc<node_data>() const;
+        operator rc<const node_data>() const;
+        operator weak<node_data>() const;
+        operator weak<const node_data>() const;
 
-        void add_child(noderef c) const;
+        void add_child(node c) const;
+
+        /*
         void attach_script(rc<const stateless_script> s) const;
         void process(application_channel_t& app_chan) const;
+        */
 
-        node& operator*() const;
-        node* operator->() const;
+        node_data& operator*() const;
+        node_data* operator->() const;
     };
 
-    class node {
-        friend class noderef;
-        void add_child(const noderef& self, const noderef& c);
-        void attach_script(const noderef& self,rc<const stateless_script> s);
-        void process(const noderef& self, application_channel_t& app_chan);
+    class const_node {
+        node m_node;
+    public:
+        const_node() = delete;
+        const_node(const_node&& o) : m_node(std::move(o.m_node)) {}
+        const_node& operator=(const_node&& o) { m_node = std::move(o.m_node); return *this; }
+        const_node& operator=(const_node& o) { m_node = o.m_node; return *this; }
+        const_node(const const_node& o) :m_node(o.m_node) {}
+        const_node(node o) : m_node(std::move(o)) {}
 
-        std::vector<noderef> m_children;
+        explicit const_node(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr) : m_node(name, other_data, transform, script) {}
+        //this is expensive (calls deep_copy)
+        explicit const_node(rc<const nodetree_blueprint> nt, std::string name = "") : m_node(nt, name) {}
+        node deep_copy() const { return m_node.deep_copy(); }
+
+        operator rc<const node_data>() const { return m_node; }
+        operator weak<const node_data>() const { return m_node; }
+
+        const node_data& operator*() const { return *m_node; }
+        const node_data* operator->() const { return m_node.operator->(); }
+    };
+
+    struct node_collision_behaviour {
+        bool moves_away_on_collision : 1 = false;
+        bool passes_events_to_script : 1 = false;
+        bool passes_events_to_father : 1 = false;
+    };
+
+    class node_data {
+        friend class node;
+
+        std::vector<node> m_children;
         bool m_children_is_sorted;
-        weak<node> m_father;
+        weak<node_data> m_father;
         std::string m_name;
         glm::mat4 m_transform;
 
@@ -86,55 +114,90 @@ namespace engine {
 
         node_data_variant_t m_other_data;
         rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
-        collision_behaviour m_col_behaviour;
+        node_collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
-
     public:
-        //only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
+        static void add_child(const node& self, node c);
+        static void attach_script(const node& self, rc<const stateless_script> s);
+        static void process(const node& self, application_channel_t& app_chan);
+        /*
+         * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
+         *
+         * This is, mainly, to avoid problems like assigning file names as node names and ending up with node names containing '/',
+         * which is reserved for use as a separator in node paths (e.g. '/root_node/child_node').
+         *
+         * This character list may be expanded in the future, but characters in it should be considered "stable" and users can expect them
+         * to remain in the list.
+         *
+         * Do note that it is allowed by the engine to create multiple nodes with the same exact name and path; this is not recommended since
+         * it makes retrieving that node by name unpredictable; this behaviour for now is kept since it allows the engine to skip this check
+         * (relatively expensive, especially for unsorted children),and allows the user to create a lot of nodes whose name is irrelevant
+         * without creating useless names for them. Do note that a "useless" name suddenly becomes useful the moment there's debugging to do.
+         */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node(std::string name, node_data_variant_t other_data, const glm::mat4& transform);
-        explicit node(rc<const nodetree_blueprint> nt, std::string name); // this is expensive (calls deep-copy constructor)
+        explicit node_data(std::string name, node_data_variant_t other_data, const glm::mat4& transform);
+        // this is expensive (calls deep-copy constructor)
+        explicit node_data(rc<const nodetree_blueprint> nt, std::string name);
 
-        node() = delete;
-        node(const node&) = delete;
-        node(node&&) = delete;
+        node_data() = delete;
+        node_data(const node_data&) = delete;
+        node_data(node_data&&) = delete;
 
-        // children access
-        noderef get_child(std::string_view name);
-        const_children_span children() const;
-        std::span<const noderef> children();
-        void set_children_sorting_preference(bool v); // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
+        // get child from name
+        node get_child(std::string_view name);
+        // get a span of the node's children
+        const_node_span children() const;
+        // get a span of the node's children
+        std::span<const node> children();
+        // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
+        void set_children_sorting_preference(bool v);
         // get node with relative path
-        noderef get_from_path(std::string_view path);
+        node get_from_path(std::string_view path);
 
-        // father access
-        rc<node> get_father();
-        rc<const node> get_father() const;
-        rc<node> get_father_checked(); // throws if father is null
-        rc<const node> get_father_checked() const; // throws if father is null
+        // get father node, possibly returns null
+        rc<node_data> get_father();
+        // get father node, possibly returns null
+        rc<const node_data> get_father() const;
+        // get father node, throws if father is null
+        rc<node_data> get_father_checked();
+        // get father node, throws if father is null
+        rc<const node_data> get_father_checked() const;
 
-        //name access
+        // get this node's name
         const std::string& name() const;
+        // get this node's absolute path in the node hierarchy
         std::string absolute_path() const;
 
-        //transform access
+        // get this node's local transform
         const glm::mat4& transform() const;
+        // set this node's local transform
         void set_transform(const glm::mat4& m);
+        /* get this node's global transform.
+         *
+         * Note: the global transform is cached and as such should be fairly inexpensive to compute
+         */
         const glm::mat4& get_global_transform() const;
 
-        const collision_behaviour& get_collision_behaviour();
-        void set_collision_behaviour(collision_behaviour col_behaviour);
+        // get the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
+        const node_collision_behaviour& get_collision_behaviour();
+        // set the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
+        void set_collision_behaviour(node_collision_behaviour col_behaviour);
 
-        void react_to_collision(collision_result res, node& other);
+        // handle collision event, recursing up the node tree if necessary
+        void react_to_collision(collision_result res, node_data& other);
 
         //script
+        // explicitly set the script's state
         void set_script_state(std::any s);
+        // call the script process function, called on every frame
         void process(application_channel_t& app_chan);
-        void pass_collision_to_script(collision_result res, node& ev_src, node& other);
+        //
+        //void pass_collision_to_script(collision_result res, node_data& ev_src, node_data& other);
 
         // special node data access
+        // TODO: what is this lol
         template<Resource T> requires NodeData<rc<const T>> bool     has() const;
         template<Resource T> requires NodeData<rc<const T>> const T& get() const;
 
@@ -159,30 +222,32 @@ namespace engine {
         virtual const char* what() const noexcept;
     };
 
-    //TODO: move this class outside of this header
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
     class nodetree_blueprint {
-        rc<const node> m_root;
+        rc<const node_data> m_root;
         std::string m_name;
     public:
-        nodetree_blueprint(rc<const node> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(rc<const node_data> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
-        rc<const node> root() const { return m_root; }
+        rc<const node_data> root() const { return m_root; }
     };
 
-    class const_children_span {
-        std::span<const noderef> m_span;
+    /* const_node_span is used for iterating on the children of a node in an immutable manner.
+     * we cannot simply use std::span<const const_node> because we cannot construct a span of const_node over a vector of node
+     */
+    class const_node_span {
+        std::span<const node> m_span;
     public:
         class iterator {
-            std::span<const noderef>::iterator m_it;
+            std::span<const node>::iterator m_it;
         public:
-            iterator(std::span<const noderef>::iterator it) : m_it(it) {}
+            iterator(std::span<const node>::iterator it) : m_it(it) {}
             void operator++() { m_it++; }
             bool operator!=(const iterator& o) const { return m_it != o.m_it; }
-            rc<const node> operator*() { return m_it->operator rc<const node>(); }
+            const_node operator*() { return *m_it; }
         };
 
-        const_children_span(std::span<const noderef> span) : m_span(span) {}
+        const_node_span(std::span<const node> span) : m_span(span) {}
         iterator begin() { return iterator(m_span.begin()); }
         iterator end() { return iterator(m_span.end()); }
     };
