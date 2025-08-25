@@ -73,6 +73,20 @@ namespace engine::detail {
     
     template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>; // explicit deduction guide (not needed as of C++20)
 
+    template<typename func_t, typename ret_t, typename...Ts>
+    concept impl_callable = requires (func_t f, Ts...args) {
+        { f(args...) }
+            -> std::convertible_to<ret_t>;
+    };
+
+    template<typename func_t, typename ret_t, typename...Ts>
+    struct impl_callable_s;
+
+    template<typename func_t, typename ret_t, typename...Ts>
+    struct impl_callable_s<func_t, ret_t(Ts...)> {
+        static const bool value = impl_callable<func_t, ret_t, Ts...>;
+    };
+
 
     // CALL_MACRO_FOR_EACH: a for each implemented in the preprocessor
 

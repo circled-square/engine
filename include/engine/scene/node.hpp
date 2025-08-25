@@ -46,11 +46,6 @@ namespace engine {
 
         void add_child(node c) const;
 
-        /*
-        void attach_script(rc<const stateless_script> s) const;
-        void process(application_channel_t& app_chan) const;
-        */
-
         node_data& operator*() const;
         node_data* operator->() const;
     };
@@ -114,8 +109,6 @@ namespace engine {
     public:
         static void add_child(const node& self, node c);
 
-        // call the script process function, called on every frame
-        static void process(const node& self, application_channel_t& app_chan);
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
          *
@@ -192,8 +185,6 @@ namespace engine {
         std::optional<script>& get_script();
         // get this node's script
         const std::optional<script>& get_script() const;
-        //
-        //void pass_collision_to_script(collision_result res, node_data& ev_src, node_data& other);
 
         // special node data access
         // TODO: what is this lol

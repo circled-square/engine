@@ -4,6 +4,7 @@
 #include <concepts>
 #include <tuple>
 #include <variant>
+#include <optional>
 #include "detail/meta.hpp"
 
 // general purpose concepts and metaprogramming utilities
@@ -39,6 +40,26 @@ namespace engine {
     template<typename...Ts>
     void match_variant(const std::variant<Ts...>& v, const auto&... handlers) {
         std::visit(detail::overloaded(handlers...), v);
+    }
+
+
+    template<typename func_t, typename signature>
+    concept Callable = detail::impl_callable_s<func_t, signature>::value;
+
+    template<typename ret_t, typename T, Callable<ret_t (T&)> Handler>
+    std::optional<ret_t> map_optional(std::optional<T>& o, const Handler& handler) {
+        if(o.has_value()) {
+            return handler(o.value());
+        } else {
+            return std::nullopt;
+        }
+    }
+
+    template<typename T, Callable<void (T&)> Handler>
+    void visit_optional(std::optional<T>& o, const Handler& handler) {
+        if(o.has_value()) {
+            handler(o.value());
+        }
     }
 
 

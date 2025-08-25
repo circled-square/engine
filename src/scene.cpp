@@ -152,7 +152,11 @@ namespace engine {
 
     void scene::update() {
         // process nodes
-        depth_first_traversal(get_root(), [&](node n){ node_data::process(n, m_application_channel); });
+        depth_first_traversal(get_root(), [&](node n){
+            visit_optional(n->get_script(), [&](auto& s) {
+                s.process(n, m_application_channel);
+            });
+        });
 
         // TODO: currently resubscribing all colliders at every update: is it ok? ideally colliders would subscribe/unsubscribe themselves, making this unnecessary
         m_bp_collision_detector.reset_subscriptions();

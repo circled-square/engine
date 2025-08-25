@@ -88,15 +88,6 @@ namespace engine {
         node_data::add_child(*this, c);
     }
 
-    /*
-    void node::attach_script(rc<const stateless_script> s) const {
-        m_node_data->attach_script(*this, std::move(s));
-    }
-
-    void node::process(application_channel_t& app_chan) const {
-        m_node_data->process(*this, app_chan);
-    }*/
-
     node_data& node::operator*() const { return *m_node_data; }
 
     node_data* node::operator->() const { return &*m_node_data; }
@@ -243,8 +234,6 @@ namespace engine {
         self->m_script = script(std::move(s), self);
     }
 
-    void node_data::process(const node& self, application_channel_t& app_chan) { if(self->m_script) self->m_script->process(self, app_chan); }
-
     void node_data::invalidate_global_transform_cache() const {
         if(m_global_transform_cache.has_value()) {
             m_global_transform_cache.reset();
@@ -253,8 +242,6 @@ namespace engine {
             }
         }
     }
-
-    //void node_data::pass_collision_to_script(collision_result res, node_data& ev_src, node_data& other) { if(m_script) m_script->react_to_collision(*this, res, ev_src, other); }
 
     node node_data::get_from_path(std::string_view path) {
         std::string_view subpath = path;
