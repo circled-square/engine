@@ -9,14 +9,13 @@
 #include "camera.hpp"
 #include "narrow_phase_collision.hpp"
 
-// SpecialNodeData concept
 namespace engine {
-    #define NODE_DATA_CONTENTS std::monostate, camera, mesh, rc<const collision_shape>, viewport
+    #define NODE_PAYLOAD_CONTENTS std::monostate, camera, mesh, rc<const collision_shape>, viewport
 
-    using node_data_variant_t = std::variant<NODE_DATA_CONTENTS>;
+    using node_payload_t = std::variant<NODE_PAYLOAD_CONTENTS>;
 
     template<typename T>
-    concept NodeData = ContainedInVariant<T, node_data_variant_t>;
+    concept NodePayload = ContainedInVariant<T, node_payload_t>;
 }
 
 

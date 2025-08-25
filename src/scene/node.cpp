@@ -11,19 +11,19 @@ namespace engine {
         return s;
     }
 
-    node_data::node_data(std::string name, node_data_variant_t other_data, const mat4& transform)
+    node_data::node_data(std::string name, node_payload_t payload, const mat4& transform)
         : m_children(),
           m_children_is_sorted(true),
           m_father(),
           m_name(fix_name(std::move(name))),
           m_transform(std::move(transform)),
           m_global_transform_cache(),
-          m_other_data(std::move(other_data)),
+          m_payload(std::move(payload)),
           m_nodetree_bp_reference(),
           m_script() {}
 
     node node::deep_copy_internal(rc<const node_data> o) {
-        node n = node(o->m_name, o->m_other_data, o->m_transform,
+        node n = node(o->m_name, o->m_payload, o->m_transform,
                             o->m_script.has_value() ? o->m_script->get_underlying_stateless_script() : nullptr);
 
 
@@ -42,8 +42,8 @@ namespace engine {
         return n;
     }
 
-    node::node(std::string name, node_data_variant_t other_data, const glm::mat4& transform, rc<const stateless_script> script)
-        : m_node_data(get_rm().new_mut_emplace<node_data>(std::move(name), std::move(other_data), transform)) {
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, rc<const stateless_script> script)
+        : m_node_data(get_rm().new_mut_emplace<node_data>(std::move(name), std::move(payload), transform)) {
         if(script)
             node_data::attach_script(*this, std::move(script));
         ENSURES(m_node_data);
@@ -235,6 +235,10 @@ namespace engine {
         m_script->set_state(std::move(s));
     }
 
+    std::optional<script>& node_data::get_script() { return m_script; }
+
+    const std::optional<script>& node_data::get_script() const { return m_script; }
+
     void node_data::attach_script(const node& self, rc<const stateless_script> s) {
         self->m_script = script(std::move(s), self);
     }
@@ -274,9 +278,9 @@ namespace engine {
         return *p;
     }
 
-    template<NodeData T> bool     node_data::has() const { return std::holds_alternative<T>(m_other_data); }
-    template<NodeData T> const T& node_data::get() const { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
-    template<NodeData T> T&       node_data::get()       { EXPECTS(has<T>()); return std::get<T>(m_other_data); }
+    template<NodePayload T> bool     node_data::has() const { return std::holds_alternative<T>(m_payload); }
+    template<NodePayload T> const T& node_data::get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
+    template<NodePayload T> T&       node_data::get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
 
 
 #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
@@ -284,7 +288,7 @@ namespace engine {
     template const TYPE& node_data::get<TYPE>() const; \
     template bool node_data::has<TYPE>() const;
 
-    CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, NODE_DATA_CONTENTS)
+    CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, NODE_PAYLOAD_CONTENTS)
 
     const char* node_exception::what() const noexcept {
         if(m_what.empty()) {

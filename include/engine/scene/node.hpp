@@ -6,7 +6,7 @@
 #include <optional>
 #include <GAL/framebuffer.hpp>
 #include "node/script.hpp"
-#include "node/node_data_concept.hpp"
+#include "node/node_payload.hpp"
 #include "node/narrow_phase_collision.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
@@ -28,19 +28,13 @@ namespace engine {
         static node deep_copy_internal(rc<const node_data> o);
 
     public:
-        //this class's responsibilities are the following:
-        // - simplifies construction ("get_rm().new_mut_emplace<node>(bla bla bla)" becomes "noderef(bla bla bla)")
-        // - makes it possible to set father pointer for children (add_child, deep_copy)
-        // - everything in node still accessible through operators *, ->
-        // - unlike rc<node> or rc<const node> it is valid to assume that a noderef always points to something, except after it was just moved out of
-
         // constructors and assignment operators
         node() = delete;
         node(node&& o);
         node& operator=(node&& o);
         node& operator=(const node& o);
         node(const node& o);
-        explicit node(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
+        explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
         //this is expensive (calls deep_copy)
         explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
         node deep_copy() const;
@@ -71,7 +65,7 @@ namespace engine {
         const_node(const const_node& o) :m_node(o.m_node) {}
         const_node(node o) : m_node(std::move(o)) {}
 
-        explicit const_node(std::string name, node_data_variant_t other_data = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr) : m_node(name, other_data, transform, script) {}
+        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr) : m_node(name, payload, transform, script) {}
         //this is expensive (calls deep_copy)
         explicit const_node(rc<const nodetree_blueprint> nt, std::string name = "") : m_node(nt, name) {}
         node deep_copy() const { return m_node.deep_copy(); }
@@ -112,14 +106,15 @@ namespace engine {
         mutable std::optional<glm::mat4> m_global_transform_cache;
         void invalidate_global_transform_cache() const;
 
-        node_data_variant_t m_other_data;
+        node_payload_t m_payload;
         rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
         node_collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
     public:
         static void add_child(const node& self, node c);
-        static void attach_script(const node& self, rc<const stateless_script> s);
+
+        // call the script process function, called on every frame
         static void process(const node& self, application_channel_t& app_chan);
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
@@ -137,7 +132,7 @@ namespace engine {
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node_data(std::string name, node_data_variant_t other_data, const glm::mat4& transform);
+        explicit node_data(std::string name, node_payload_t payload, const glm::mat4& transform);
         // this is expensive (calls deep-copy constructor)
         explicit node_data(rc<const nodetree_blueprint> nt, std::string name);
 
@@ -189,21 +184,25 @@ namespace engine {
         void react_to_collision(collision_result res, node_data& other);
 
         //script
+        // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data)
+        static void attach_script(const node& self, rc<const stateless_script> s);
         // explicitly set the script's state
         void set_script_state(std::any s);
-        // call the script process function, called on every frame
-        void process(application_channel_t& app_chan);
+        // get this node's script
+        std::optional<script>& get_script();
+        // get this node's script
+        const std::optional<script>& get_script() const;
         //
         //void pass_collision_to_script(collision_result res, node_data& ev_src, node_data& other);
 
         // special node data access
         // TODO: what is this lol
-        template<Resource T> requires NodeData<rc<const T>> bool     has() const;
-        template<Resource T> requires NodeData<rc<const T>> const T& get() const;
+        template<Resource T> requires NodePayload<rc<const T>> bool     has() const;
+        template<Resource T> requires NodePayload<rc<const T>> const T& get() const;
 
-        template<NodeData T> bool     has() const;
-        template<NodeData T> const T& get() const;
-        template<NodeData T> T&       get();
+        template<NodePayload T> bool     has() const;
+        template<NodePayload T> const T& get() const;
+        template<NodePayload T> T&       get();
     };
 
     class node_exception : public std::exception {

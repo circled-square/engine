@@ -320,7 +320,7 @@ namespace engine {
         return translation_mat * scale_mat * rotation_mat * raw_mat;
     }
 
-    static node_data_variant_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
+    static node_payload_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
         if(node.mesh == -1)
             return std::monostate();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
@@ -352,7 +352,7 @@ namespace engine {
     static node load_node_subtree(const tinygltf::Model& model, int idx) {
         const tinygltf::Node& gltf_node = model.nodes[idx];
 
-        node_data_variant_t node_data_variant = load_node_data(model, gltf_node);
+        node_payload_t node_data_variant = load_node_data(model, gltf_node);
 
         glm::mat4 transform = get_node_transform(gltf_node);
         node root(gltf_node.name, std::move(node_data_variant), transform);
