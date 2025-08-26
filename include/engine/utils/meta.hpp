@@ -42,21 +42,13 @@ namespace engine {
         std::visit(detail::overloaded(handlers...), v);
     }
 
-
     template<typename func_t, typename signature>
     concept Callable = detail::impl_callable_s<func_t, signature>::value;
 
-    template<typename ret_t, typename T, Callable<ret_t (T&)> Handler>
-    std::optional<ret_t> map_optional(std::optional<T>& o, const Handler& handler) {
-        if(o.has_value()) {
-            return handler(o.value());
-        } else {
-            return std::nullopt;
-        }
-    }
 
-    template<typename T, Callable<void (T&)> Handler>
-    void visit_optional(std::optional<T>& o, const Handler& handler) {
+    // if option has value, call handler on the value
+    template<typename T, Callable<void (T&)> handler_t>
+    void visit_optional(std::optional<T>& o, const handler_t& handler) {
         if(o.has_value()) {
             handler(o.value());
         }
