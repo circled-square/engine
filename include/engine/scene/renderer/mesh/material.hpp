@@ -28,8 +28,9 @@ namespace engine {
         std::vector<std::pair<std::string, uniform_value_variant>> m_custom_uniforms;
     public:
         material() = delete;
-        material(material&& o);
-        material(const material& o);
+        material(material&& o) = default;
+        material(const material& o) = default;
+
         material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures);
         material(rc<const shader> shader, rc<const gal::texture> texture);
 
@@ -39,6 +40,9 @@ namespace engine {
         const rc<const gal::texture>& get_texture(size_t) const;
 
         void bind_and_set_uniforms(glm::mat4 mvp, glm::ivec2 output_resolution, float frame_time) const;
+
+        std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() { return m_custom_uniforms; }
+        const std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() const { return m_custom_uniforms; }
 
         material& operator=(material&& o);
     };

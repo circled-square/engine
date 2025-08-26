@@ -7,5 +7,6 @@ namespace engine {
 
     mesh::mesh(std::vector<primitive> primitives) : m_primitives(std::move(primitives)) {}
 
-    const std::vector<primitive> mesh::primitives() const { return m_primitives; }
+    const std::vector<primitive>& mesh::primitives() const { return m_primitives; }
+    std::vector<primitive>& mesh::primitives() { return m_primitives; }
 }

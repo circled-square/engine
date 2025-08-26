@@ -18,7 +18,8 @@ namespace engine {
         mesh(material m, rc<const gal::vertex_array> vao);
         mesh(std::vector<primitive> primitives);
 
-        const std::vector<primitive> primitives() const;
+        const std::vector<primitive>& primitives() const;
+        std::vector<primitive>& primitives();
     };
 }
 

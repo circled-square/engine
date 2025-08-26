@@ -1,3 +1,4 @@
+#include "slogga/log.hpp"
 #include <engine/scene/renderer/mesh/material/shader.hpp>
 #include <engine/utils/read_file.hpp>
 #include <slogga/asserts.hpp>
@@ -31,18 +32,17 @@ namespace engine {
         virtual const char* what() const noexcept { return m_what.c_str(); }
     };
 
-    static uniforms_info parse_uniforms(const std::string& s) {
-        auto eat_whitespace = [](std::string_view& str) {
-            while(std::isspace(str[0])) {
-                str = str.substr(1);
-            }
-        };
-        auto alnum_or_underscore = [](char c) {
-            return c == '_' || std::isalnum(c);
-        };
+    static std::string_view eat_whitespace(std::string_view sv) {
+        while(!sv.empty() && std::isspace(sv[0]))
+            sv = sv.substr(1);
+        return sv;
+    }
+    static bool is_alnum_or_underscore(char c) {
+        return c == '_' || std::isalnum(c);
+    }
 
-        std::string_view sv = s;
-        eat_whitespace(sv);
+    static uniforms_info parse_uniforms(const std::string& s) {
+        std::string_view sv = eat_whitespace(s);
         std::vector<std::pair<std::string_view, std::string_view>> uniforms_strings;
 
         while(!sv.empty()) {
@@ -61,11 +61,11 @@ namespace engine {
                     std::format("expected whitespace after 'uniforms', got '{}'", sv[0]));
             }
 
-            eat_whitespace(sv);
+            sv = eat_whitespace(sv);
 
             //consume type
             size_t end_of_type = 0;
-            while(alnum_or_underscore(sv[end_of_type]))
+            while(is_alnum_or_underscore(sv[end_of_type]))
                 end_of_type++;
             std::string_view type_str = sv.substr(0, end_of_type);
             sv = sv.substr(type_str.length());
@@ -75,16 +75,16 @@ namespace engine {
                     std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv[0]));
             }
 
-            eat_whitespace(sv);
+            sv = eat_whitespace(sv);
 
             //consume uniform name
             size_t end_of_name = 0;
-            while(alnum_or_underscore(sv[end_of_name]))
+            while(is_alnum_or_underscore(sv[end_of_name]))
                 end_of_name++;
             std::string_view name_str = sv.substr(0, end_of_name);
             sv = sv.substr(name_str.length());
 
-            eat_whitespace(sv);
+            sv = eat_whitespace(sv);
 
             //consume ";" token
             if(!sv.starts_with(';')) {
@@ -93,7 +93,7 @@ namespace engine {
             }
             sv = sv.substr(1);
 
-            eat_whitespace(sv);
+            sv = eat_whitespace(sv);
 
             uniforms_strings.push_back({type_str, name_str});
         }
@@ -101,6 +101,8 @@ namespace engine {
         uniforms_info uniforms_info;
 
         for(auto& [type_str, name_str] : uniforms_strings) {
+            slogga::stdout_log.trace("uniform '{}' '{}'", type_str, name_str);
+
             if(name_str == engine::uniform_names::mvp) {
                 uniforms_info.mvp = true;
             } else if(name_str == engine::uniform_names::output_resolution) {
@@ -110,10 +112,12 @@ namespace engine {
             } else {
                  if(type_str == "sampler2D") {
                     uniforms_info.sampler_names.push_back(std::string(name_str));
-                } else {
+                }
+                /* // commented because the user is allowed to add custom uniforms which she will then have to populate manually
+                else {
                     throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
                         std::format("could not parse uniform: type='{}', name='{}'", type_str, name_str));
-                }
+                }*/
             }
         }
 

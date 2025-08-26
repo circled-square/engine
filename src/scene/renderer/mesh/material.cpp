@@ -1,10 +1,8 @@
+#include "slogga/log.hpp"
 #include <engine/scene/renderer/mesh/material.hpp>
+#include <engine/utils/format_glm.hpp>
 
 namespace engine {
-    material::material(const material &o) : m_shader(o.m_shader), m_textures(o.m_textures) {}
-
-    material::material(material &&o) : m_shader(std::move(o.m_shader)), m_textures(std::move(o.m_textures)) {}
-
     material::material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures)
         : m_shader(std::move(shader)), m_textures(std::move(textures)) {
         EXPECTS(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
@@ -30,19 +28,19 @@ namespace engine {
         EXPECTS(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
         m_shader->get_program().bind();
 
+        // set common uniforms
         if(m_shader->get_uniforms().output_resolution) {
             m_shader->get_program().set_uniform<glm::ivec2>(uniform_names::output_resolution, output_resolution);
         }
-
         if(m_shader->get_uniforms().time) {
             m_shader->get_program().set_uniform(uniform_names::time, frame_time);
         }
-
         if(m_shader->get_uniforms().mvp) {
             m_shader->get_program().set_uniform(uniform_names::mvp, mvp);
         }
 
 
+        // set sampler uniforms
         size_t next_texture_slot = 0;
         for(; next_texture_slot < m_textures.size(); next_texture_slot++) {
             const std::string& name = m_shader->get_uniforms().sampler_names[next_texture_slot].c_str();
@@ -51,11 +49,20 @@ namespace engine {
             texture.bind(next_texture_slot);
             m_shader->get_program().set_uniform<int>(name.c_str(), next_texture_slot);
         }
+
+        // set custom uniforms
+        for(auto u : m_custom_uniforms) {
+            uniform_value_variant value_variant = u.second;
+            match_variant(value_variant, [&]<typename T>(const T& v) {
+                m_shader->get_program().set_uniform<T>(u.first.c_str(), v);
+            });
+        }
     }
 
     material& material::operator=(material&& o) {
         m_shader = std::move(o.m_shader);
         m_textures = std::move(o.m_textures);
+        m_custom_uniforms = std::move(o.m_custom_uniforms);
 
         return *this;
     }
