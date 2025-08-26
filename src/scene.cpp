@@ -1,3 +1,4 @@
+#include "slogga/log.hpp"
 #include <engine/scene.hpp>
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -5,84 +6,132 @@
 namespace engine {
     using glm::mat4;
 
-    //pre-order dfs, without explicit recursion
-    template<typename node_t>
-    inline void depth_first_traversal(node_t root, const auto& callable)
+    //pre-order dfs, without recursion
+    template<typename node_t, Callable<void(node_t&)> callable_t>
+    inline void depth_first_traversal(node_t root, const callable_t& callable)
         requires(std::same_as<node_t, node> || std::same_as<node_t, const_node>)
     {
         std::vector<node_t> stack;
         stack.push_back(root);
         while(!stack.empty()) {
-            node n = stack.back();
+            node_t n = stack.back();
             stack.pop_back();
-            for(node c : n->children())
-                stack.push_back(std::move(c));
+            //iterate in reverse, so the first child is added last, which means it is visited first
+            for(std::int64_t i = n->children().size()-1; i >= 0; i--)
+                stack.push_back(std::move(n->children()[i]));
 
-            callable(std::move(n));
+            callable(n);
         }
     }
 
-    constexpr std::nullptr_t default_framebuffer = nullptr;
+    //pre+post-order dfs, without recursion
+    template<typename node_t, typename traversal_payload_t, Callable<traversal_payload_t(node_t&, const traversal_payload_t&)> preorder_t, Callable<void(node_t&, const traversal_payload_t&)> postorder_t>
+    inline void depth_first_traversal(node_t root, const traversal_payload_t& root_params, const preorder_t& preorder, const postorder_t& postorder)
+        requires(std::same_as<node_t, node> || std::same_as<node_t, const_node>)
+    {
+        struct stack_entry_t {
+            node_t n;
+            // payload to be passed to children when they are visited, both pre- and post-order
+            traversal_payload_t p;
+            // index of next child to be visited
+            size_t i;
+        };
+        std::vector<stack_entry_t> stack;
 
-    static void render_node(renderer& r, const gal::vertex_array& whole_screen_vao, rc<const node_data> n, const mat4& viewproj_mat,
-                            glm::ivec2 output_resolution, float frame_time, rc<const node_data> output_vp_node) {
-        glm::ivec2 children_out_res;
-        mat4 children_viewproj;
-        rc<const node_data> children_vp_node;
+        traversal_payload_t root_payload = preorder(root, root_params); // must be done before root is moved out of
 
-        // if n is a viewport first setup rendering of children,
-        // otherwise render them to the same viewport as n
-        if (n->has<viewport>()) {
-            n->get<viewport>().output_resolution_changed(output_resolution);
+        stack.push_back({ std::move(root), std::move(root_payload), 0 });
 
-            children_vp_node = n;
-            children_out_res = children_vp_node->get<viewport>().fbo().resolution();
+        while(!stack.empty()) {
+            auto& [n, p, i] = stack.back();
 
-            children_vp_node->get<viewport>().bind_draw();
+            if(i < n->children().size()) {
+                node_t c = n->children()[i];
+                traversal_payload_t c_payload = preorder(c, p); // must be done before c is moved out of
+                i++; //do NOT update i after having pushed, as pushing can possibly invalidate the reference
+                stack.push_back({ std::move(c), std::move(c_payload), 0 });
+            } else {
+                node_t m = std::move(n); // take ownership before destroying the entry
+                stack.pop_back();
 
-            mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_out_res.x / children_out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
-            mat4 view_mat = children_vp_node->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
-            children_viewproj = proj_mat * view_mat;
-            r.clear();
-        } else {
-            children_out_res = output_resolution;
-            children_vp_node = output_vp_node;
-            children_viewproj = viewproj_mat;
+                if(stack.empty()) {
+                    postorder(m, root_params);
+                } else {
+                    stack_entry_t& father_entry = stack.back();
+                    postorder(m, father_entry.p);
+                }
+            }
         }
+    }
 
-        glViewport(0,0, children_out_res.x,  children_out_res.y);
+    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, const_node root, const mat4& viewproj, glm::ivec2 out_res, float frame_time) {
+        struct payload_t {
+            glm::ivec2 out_res;
+            mat4 viewproj;
+            rc<const node_data> vp_node;
+        };
+
+        constexpr std::nullptr_t default_framebuffer = nullptr;
+
+        depth_first_traversal(root, payload_t {out_res, viewproj, default_framebuffer},
+            //preorder
+            [frame_time, &r](const_node& n, const payload_t& father_payload) {
+                payload_t children_payload;
+
+                EXPECTS(n.operator rc<const node_data>());
+
+                // if n is a viewport first setup rendering of children,
+                // otherwise render them to the same viewport as n
+                if (n->has<viewport>()) {
+                    n->get<viewport>().output_resolution_changed(father_payload.out_res);
+
+                    children_payload.vp_node = n;
+                    children_payload.out_res = n->get<viewport>().fbo().resolution();
+
+                    children_payload.vp_node->get<viewport>().bind_draw();
+
+                    mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_payload.out_res.x / children_payload.out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
+                    mat4 view_mat = children_payload.vp_node->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
+                    children_payload.viewproj = proj_mat * view_mat;
+                    r.clear();
+                } else {
+                    children_payload = father_payload;
+                }
+
+                glViewport(0,0, children_payload.out_res.x,  children_payload.out_res.y);
 
 
-        // render self
-        if (n->has<mesh>())
-            r.draw(n->get<mesh>(), children_out_res, viewproj_mat * n->get_global_transform(), frame_time);
+                // render self
+                if (n->has<mesh>())
+                    r.draw(n->get<mesh>(), children_payload.out_res, father_payload.viewproj * n->get_global_transform(), frame_time);
 
-        // render children
-        for(rc<const node_data> child : n->children())
-            render_node(r, whole_screen_vao, child, children_viewproj, children_out_res, frame_time, children_vp_node);
+                return children_payload;
+            },
+            //postorder
+            [frame_time, &r, &whole_screen_vao](const_node& n, const payload_t& father_payload){
+                /* TODO: viewports are always automatically rendered, without any transformation, to the first viewport in their ancestors.
+                 * This should probably configurable, for example it should be possible to use them as textures for another material or something like that
+                 */
+                // if n is a viewport render it to the output_vp
+                if (n->has<viewport>()) {
+                    //bind the correct output fbo
+                    if(father_payload.vp_node) {
+                        EXPECTS(father_payload.vp_node->has<viewport>());
+                        father_payload.vp_node->get<viewport>().bind_draw();
+                    } else
+                        framebuffer::unbind();
 
-        /* TODO: viewports are always automatically rendered, without any transformation, to the first viewport in their ancestors.
-         * This should probably configurable, for example it should be possible to use them as textures for another material or something like that
-         */
-        // if n is a viewport render it to the output_vp
-        if (n->has<viewport>()) {
-            //bind the correct output fbo
-            if(output_vp_node) {
-                EXPECTS(output_vp_node->has<viewport>());
-                output_vp_node->get<viewport>().bind_draw();
-            } else
-                framebuffer::unbind();
+                    glViewport(0,0, father_payload.out_res.x,  father_payload.out_res.y);
 
-            glViewport(0,0, output_resolution.x,  output_resolution.y);
+                    //post processing
+                    n->get<viewport>().postfx_material().bind_and_set_uniforms(mat4(), father_payload.out_res, frame_time);
 
-            //post processing
-            n->get<viewport>().postfx_material().bind_and_set_uniforms(mat4(), output_resolution, frame_time);
-
-            // see red background? bad thing
-            r.get_low_level_renderer().clear(glm::vec4(1,0,0,1));
-            // draw
-            r.get_low_level_renderer().draw(whole_screen_vao, n->get<viewport>().postfx_material().get_shader()->get_program());
-        }
+                    // see red background? bad thing
+                    r.get_low_level_renderer().clear(glm::vec4(1,0,0,1));
+                    // draw
+                    r.get_low_level_renderer().draw(whole_screen_vao, n->get<viewport>().postfx_material().get_shader()->get_program());
+                }
+            });
     }
 
     //sets the cameras for all viewports in the hierarchy, and returns the camera to use for the default framebuffer.
@@ -147,12 +196,12 @@ namespace engine {
         mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
         mat4 viewproj_mat = proj_mat * view_mat;
-        render_node(m_renderer, *m_whole_screen_vao, get_root(), viewproj_mat, resolution, frame_time, nullptr);
+        render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj_mat, resolution, frame_time);
     }
 
     void scene::update() {
         // process nodes
-        depth_first_traversal(get_root(), [&](node n){
+        depth_first_traversal(get_root(), [&](node& n){
             visit_optional(n->get_script(), [&](auto& s) {
                 s.process(n, m_application_channel);
             });
@@ -161,7 +210,7 @@ namespace engine {
         // TODO: currently resubscribing all colliders at every update: is it ok? ideally colliders would subscribe/unsubscribe themselves, making this unnecessary
         m_bp_collision_detector.reset_subscriptions();
 
-        depth_first_traversal(get_root(), [&](node n){
+        depth_first_traversal(get_root(), [&](node& n){
             if(n->has<collision_shape>())
                 m_bp_collision_detector.subscribe(*n);
         });
@@ -200,7 +249,7 @@ namespace engine {
             throw invalid_path_exception(path);
 
         std::string_view subpath(path.begin()+1, path.end());
-        return m_root->get_from_path(subpath);
+        return m_root->get_descendant_from_path(subpath);
     }
 
 

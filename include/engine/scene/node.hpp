@@ -142,7 +142,7 @@ namespace engine {
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
         void set_children_sorting_preference(bool v);
         // get node with relative path
-        node get_from_path(std::string_view path);
+        node get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
         rc<node_data> get_father();
@@ -240,6 +240,8 @@ namespace engine {
         const_node_span(std::span<const node> span) : m_span(span) {}
         iterator begin() { return iterator(m_span.begin()); }
         iterator end() { return iterator(m_span.end()); }
+        size_t size() const { return m_span.size(); }
+        const_node operator[](size_t i) const { return m_span[i]; }
     };
 }
 

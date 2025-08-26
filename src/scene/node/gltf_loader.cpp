@@ -366,11 +366,9 @@ namespace engine {
         }
 
 
-        slogga::stdout_log("found node {}; its children:", gltf_node.name);
         for(int child_idx : gltf_node.children) {
             root.add_child(load_node_subtree(model, child_idx));
         }
-        slogga::stdout_log("end of children of node {}:", gltf_node.name);
 
         return root;
     }

@@ -23,6 +23,8 @@ namespace engine {
           m_script() {}
 
     node node::deep_copy_internal(rc<const node_data> o) {
+        EXPECTS(o);
+
         node n = node(o->m_name, o->m_payload, o->m_transform,
                             o->m_script.has_value() ? o->m_script->get_underlying_stateless_script() : nullptr);
 
@@ -38,6 +40,8 @@ namespace engine {
         for(node child : n->m_children) {
             child->m_father = n;
         }
+
+        ENSURES(n.m_node_data);
 
         return n;
     }
@@ -57,7 +61,9 @@ namespace engine {
         ENSURES(m_node_data);
     }
 
-    node::node(node&& o) : m_node_data(std::move(o.m_node_data)) {}
+    node::node(node&& o) : m_node_data(std::move(o.m_node_data)) {
+        EXPECTS(m_node_data);
+    }
 
     node& node::operator=(node&& o) {
         m_node_data = std::move(o.m_node_data);
@@ -76,7 +82,10 @@ namespace engine {
     }
 
     node node::deep_copy() const {
-        return node::deep_copy_internal(this->m_node_data);
+        EXPECTS(m_node_data);
+        node ret = node::deep_copy_internal(this->m_node_data);
+        ENSURES(ret.m_node_data);
+        return ret;
     }
 
     node::operator rc<node_data>() const { return m_node_data; }
@@ -243,7 +252,7 @@ namespace engine {
         }
     }
 
-    node node_data::get_from_path(std::string_view path) {
+    node node_data::get_descendant_from_path(std::string_view path) {
         std::string_view subpath = path;
         node_data* current_node = this;
         while(true) {
