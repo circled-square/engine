@@ -120,7 +120,7 @@ namespace engine {
          *
          * Do note that it is allowed by the engine to create multiple nodes with the same exact name and path; this is not recommended since
          * it makes retrieving that node by name unpredictable; this behaviour for now is kept since it allows the engine to skip this check
-         * (relatively expensive, especially for unsorted children),and allows the user to create a lot of nodes whose name is irrelevant
+         * (relatively expensive, especially for unsorted children), and allows the user to create a lot of nodes whose name is irrelevant
          * without creating useless names for them. Do note that a "useless" name suddenly becomes useful the moment there's debugging to do.
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
