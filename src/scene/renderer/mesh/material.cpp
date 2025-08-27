@@ -44,6 +44,7 @@ namespace engine {
         size_t next_texture_slot = 0;
         for(; next_texture_slot < m_textures.size(); next_texture_slot++) {
             const std::string& name = m_shader->get_uniforms().sampler_names[next_texture_slot].c_str();
+            slogga::stdout_log("attempting to load to slot {} texture with sampler name {}", next_texture_slot, name);
             const gal::texture& texture = *m_textures[next_texture_slot];
 
             texture.bind(next_texture_slot);

@@ -74,7 +74,7 @@ namespace engine {
         constexpr std::nullptr_t default_framebuffer = nullptr;
 
         depth_first_traversal(root, payload_t {out_res, viewproj, default_framebuffer},
-            //preorder
+            //preorder: construction of payload
             [frame_time, &r](const_node& n, const payload_t& father_payload) {
                 payload_t children_payload;
 
@@ -98,21 +98,18 @@ namespace engine {
                     children_payload = father_payload;
                 }
 
-                glViewport(0,0, children_payload.out_res.x,  children_payload.out_res.y);
-
-
-                // render self
-                if (n->has<mesh>())
-                    r.draw(n->get<mesh>(), children_payload.out_res, father_payload.viewproj * n->get_global_transform(), frame_time);
-
                 return children_payload;
             },
-            //postorder
+            //postorder: rendering and viewport switching
             [frame_time, &r, &whole_screen_vao](const_node& n, const payload_t& father_payload){
-                /* TODO: viewports are always automatically rendered, without any transformation, to the first viewport in their ancestors.
-                 * This should probably configurable, for example it should be possible to use them as textures for another material or something like that
-                 */
-                // if n is a viewport render it to the output_vp
+                // render self
+                if (n->has<mesh>()){
+                    glViewport(0,0, father_payload.out_res.x,  father_payload.out_res.y);
+
+                    r.draw(n->get<mesh>(), father_payload.out_res, father_payload.viewproj * n->get_global_transform(), frame_time);
+                }
+
+                // only rebind the viewport if n is a viewport (to unbind n and bind whatever its ancestor viewport is)
                 if (n->has<viewport>()) {
                     //bind the correct output fbo
                     if(father_payload.vp_node) {
@@ -122,14 +119,6 @@ namespace engine {
                         framebuffer::unbind();
 
                     glViewport(0,0, father_payload.out_res.x,  father_payload.out_res.y);
-
-                    //post processing
-                    n->get<viewport>().postfx_material().bind_and_set_uniforms(mat4(), father_payload.out_res, frame_time);
-
-                    // see red background? bad thing
-                    r.get_low_level_renderer().clear(glm::vec4(1,0,0,1));
-                    // draw
-                    r.get_low_level_renderer().draw(whole_screen_vao, n->get<viewport>().postfx_material().get_shader()->get_program());
                 }
             });
     }
