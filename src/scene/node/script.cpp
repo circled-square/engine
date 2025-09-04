@@ -20,7 +20,7 @@ namespace engine {
 
     const rc<const stateless_script> script::get_underlying_stateless_script() const { return m_script; }
 
-    void script::process(const node& n, application_channel_t& app_chan) { m_script->process(n, m_state, app_chan); }
+    void script::process(const node& n, application_channel_t& app_chan) { EXPECTS((rc<node_data>)n); m_script->process(n, m_state, app_chan); }
 
     void script::react_to_collision(const node_data& self, collision_result res, const node_data& event_src, const node_data& other) {
         EXPECTS(m_script->react_to_collision != nullptr);

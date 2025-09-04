@@ -101,8 +101,6 @@ namespace engine {
         uniforms_info uniforms_info;
 
         for(auto& [type_str, name_str] : uniforms_strings) {
-            slogga::stdout_log.trace("uniform '{}' '{}'", type_str, name_str);
-
             if(name_str == engine::uniform_names::mvp) {
                 uniforms_info.mvp = true;
             } else if(name_str == engine::uniform_names::output_resolution) {

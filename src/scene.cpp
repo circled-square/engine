@@ -1,4 +1,3 @@
-#include "slogga/log.hpp"
 #include <engine/scene.hpp>
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -181,7 +180,7 @@ namespace engine {
 
         std::optional<camera> default_fb_camera = set_cameras(get_root(), nullptr);
 
-        m_renderer.clear();
+        m_renderer.clear(m_application_channel.to_app().clear_color);
         mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
         mat4 viewproj_mat = proj_mat * view_mat;

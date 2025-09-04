@@ -40,7 +40,7 @@ namespace engine {
          *
          * note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and destroying the previous;
          * even downsizing the viewport poses the same problem
-        */
+         */
         void output_resolution_changed(glm::ivec2 native_resolution) const;
 
         void operator=(viewport&& o);

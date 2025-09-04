@@ -13,6 +13,7 @@ namespace engine {
         struct to_app_t {
             bool wants_mouse_cursor_captured = false;
             rc<scene> scene_to_change_to = rc<scene>();
+            glm::vec4 clear_color = {0,0,0,0};
         };
         struct from_app_t {
             bool scene_is_active = false;
