@@ -1,0 +1,3 @@
+glm    ; https://github.com/g-truc/glm.git
+slogga ; https://github.com/circled-square/SLOGGA.git
+stb    ; https://github.com/nothings/stb.git
