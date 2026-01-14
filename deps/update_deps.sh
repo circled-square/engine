@@ -8,6 +8,9 @@ echo script dir           = $SCRIPT_DIR
 echo deps file            = $DEPS_FILE
 echo deps hash cache file = $DEPS_HASH_CACHE_FILE
 
+# TODO: option to silence git-clone output
+# TODO: git-clone output should be indented
+
 if [ ! -f $DEPS_FILE ]; then
     echo "deps file not found! exiting"
     exit
@@ -20,13 +23,16 @@ echo
 while read DEPENDENCY; do
   cd $SCRIPT_DIR
 
-  DEP_NAME=$(echo $DEPENDENCY | sed 's/^\([a-zA-Z0-9_-]*\)[ \t]*;.*$/\1/')
+  # unpacks two semicolon-separated strings and saves them to \1 and \2
+  UNPACK_REGEX='^\s*([^ ]*)\s*;\s*(.*)\s*$'
+
+  DEP_NAME=$(echo $DEPENDENCY | sed -E "s/$UNPACK_REGEX/\1/")
   CLONE_DIR=$DEP_NAME
-  CLONE_SRC=$(echo $DEPENDENCY | sed 's/.*;\(.*\)$/\1/')
+  CLONE_SRC=$(echo $DEPENDENCY | sed -E "s/$UNPACK_REGEX/\2/")
   echo "$DEP_NAME (from $CLONE_SRC)"
 
-  CLONE_CURR_HASH=$(grep $DEP_NAME $DEPS_HASH_CACHE_FILE | head -n1 | sed 's/.*;\(.*\)/\1/')
-  CLONE_REMOTE_HASH=$(git ls-remote $CLONE_SRC | head -n1 | { read first rest ; echo $first ; })
+  CLONE_CURR_HASH=$(grep $DEP_NAME $DEPS_HASH_CACHE_FILE | head -n1 |  sed -E "s/$UNPACK_REGEX/\2/")
+  CLONE_REMOTE_HASH=$(git ls-remote $CLONE_SRC | { read first rest ; echo $first ; })
 
   if [ -d $CLONE_DIR ]; then
     if [ -n "$CLONE_CURR_HASH" ] && [ "$CLONE_CURR_HASH" = "$CLONE_REMOTE_HASH" ]; then
@@ -42,14 +48,17 @@ while read DEPENDENCY; do
   fi
 
   echo "    cloning into dir $CLONE_DIR from \"$CLONE_SRC\"..."
-  git clone --depth 1 $CLONE_SRC $CLONE_DIR 2>&1 | sed -z 's/^/        git: /'
+  git clone --depth 1 $CLONE_SRC $CLONE_DIR | sed -E 's/(.*)/        git: \1/'
 
   echo "    removing .git directory \"$CLONE_DIR/.git/\"..."
   rm -fr -- $CLONE_DIR/.git/
 
   echo "    updating hash cache..."
-  sed -i "/^$DEP_NAME;.*$/d" $DEPS_HASH_CACHE_FILE
-  echo -e "$DEP_NAME;$CLONE_REMOTE_HASH" >> $DEPS_HASH_CACHE_FILE
+  if grep $DEP_NAME $DEPS_HASH_CACHE_FILE; then
+    sed -i -E "s/^$DEP_NAME;.*$/$DEP_NAME;$CLONE_REMOTE_HASH/" $DEPS_HASH_CACHE_FILE
+  else
+    echo -e "$DEP_NAME;$CLONE_REMOTE_HASH" >> $DEPS_HASH_CACHE_FILE
+  fi
 done < $DEPS_FILE
 
 echo
