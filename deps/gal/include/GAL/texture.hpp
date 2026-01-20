@@ -19,16 +19,25 @@ namespace gal {
         explicit texture(std::nullptr_t);
 
       public:
+        enum class filter_method : bool { nearest, linear };
         struct specification {
             glm::ivec2 res;
             int components = 4;
 
+            // TODO: substitute void* for std::span<std::byte>
             const void* data = nullptr;
             int alignment = 4;
+            bool enable_mipmaps = true;
 
-            bool repeat_wrap = false;
-            GLenum filter_method = GL_NEAREST;
             //TODO: specification is missing a parameter to allow the user to have more than 8 bit depth for each component
+
+            //TODO: the following settings should be sampler settings instead of texture settings
+            bool repeat_wrap = false;
+            texture::filter_method filter_method = texture::filter_method::nearest;
+            texture::filter_method mipmap_filter_method = texture::filter_method::linear;
+            bool enable_anisotropic_filtering = true; // ignored if mipmap_filter_method == nullopt
+            float max_anisotropy = 16.f; // ignored unless anisotropic_filtering == true
+
         };
         texture(const specification& spec);
         texture(const image& image);
@@ -49,7 +58,7 @@ namespace gal {
 
         uint get_gl_id();
 
-        //returns a texture containing random noise
+        //returns a texture containing pseudo-random noise
         static texture noise(glm::ivec2 res, char components = 4);
 
         //returns a texture without setting any data for it

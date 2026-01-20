@@ -38,11 +38,17 @@ namespace engine {
         if(!m_dynamic_size_relative_to_output)
             return;
 
-        glm::ivec2 new_resolution = (glm::vec2)output_resolution * (*m_dynamic_size_relative_to_output);
+        glm::vec2 new_resolution_f = (glm::vec2)output_resolution * (*m_dynamic_size_relative_to_output);
+        glm::ivec2 new_resolution = {std::round(new_resolution_f.x), std::round(new_resolution_f.y)};
         if(new_resolution != m_fbo.resolution()) {
             // a texture with 0 texels causes the fbo to throw a framebuffer_construction_exception
             if (new_resolution.x > 0 && new_resolution.y > 0) {
-                m_fbo.link_and_replace_texture(gal::texture::empty(new_resolution, 4));
+                gal::texture::specification spec {
+                    .res = new_resolution,
+                    .enable_mipmaps = false,
+                    .filter_method = gal::texture::filter_method::nearest,
+                };
+                m_fbo.link_and_replace_texture(gal::texture(spec));
             }
         }
     }

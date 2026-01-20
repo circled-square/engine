@@ -41,13 +41,12 @@ namespace engine {
 
 
         // set sampler uniforms
-        size_t next_texture_slot = 0;
-        for(; next_texture_slot < m_textures.size(); next_texture_slot++) {
-            const std::string& name = m_shader->get_uniforms().sampler_names[next_texture_slot].c_str();
-            const gal::texture& texture = *m_textures[next_texture_slot];
+        for(size_t tex_slot = 0; tex_slot < m_textures.size(); tex_slot++) {
+            const std::string& name = m_shader->get_uniforms().sampler_names[tex_slot].c_str();
+            const gal::texture& texture = *m_textures[tex_slot];
 
-            texture.bind(next_texture_slot);
-            m_shader->get_program().set_uniform<int>(name.c_str(), next_texture_slot);
+            texture.bind(tex_slot);
+            m_shader->get_program().set_uniform<int>(name.c_str(), tex_slot);
         }
 
         // set custom uniforms

@@ -1,17 +1,35 @@
+#include <bit>
 #include <GAL/texture.hpp>
 #include <glad/glad.h>
+#include <slogga/asserts.hpp>
 
 namespace gal {
+    static std::size_t compute_number_of_mipmap_levels(const texture::specification& spec);
+
     texture::texture(const specification& spec)
             : m_res(spec.res), m_components(spec.components) {
 
-        assert(m_components >= 1 && m_components <= 4);
+        EXPECTS(m_components >= 1 && m_components <= 4);
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);
 
         //obligatory parameters
-        glTextureParameteri(m_texture_id, GL_TEXTURE_MIN_FILTER, spec.filter_method);
-        glTextureParameteri(m_texture_id, GL_TEXTURE_MAG_FILTER, spec.filter_method);
+        int mag_filter_method = mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
+        int min_filter_method;
+
+        if (spec.enable_mipmaps) {
+            if(spec.mipmap_filter_method == filter_method::linear) {
+                min_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR;
+            } else {
+                ASSERTS(spec.mipmap_filter_method == filter_method::nearest);
+                min_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_NEAREST;
+            }
+        } else {
+            min_filter_method = mag_filter_method;
+        }
+
+        glTextureParameteri(m_texture_id, GL_TEXTURE_MIN_FILTER, min_filter_method);
+        glTextureParameteri(m_texture_id, GL_TEXTURE_MAG_FILTER, mag_filter_method);
 
         int wrap_mode = spec.repeat_wrap ? GL_REPEAT : GL_CLAMP_TO_EDGE;
         glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_S, wrap_mode);
@@ -23,11 +41,31 @@ namespace gal {
             m_components == 2 ? GL_RG8 :
             m_components == 3 ? GL_RGB8 :
             GL_RGBA8;
-        glTextureStorage2D(m_texture_id, 1, internal_format, m_res.x, m_res.y);
+        glTextureStorage2D(m_texture_id, compute_number_of_mipmap_levels(spec), internal_format, m_res.x, m_res.y);
+
 
         //write on the immutable storage
         if(spec.data) {
             set_texture_data(spec.data, spec.alignment);
+        }
+
+        if (spec.enable_mipmaps) {
+            glTextureParameterf(m_texture_id, GL_TEXTURE_LOD_BIAS, 0.0f);
+            if(spec.enable_anisotropic_filtering) {
+                glTextureParameterf(m_texture_id, GL_TEXTURE_MAX_ANISOTROPY, spec.max_anisotropy);
+            }
+            glGenerateTextureMipmap(m_texture_id);
+        }
+    }
+
+    static std::size_t compute_number_of_mipmap_levels(const texture::specification& spec) {
+        if(!spec.enable_mipmaps) {
+            return 1;
+        } else {
+            std::size_t ceiled_pixel_size = std::bit_ceil((std::size_t)std::max(spec.res.x, spec.res.y));
+            std::size_t log2_pixel_size = std::countr_zero(ceiled_pixel_size);
+
+            return log2_pixel_size + 1;
         }
     }
 

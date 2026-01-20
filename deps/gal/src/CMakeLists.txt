@@ -18,6 +18,7 @@ target_include_directories(GAL__renderer PUBLIC ../include/ ../glad/include)
 
 add_library(GAL__texture STATIC texture.cpp)
 target_link_libraries(GAL__texture PUBLIC GAL__types glm)
+target_link_libraries(GAL__texture PRIVATE slogga)
 target_include_directories(GAL__texture PUBLIC ../include/ ../glad/include)
 
 add_library(GAL__image STATIC image.cpp)
