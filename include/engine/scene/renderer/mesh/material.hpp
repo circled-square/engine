@@ -8,16 +8,19 @@
 #include <GAL/texture.hpp>
 
 namespace engine {
-    template<template<int, typename> class Vec, typename T>
-    using vec_variant = std::variant<T, Vec<2,T>, Vec<3,T>, Vec<4,T>>;
+    namespace internal {
+        template<typename T>
+        using vec_variant_helper = std::variant<T, glm::vec<2,T>, glm::vec<3,T>, glm::vec<4,T>>;
+    }
 
-    template<template<int, int, typename> class Mat, typename T>
-    using mat_variant = std::variant<Mat<2,2,T>, Mat<3,3,T>, Mat<4,4,T>>;
+    template<typename... Ts>
+    using vec_variant = merge_variants<internal::vec_variant_helper<Ts>...>;
 
-    template<class T>
-    using matvec_variant = merge_variants<mat_variant<glm::mat, T>, vec_variant<glm::vec, T>>;
+    template<typename T>
+    using mat_variant = std::variant<glm::mat<2,2,T>, glm::mat<2,3,T>, glm::mat<2,4,T>, glm::mat<3,2,T>, glm::mat<3,3,T>, glm::mat<3,4,T>, glm::mat<4,2,T>, glm::mat<4,3,T>, glm::mat<4,4,T>>;
 
-    using uniform_value_variant = merge_variants<matvec_variant<float>, matvec_variant<double>, matvec_variant<int>, matvec_variant<unsigned>, matvec_variant<bool>>;
+
+    using uniform_value_variant = merge_variants<mat_variant<float>, vec_variant<float, double, gal::sint, gal::uint, bool>>;
 
 
 

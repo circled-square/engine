@@ -12,39 +12,34 @@ namespace gal {
     class index_buffer {
         buffer m_buf;
         size_t m_triangle_count; // store the size of the buffer to be passed to opengl for draw calls  (unless only part of the ibo is read)
-        int m_element_typeid; // GL_UNSIGNED_INT or GL_UNSIGNED_SHORT
+        uint m_element_typeid; // GL_UNSIGNED_INT or GL_UNSIGNED_SHORT
 
-        size_t stride() {
-            return 3 * (
-                m_element_typeid == GL_UNSIGNED_INT ? sizeof(uint) :
-                m_element_typeid == GL_UNSIGNED_SHORT ? sizeof(unsigned short) : 0
-            );
-        }
+        size_t stride();
     public:
         index_buffer(index_buffer&& o)  noexcept;
-        index_buffer(buffer buf, size_t tri_count, int element_typeid);
+        index_buffer(buffer buf, size_t tri_count, uint element_typeid);
 
         template<ArrayOf<glm::uvec3> arr_t>
         index_buffer(const arr_t& arr, buffer_creation_params params = {})
-            : index_buffer(buffer(arr, params), arr.size(), GL_UNSIGNED_INT) {}
+            : index_buffer(arr.data(), arr.size(), params) {}
 
         template<ArrayOf<glm::u16vec3> arr_t>
         index_buffer(const arr_t& arr, buffer_creation_params params = {})
-	    : index_buffer(buffer(arr, params), arr.size(), GL_UNSIGNED_SHORT) {}
+            : index_buffer(arr.data(), arr.size(), params) {}
 
         index_buffer(const glm::uvec3* data, size_t tri_count, buffer_creation_params params = {});
         index_buffer(const glm::u16vec3* data, size_t tri_count, buffer_creation_params params = {});
-        index_buffer(int element_typeid, size_t tri_count, buffer_creation_params params = {});
+        index_buffer(uint element_typeid, size_t tri_count, buffer_creation_params params = {});
 
         template<ArrayOf<glm::uvec3> arr_t>
         void update(const arr_t& arr, size_t offset = 0) {
-            assert(m_element_typeid == GL_UNSIGNED_INT);
+            assert(m_element_typeid == gl_type_id<uint>);
             m_buf.update(offset, arr.data(), arr.size() * stride());
         }
 
         template<ArrayOf<glm::u16vec3> arr_t>
         void update(const arr_t& arr, size_t offset = 0) {
-            assert(m_element_typeid == GL_UNSIGNED_SHORT);
+            assert(m_element_typeid == gl_type_id<ushort>);
             m_buf.update(offset, arr.data(), arr.size() * stride());
         }
 

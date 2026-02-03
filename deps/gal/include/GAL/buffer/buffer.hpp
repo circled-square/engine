@@ -1,28 +1,31 @@
 #ifndef GAL_BUFFER_HPP
 #define GAL_BUFFER_HPP
 
-#include <glad/glad.h>
 #include <GAL/types.hpp>
 #include <concepts>
 
 namespace gal {
+
     struct buffer_creation_params {
+        enum flags_t { dynamic_storage = 1 };
+        enum hints_t { dynamic_draw = 1 };
+
         bool is_static = true;
         // apply when is_static = true => glNamedBufferStorage
-        unsigned flags = GL_DYNAMIC_STORAGE_BIT;
+        unsigned flags = dynamic_storage; // GL_DYNAMIC_STORAGE_BIT;
         // apply when is_static = false => glNamedBufferData
-        unsigned hints = GL_DYNAMIC_DRAW;
+        unsigned hints = dynamic_draw; // GL_DYNAMIC_DRAW
     };
 
     template<typename T>
     concept Array = requires (T arr) {
-        {arr.data()} -> std::convertible_to<typename T::const_pointer>;
-        {arr.size()} -> std::convertible_to<std::size_t>;
-        {arr[size_t(0)]} -> std::convertible_to<typename T::const_reference>;
+        { arr.data() } -> std::convertible_to<typename T::const_pointer>;
+        { arr.size() } -> std::convertible_to<std::size_t>;
+        { arr[size_t(0)] } -> std::convertible_to<typename T::const_reference>;
     };
 
     class buffer {
-        unsigned m_buf_id;
+        uint m_buf_id;
     public:
         buffer(const void* data, std::size_t size, buffer_creation_params params = { });
 
@@ -38,7 +41,7 @@ namespace gal {
 
 
         bool is_null() const { return m_buf_id == 0; }
-        unsigned get_gl_id() const { return m_buf_id; }
+        uint get_gl_id() const { return m_buf_id; }
     };
 }
 

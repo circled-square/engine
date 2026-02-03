@@ -1,12 +1,12 @@
 #include <GAL/init.hpp>
 #include <glad/glad.h>
-#include <GLFW/glfw3.h> // glad needs glfwGetProcAddress to initialize
 #include <format>
 #include <stdexcept>
 #include <slogga/log.hpp>
 #include <iostream>
 
 namespace gal {
+    // defined later in this file
     void handle_errors(GLenum source, GLenum type, GLuint msg_id, GLenum severity, int len, const char *msg, const void *user_param);
 
     static void initialize_error_handling() {
@@ -25,9 +25,13 @@ namespace gal {
             glDebugMessageControl(err.src, err.type, GL_DONT_CARE, 1, &err.id, false);
     }
 
-    void initialize_opengl() {
-        if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
+    static_assert(std::same_as<GLADloadproc, opengl_function_loader_t>);
+
+    void initialize_opengl(opengl_function_loader_t opengl_function_loader) {
+        if (!gladLoadGLLoader(opengl_function_loader))
             throw std::runtime_error("GLAD failed to initialize!");
+
+        slogga::stdout_log.info("OpenGL version: {}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
         initialize_error_handling();
     }

@@ -3,7 +3,7 @@
 
 #include "image.hpp"
 #include <GAL/types.hpp>
-#include <random>
+
 
 namespace gal {
     namespace internal {
@@ -26,10 +26,10 @@ namespace gal {
 
             // TODO: substitute void* for std::span<std::byte>
             const void* data = nullptr;
-            int alignment = 4;
-            bool enable_mipmaps = true;
+            sint alignment = 4;
+            bool enable_mipmaps = false;
 
-            //TODO: specification is missing a parameter to allow the user to have more than 8 bit depth for each component
+            //TODO: specification is missing a parameter to allow the user to have more/less than 8 bit depth for each component
 
             //TODO: the following settings should be sampler settings instead of texture settings
             bool repeat_wrap = false;
@@ -37,8 +37,8 @@ namespace gal {
             texture::filter_method mipmap_filter_method = texture::filter_method::linear;
             bool enable_anisotropic_filtering = true; // ignored if mipmap_filter_method == nullopt
             float max_anisotropy = 16.f; // ignored unless anisotropic_filtering == true
-
         };
+
         texture(const specification& spec);
         texture(const image& image);
         texture(texture&& o);
@@ -48,7 +48,7 @@ namespace gal {
         static texture null();
         bool is_null();
 
-        void set_texture_data(const void* buffer, int alignment = 4);
+        void set_texture_data(const void* buffer, sint alignment = 4);
 
         void bind(uint slot) const;
 

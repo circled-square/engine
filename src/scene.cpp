@@ -103,7 +103,7 @@ namespace engine {
             [frame_time, &r, &whole_screen_vao](const_node& n, const payload_t& father_payload){
                 // render self
                 if (n->has<mesh>()){
-                    glViewport(0,0, father_payload.out_res.x,  father_payload.out_res.y);
+                    r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
 
                     r.draw(n->get<mesh>(), father_payload.out_res, father_payload.viewproj * n->get_global_transform(), frame_time);
                 }
@@ -117,7 +117,7 @@ namespace engine {
                     } else
                         framebuffer::unbind();
 
-                    glViewport(0,0, father_payload.out_res.x,  father_payload.out_res.y);
+                    r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
                 }
             });
     }
@@ -145,7 +145,7 @@ namespace engine {
         rc<node_data> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
 
         // process children
-        for(node child : n->children()) {
+        for(const node& child : n->children()) {
             auto other_camera = set_cameras(child, children_vp);
 
             if(!default_fb_camera)
@@ -154,12 +154,12 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene(std::string name, node root, render_flags_t flags, application_channel_t::to_app_t to_app_chan)
+    scene::scene(std::string name, node root, application_channel_t::to_app_t to_app_chan)
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),
           m_whole_screen_vao(get_rm().get_whole_screen_vao()),
-          m_render_flags(std::move(flags)),
+          m_render_flags(),
           m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t()) {
         //the root of a scene's name should always be unnamed.
         EXPECTS(m_root->name().empty());
@@ -207,27 +207,7 @@ namespace engine {
     }
 
     void scene::prepare() {
-        if(m_render_flags.perform_alpha_blend) {
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glBlendEquation(GL_FUNC_ADD);
-            glEnable(GL_BLEND);
-        }
-
-        if(m_render_flags.depth_test == depth_test_t::keep_less) {
-            glEnable(GL_DEPTH_TEST); // Enable depth test
-            glDepthFunc(GL_LESS); // Accept fragment if it closer to the camera than the former one
-        } else if(m_render_flags.depth_test == depth_test_t::keep_more) {
-            glEnable(GL_DEPTH_TEST); // Enable depth test
-            glDepthFunc(GL_LESS); // Accept fragment if it is father from the camera than the former one
-        }
-
-        if(m_render_flags.face_culling == face_culling_t::back) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_BACK);
-        } else if(m_render_flags.face_culling == face_culling_t::front) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_FRONT);
-        }
+        m_renderer.get_low_level_renderer().set_render_flags(m_render_flags);
     }
 
     node scene::get_root() { return m_root; }

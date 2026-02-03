@@ -13,8 +13,11 @@ namespace gal {
 
     struct vertex_layout {
         struct vertex_array_attrib { 
-            uint index, offset, type_id, size, vao_vbo_bind_index;
-            bool normalized = false;
+            // note: reordering fields in this struct changes its interface, since it is not constructed with explicit constructors
+            uint index, offset, type_id;
+            sint size;
+            uint vao_vbo_bind_index; 
+            bool normalized;
         };
 
         size_t vertex_size = 0; //only optionally set
@@ -39,7 +42,7 @@ namespace gal {
 
         ~vertex_array();
 
-        void specify_attrib(uint attrib_index, uint offset, uint type, uint size, uint vao_vbo_bind_index);
+        void specify_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized);
         void specify_attribs(const vertex_layout& layout);
 
         void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
@@ -63,11 +66,13 @@ namespace gal {
         template<typename T>
         static void to_vertex_layout_helper(vertex_layout& layout, uint& index, uint& offset) {
             using vec = scalar_to_vector<T>;
-            uint type_id = gl_type_id<typename vec::value_type>;
-            uint size = vec::length();
+            constexpr uint type_id = gl_type_id<typename vec::value_type>;
+            constexpr sint size = vec::length();
             constexpr uint vao_vbo_bind_index = 0;
 
-            layout.attribs.emplace_back(index, offset, type_id, size, vao_vbo_bind_index);
+            layout.attribs.push_back(vertex_layout::vertex_array_attrib { 
+                .index=index, .offset=offset, .type_id=type_id, .size=size, .vao_vbo_bind_index=vao_vbo_bind_index
+            });
 
             index++;
             offset += sizeof(T);

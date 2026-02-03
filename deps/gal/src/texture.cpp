@@ -1,7 +1,8 @@
-#include <bit>
 #include <GAL/texture.hpp>
+#include <bit>
 #include <glad/glad.h>
 #include <slogga/asserts.hpp>
+#include <random>
 
 namespace gal {
     static std::size_t compute_number_of_mipmap_levels(const texture::specification& spec);
@@ -14,8 +15,8 @@ namespace gal {
         glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);
 
         //obligatory parameters
-        int mag_filter_method = mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
-        int min_filter_method;
+        uint mag_filter_method = mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
+        uint min_filter_method;
 
         if (spec.enable_mipmaps) {
             if(spec.mipmap_filter_method == filter_method::linear) {
@@ -31,12 +32,12 @@ namespace gal {
         glTextureParameteri(m_texture_id, GL_TEXTURE_MIN_FILTER, min_filter_method);
         glTextureParameteri(m_texture_id, GL_TEXTURE_MAG_FILTER, mag_filter_method);
 
-        int wrap_mode = spec.repeat_wrap ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+        uint wrap_mode = spec.repeat_wrap ? GL_REPEAT : GL_CLAMP_TO_EDGE;
         glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_S, wrap_mode);
         glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_T, wrap_mode);
 
         //init the immutable storage
-        GLenum internal_format =
+        uint internal_format =
             m_components == 1 ? GL_R8 :
             m_components == 2 ? GL_RG8 :
             m_components == 3 ? GL_RGB8 :
@@ -102,7 +103,7 @@ namespace gal {
         glDeleteTextures(1, &m_texture_id);
     }
 
-    void texture::set_texture_data(const void *buffer, int alignment) {
+    void texture::set_texture_data(const void *buffer, sint alignment) {
         glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
 
         uint format =

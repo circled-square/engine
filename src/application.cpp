@@ -16,11 +16,10 @@ namespace engine {
               m_ignore_mouse_move_on_next_event(true)
     {
         //init opengl (after glfw)
-        gal::initialize_opengl();
+        gal::initialize_opengl((gal::opengl_function_loader_t)m_window.get_opengl_function_loader());
         //init resources_manager (after opengl)
         resources_manager::init_instance();
 
-        slogga::stdout_log.info("{}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
 
 
         // set window callbacks and set the user pointer for them

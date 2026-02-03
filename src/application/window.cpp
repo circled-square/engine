@@ -111,6 +111,10 @@ namespace engine::window {
 
     void* window::get_user_ptr(GLFWwindow *w) { return glfwGetWindowUserPointer(w); }
 
+    window::opengl_function_loader_t window::get_opengl_function_loader() {
+        return glfwGetProcAddress;
+    }
+
     void window::poll_events() { glfwPollEvents(); }
 
     glm::dvec2 window::get_cursor_pos() {
@@ -130,7 +134,7 @@ namespace engine::window {
         glfwSwapInterval(value ? 1 : 0);
     }
 
-
+    static_assert(std::same_as<window::opengl_function_loader_t, decltype(&glfwGetProcAddress)>);
 
 
     window_exception::window_exception(code err) : error(err) {}

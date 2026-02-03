@@ -48,14 +48,14 @@ namespace gal {
             bind();
             glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tex.m_texture_id, 0);// attach the texture {3}'s mipmap {4} to framebuffer {0} at attach index {1}
 
-            unsigned int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            uint status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             if (status != GL_FRAMEBUFFER_COMPLETE) {
                 framebuffer::unbind(); // limit side effects to a minimum
                 throw framebuffer_construction_exception(status);
             }
 
             // Set the list of draw buffers.
-            unsigned int draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+            uint draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
             glDrawBuffers(1, draw_buffers);
 
             unbind(); // limit side effects to a minimum
@@ -92,8 +92,8 @@ namespace gal {
     }
 
     // construction_exception
-    framebuffer_construction_exception::framebuffer_construction_exception(unsigned int error_code) : m_code(error_code) {
-        std::unordered_map<unsigned int, std::string> glenum_to_string = {
+    framebuffer_construction_exception::framebuffer_construction_exception(uint error_code) : m_code(error_code) {
+        std::unordered_map<uint, std::string> glenum_to_string = {
             { GL_FRAMEBUFFER_UNDEFINED, 						"GL_FRAMEBUFFER_UNDEFINED" },
             { GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT, 			"GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT" },
             { GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT,  	"GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT" },

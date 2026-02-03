@@ -50,6 +50,15 @@ namespace gal {
         { *p } -> std::convertible_to<const pointed_t&>;
     };
 
+    /* `framebuffer` implements framebuffer functionality and exposes it to the user.
+     *
+     * The class contains a `PointerLike<texture>`, through which it accesses the texture
+     * it is linked to. In this way this template can be used to create:
+     * - a framebuffer which owns its linked texture
+     * (`framebuffer<std::unique_ptr<texture>>`, `framebuffer<std::optional<texture>>`),
+     * - a framebuffer which doesn't own its linked texture (`framebuffer<texture*>`),
+     * - a framebuffer with shared ownership of its linked texture (`framebuffer<shared_ptr<texture>>`).
+     */
     template<PointerLike<texture> tex_ptr_t = std::optional<texture>>
     class framebuffer {
         tex_ptr_t m_tex;

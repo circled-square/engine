@@ -41,11 +41,13 @@ namespace gal {
         m_vao = 0;
     }
 
-    void vertex_array::specify_attrib(uint attrib_index, uint offset, uint type_id, uint size, uint vao_vbo_bind_index) {
+    void vertex_array::specify_attrib(uint attrib_index, uint offset, uint type_id, sint size, uint vao_vbo_bind_index, bool normalized_bool) {
+        GLboolean normalized = normalized_bool ? GL_TRUE : GL_FALSE;
+
         //the vertex array contains vertices with the following attribs:
         glEnableVertexArrayAttrib(m_vao, attrib_index); //enable the attrib {2} for the vao {1} (can be done after call to glVertexAttribPointer I think)
         //the {1} vao's {2}th attrib is {3} elements of type {4}; they do/don't({5}) need normalization; {6} is the offset of the attrib from the start of the vertex.
-        glVertexArrayAttribFormat(m_vao, attrib_index, size, type_id, GL_FALSE, offset); 
+        glVertexArrayAttribFormat(m_vao, attrib_index, size, type_id, normalized, offset); 
         glVertexArrayAttribBinding(m_vao, attrib_index, vao_vbo_bind_index); // bind the attrib {2} to the {3}th vbo of the vao {1}
     }
 
@@ -61,7 +63,7 @@ namespace gal {
         #endif
         
         for(const vertex_layout::vertex_array_attrib& attrib : layout.attribs) {
-            specify_attrib(attrib.index, attrib.offset, attrib.type_id, attrib.size, attrib.vao_vbo_bind_index);
+            specify_attrib(attrib.index, attrib.offset, attrib.type_id, attrib.size, attrib.vao_vbo_bind_index, attrib.normalized);
         }
     }
 

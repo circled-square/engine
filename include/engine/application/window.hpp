@@ -67,6 +67,11 @@ namespace engine::window {
         operator GLFWwindow* () { return  m_window_ptr; }
         operator bool     () { return  m_window_ptr; }
         bool operator!    () { return !m_window_ptr; }
+
+        using generic_fn_ptr_t = void(*)();
+        using opengl_function_loader_t = generic_fn_ptr_t(*)(const char*);
+
+        opengl_function_loader_t get_opengl_function_loader();
     };
 
     struct window_exception : public std::exception {

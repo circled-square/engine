@@ -18,7 +18,7 @@ int main() {
 
     //initialization
     window::window window({400,400}, "test_window"); // unfortunately opengl sucks and it can't seize resources without a valid context, that is to say a window
-    gal::initialize_opengl();
+    gal::initialize_opengl((gal::opengl_function_loader_t)window.get_opengl_function_loader());
     application fakeapp;
 
     gal::texture::specification spec { .res = {1,1} };

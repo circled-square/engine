@@ -50,10 +50,10 @@ namespace engine {
         }
 
         // set custom uniforms
-        for(auto u : m_custom_uniforms) {
-            uniform_value_variant value_variant = u.second;
-            match_variant(value_variant, [&]<typename T>(const T& v) {
-                m_shader->get_program().set_uniform<T>(u.first.c_str(), v);
+        for(const auto& [name, value_variant] : m_custom_uniforms) {
+            match_variant(value_variant,
+            [&]<typename T>(const T& v) {
+                m_shader->get_program().set_uniform<T>(name.c_str(), v);
             });
         }
     }

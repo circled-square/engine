@@ -46,7 +46,7 @@ namespace engine {
             const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
             int bufview_idx = accessor.bufferView;
             if(bufviews.contains(bufview_idx)) {
-                uint vec_len = accessor.type == TINYGLTF_TYPE_SCALAR ? 1 : accessor.type;
+                unsigned vec_len = accessor.type == TINYGLTF_TYPE_SCALAR ? 1 : accessor.type;
 
                 size_t attrib_size = vec_len * gal::typeid_to_size(accessor.componentType);
 
@@ -131,15 +131,15 @@ namespace engine {
         //populate vbos and layout.attribs
         for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
             //vertex array attribute
-            uint vaa =
+            gal::uint vaa =
                 attrib_name == "POSITION" ? 0 :
-                attrib_name == "TEXCOORD_0" ? 1 : (uint)-1;
+                attrib_name == "TEXCOORD_0" ? 1 : ~gal::uint(0);
 
-            if(vaa != (uint)-1) {
+            if(vaa != ~gal::uint(0)) {
                 const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
                 int bufview_idx = accessor.bufferView;
 
-                uint vbo_bind = (uint)-1;
+                gal::uint vbo_bind = ~gal::uint(0);
 
                 // TODO: every vbo contains the contents of a bufview, but this may cause the transfer of unused data to VRAM (because unused attribs might be stored in the same bufview as used ones)
                 if (!bufview_to_vbo_map.contains(bufview_idx)) {
@@ -149,12 +149,15 @@ namespace engine {
                 }
 
                 // TODO: support matrices: this currently only works for scalars and vec2/3/4
-                uint size = accessor.type == TINYGLTF_TYPE_SCALAR ?  1 : accessor.type;
+                gal::sint size = accessor.type == TINYGLTF_TYPE_SCALAR ?  1 : accessor.type;
 
-                if (vbo_bind == (uint)-1) // only lookup in the table if we didn't just add the element into it
+                if (vbo_bind == ~gal::uint(0)) // only lookup in the table if we didn't just add the element into it
                     vbo_bind = bufview_to_vbo_map[bufview_idx];
 
-                vertex_array_attrib attrib { vaa, (uint)accessor.byteOffset, (uint)accessor.componentType, size, vbo_bind, accessor.normalized };
+                vertex_array_attrib attrib{
+                    .index=vaa, .offset=(gal::uint)accessor.byteOffset, .type_id=(gal::uint)accessor.componentType,
+                    .size=size, .vao_vbo_bind_index=vbo_bind, .normalized=accessor.normalized
+                };
                 layout.attribs.push_back(attrib);
             }
         }
@@ -184,7 +187,11 @@ namespace engine {
             .components = image.component,
             .data = image.image.data(),
             .alignment = 1,
+            .enable_mipmaps = true,
             .repeat_wrap = true,
+            .mipmap_filter_method = gal::texture::filter_method::linear,
+            .enable_anisotropic_filtering = true,
+            .max_anisotropy = 16.f,
         };
         return gal::texture(spec);
 
