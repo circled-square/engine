@@ -11,7 +11,13 @@ namespace engine {
     namespace uniform_names {
         const char output_resolution[] = "u_output_resolution";
         const char time[] = "u_time";
+
         const char mvp[] = "u_mvp";
+        const char model[] = "u_model";
+        const char view[] = "u_view";
+        const char projection[] = "u_projection";
+
+        const char dither_texture[] = "u_dither_texture";
     }
 
     class shader_parse_exception : public std::exception {
@@ -103,12 +109,20 @@ namespace engine {
         for(auto& [type_str, name_str] : uniforms_strings) {
             if(name_str == engine::uniform_names::mvp) {
                 uniforms_info.mvp = true;
+            } else if(name_str == engine::uniform_names::model) {
+                uniforms_info.model = true;
+            } else if(name_str == engine::uniform_names::view) {
+                uniforms_info.view = true;
+            } else if(name_str == engine::uniform_names::projection) {
+                uniforms_info.projection = true;
             } else if(name_str == engine::uniform_names::output_resolution) {
                 uniforms_info.output_resolution = true;
             } else if(name_str == engine::uniform_names::time) {
                 uniforms_info.time = true;
+            } else if(name_str == engine::uniform_names::dither_texture){
+                uniforms_info.dither_texture = true;
             } else {
-                 if(type_str == "sampler2D") {
+                if(type_str == "sampler2D") {
                     uniforms_info.sampler_names.push_back(std::string(name_str));
                 }
                 /* // commented because the user is allowed to add custom uniforms which she will then have to populate manually

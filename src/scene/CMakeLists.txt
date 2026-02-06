@@ -3,7 +3,7 @@ add_subdirectory(renderer/)
 
 #renderer
 add_library(engine__scene_renderer STATIC renderer.cpp)
-target_link_libraries(engine__scene_renderer PUBLIC GAL engine__global engine__scene_renderer_mesh)
+target_link_libraries(engine__scene_renderer PUBLIC GAL engine__global engine__scene_renderer_mesh engine__utils_linalgebra)
 target_link_libraries(engine__scene_renderer PRIVATE GAL glm engine__resources_manager)
 
 #node

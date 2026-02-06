@@ -1,3 +1,4 @@
+#include "engine/scene/renderer.hpp"
 #include <engine/scene.hpp>
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -63,10 +64,10 @@ namespace engine {
         }
     }
 
-    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, const_node root, const mat4& viewproj, glm::ivec2 out_res, float frame_time) {
+    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, const_node root, const mvp_matrices& viewproj, glm::ivec2 out_res, float frame_time) {
         struct payload_t {
             glm::ivec2 out_res;
-            mat4 viewproj;
+            mvp_matrices viewproj;
             rc<const node_data> vp_node;
         };
 
@@ -91,7 +92,7 @@ namespace engine {
 
                     mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_payload.out_res.x / children_payload.out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
                     mat4 view_mat = children_payload.vp_node->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
-                    children_payload.viewproj = proj_mat * view_mat;
+                    children_payload.viewproj = mvp_matrices { .m=glm::mat4(1.), .v=view_mat, .p=proj_mat };
                     r.clear();
                 } else {
                     children_payload = father_payload;
@@ -105,7 +106,9 @@ namespace engine {
                 if (n->has<mesh>()){
                     r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
 
-                    r.draw(n->get<mesh>(), father_payload.out_res, father_payload.viewproj * n->get_global_transform(), frame_time);
+                    mvp_matrices mvp = father_payload.viewproj;
+                    mvp.m = n->get_global_transform();
+                    r.draw(n->get<mesh>(), father_payload.out_res,  mvp, frame_time);
                 }
 
                 // only rebind the viewport if n is a viewport (to unbind n and bind whatever its ancestor viewport is)
@@ -158,7 +161,7 @@ namespace engine {
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),
-          m_whole_screen_vao(get_rm().get_whole_screen_vao()),
+          m_whole_screen_vao(get_rm().load<gal::vertex_array>(internal_resource_name_t::whole_screen_vao)),
           m_render_flags(),
           m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t()) {
         //the root of a scene's name should always be unnamed.
@@ -183,8 +186,8 @@ namespace engine {
         m_renderer.clear(m_application_channel.to_app().clear_color);
         mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
-        mat4 viewproj_mat = proj_mat * view_mat;
-        render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj_mat, resolution, frame_time);
+        mvp_matrices viewproj { .m=mat4(1.), .v=view_mat, .p=proj_mat };
+        render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj, resolution, frame_time);
     }
 
     void scene::update() {

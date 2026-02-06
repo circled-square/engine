@@ -8,7 +8,7 @@ namespace engine {
         application() { resources_manager::init_instance(); }
         ~application() { resources_manager::deinit_instance(); }
         std::size_t get_number_of_textures() {
-            return std::get<detail::id_to_resource_hashmap<gal::texture>>(get_rm().m_active_resources).size();
+            return get_rm().m_hashmaps.id_to_resource<gal::texture>().size();
         }
     };
 }
@@ -22,7 +22,7 @@ int main() {
     application fakeapp;
 
     gal::texture::specification spec { .res = {1,1} };
-    rc<gal::texture> tex_ref = get_rm().new_mut_from(gal::texture(spec));
+    rc<gal::texture> tex_ref = get_rm().new_from(gal::texture(spec));
     // check pointer correctness
     if(tex_ref->resolution() != spec.res)
         throw std::runtime_error("incorrect pointer returned by resources_manager::get_mut_from");

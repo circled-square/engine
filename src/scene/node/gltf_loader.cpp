@@ -197,14 +197,14 @@ namespace engine {
 
     }
 
-    static engine::mesh load_mesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
+    static engine::mesh load_mesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh, const rc<const shader>& shader) {
         vector<engine::primitive> primitives;
         for(size_t primitive_idx = 0; primitive_idx < mesh.primitives.size(); primitive_idx++) {
             gal::vertex_array vao = get_vao_from_mesh_primitive(model, mesh, primitive_idx);
             gal::texture texture = get_texture_from_mesh_primitive(model, mesh, primitive_idx);
 
             primitives.emplace_back(
-                material(get_rm().get_retro_3d_shader(), get_rm().new_from<gal::texture>(std::move(texture))),
+                material(shader, get_rm().new_from<gal::texture>(std::move(texture))),
                 get_rm().new_from<gal::vertex_array>(std::move(vao))
             );
         }
@@ -226,10 +226,10 @@ namespace engine {
                 // std::invalid_argument if no conversion could be performed.
                 // std::out_of_range if the converted value would fall out of the range of the result type or if the underlying function
             } catch(std::invalid_argument& e) {
-                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string could not be parsed as a hex number", attrib_name);
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string '{}' could not be parsed as a hex number", attrib_name, string);
                 return 0;
             } catch(std::out_of_range& e) {
-                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string's value could not be contained in 64 bits", attrib_name);
+                slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': '{}' as an integer is out of range for an unsigned 64 bits integer", attrib_name, string);
                 return 0;
             }
             return ret;
@@ -327,7 +327,7 @@ namespace engine {
         return translation_mat * scale_mat * rotation_mat * raw_mat;
     }
 
-    static node_payload_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node) {
+    static node_payload_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node, const rc<const shader>& shader) {
         if(node.mesh == -1)
             return std::monostate();
         const tinygltf::Mesh& mesh = model.meshes[node.mesh];
@@ -352,14 +352,14 @@ namespace engine {
                 return std::monostate();
             }
         } else {
-            return load_mesh(model, mesh);
+            return load_mesh(model, mesh, shader);
         }
     }
 
-    static node load_node_subtree(const tinygltf::Model& model, int idx) {
+    static node load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
         const tinygltf::Node& gltf_node = model.nodes[idx];
 
-        node_payload_t node_data_variant = load_node_data(model, gltf_node);
+        node_payload_t node_data_variant = load_node_data(model, gltf_node, shader);
 
         glm::mat4 transform = get_node_transform(gltf_node);
         node root(gltf_node.name, std::move(node_data_variant), transform);
@@ -374,13 +374,13 @@ namespace engine {
 
 
         for(int child_idx : gltf_node.children) {
-            root.add_child(load_node_subtree(model, child_idx));
+            root.add_child(load_node_subtree(model, child_idx, shader));
         }
 
         return root;
     }
 
-    engine::nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, const std::string& nodetree_name) {
+    engine::nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, rc<const shader> shader, const std::string& nodetree_name) {
         const std::string& nonempty_nodetree_name = !nodetree_name.empty() ? nodetree_name : filepath;
         bool binary = string_view(filepath).ends_with(".glb");
 
@@ -394,7 +394,7 @@ namespace engine {
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;
         for (int node_idx : scene.nodes)
-            root.add_child(load_node_subtree(model, node_idx));
+            root.add_child(load_node_subtree(model, node_idx, shader));
 
         return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }

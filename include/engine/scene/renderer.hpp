@@ -3,6 +3,7 @@
 
 #include <GAL/renderer/renderer.hpp>
 #include <engine/resources_manager/rc.hpp>
+#include <engine/utils/lin_algebra.hpp>
 #include "renderer/mesh.hpp"
 
 namespace engine {
@@ -10,7 +11,7 @@ namespace engine {
         gal::renderer m_low_level_renderer;
     public:
         void clear(glm::vec4 c = {0,0,0,1});
-        void draw(const mesh& mesh, glm::ivec2 output_resolution, const glm::mat4& mvp, float frame_time = 0.f);
+        void draw(const mesh& mesh, glm::ivec2 output_resolution, const mvp_matrices& mvp, float frame_time = 0.f);
         gal::renderer& get_low_level_renderer();
     };
 }

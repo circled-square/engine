@@ -5,7 +5,7 @@
 
 namespace engine {
     //if node_name is left empty the node will have the name of the filepath
-    nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, const std::string& node_name = "");
+    nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, rc<const shader> shader, const std::string& node_name = "");
 
     class gltf_load_error : public std::exception {
         std::string m_filepath, m_err;

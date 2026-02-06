@@ -66,13 +66,6 @@ namespace engine::detail {
         >::type
     >);
 
-    
-    // turns a bunch of callables into a single overloaded callable
-    template<class... Ts>
-    struct overloaded : Ts... { using Ts::operator()...; };
-    
-    template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>; // explicit deduction guide (not needed as of C++20)
-
     template<typename func_t, typename ret_t, typename...Ts>
     concept impl_callable = requires (func_t f, Ts...args) {
         { f(args...) }

@@ -20,11 +20,15 @@ namespace engine {
 
 
     #define RESOURCES scene, nodetree_blueprint, node_data, stateless_script, shader, gal::texture, gal::vertex_array, collision_shape
+    #define MOVEABLE_RESOURCES scene, nodetree_blueprint,  stateless_script, shader, gal::texture, gal::vertex_array, collision_shape
+
     // technically not a concept, but nonetheless this is not a type supposed to be used as is, but instead it is supposed to be used
     // to define concept Resource and to be mapped to tuples of data structures of each resource type
     using resource_tuple_t = std::tuple<RESOURCES>;
 
+
     template <typename T> concept Resource = ContainedInTuple<T, resource_tuple_t>;
+    template <typename T> concept MoveableResource = Resource<T> && ContainedInTuple<T, std::tuple<MOVEABLE_RESOURCES>>;
 
     //for debug reasons
     template<Resource T>

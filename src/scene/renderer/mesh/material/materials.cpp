@@ -1,7 +1,7 @@
 #include <engine/scene/renderer/mesh/material/materials.hpp>
 
 namespace engine {
-    shader make_retro_3d_shader() {
+    shader make_simple_3d_shader() {
         const char vert[] = "#version 440 core \n\
             layout(location = 0) in vec3 pos; \
             layout(location = 1) in vec2 tex_coord; \

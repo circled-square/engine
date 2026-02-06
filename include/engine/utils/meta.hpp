@@ -10,8 +10,7 @@
 // general purpose concepts and metaprogramming utilities
 namespace engine {
     // T is AnyOneOf<Ts...> if T is contained in Ts 
-    template<typename T, typename... Ts>
-    concept AnyOneOf = (std::same_as<T, Ts> || ...);
+    using detail::AnyOneOf;
 
     // T is ContainedInTuple<tuple_t> if tuple_t === std::tuple<..., T, ...>
     template<typename T, typename tuple_t>
@@ -36,10 +35,15 @@ namespace engine {
     template<class...Variants>
     using merge_variants = merge_packs<std::variant, Variants...>;
 
+    // turns a bunch of callables into a single overloaded callable
+    template<class... Ts>
+    struct merge_callables : Ts... { using Ts::operator()...; };
+
+    template<class... Ts> merge_callables(Ts...) -> merge_callables<Ts...>; // explicit deduction guide (not needed as of C++20)
     //like std::visit but with multiple overloads; will cause a compile error if not all of the variant's cases are covered
     template<typename...Ts>
     void match_variant(const std::variant<Ts...>& v, const auto&... handlers) {
-        std::visit(detail::overloaded(handlers...), v);
+        std::visit(merge_callables(handlers...), v);
     }
 
     template<typename func_t, typename signature>

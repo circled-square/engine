@@ -4,7 +4,7 @@
 #include "shader.hpp"
 
 namespace engine {
-    shader make_retro_3d_shader();
+    shader make_simple_3d_shader();
 
     //vertex type expected by the shader produced by make_retro_3d_shader
     struct retro_3d_shader_vertex_t {

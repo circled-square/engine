@@ -194,6 +194,7 @@ namespace engine {
         template<NodePayload T> bool     has() const;
         template<NodePayload T> const T& get() const;
         template<NodePayload T> T&       get();
+        void set_payload(node_payload_t p);
     };
 
     class node_exception : public std::exception {
@@ -214,12 +215,14 @@ namespace engine {
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
     class nodetree_blueprint {
-        rc<const node_data> m_root;
+        node m_root;
         std::string m_name;
     public:
-        nodetree_blueprint(rc<const node_data> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
         rc<const node_data> root() const { return m_root; }
+
+        node into_node() { return std::move(m_root); }
     };
 
     /* const_node_span is used for iterating on the children of a node in an immutable manner.

@@ -37,7 +37,7 @@ namespace engine {
         }
 
         // fix the children's father pointers
-        for(node child : n->m_children) {
+        for(node& child : n->m_children) {
             child->m_father = n;
         }
 
@@ -47,7 +47,7 @@ namespace engine {
     }
 
     node::node(std::string name, node_payload_t payload, const glm::mat4& transform, rc<const stateless_script> script)
-        : m_node_data(get_rm().new_mut_emplace<node_data>(std::move(name), std::move(payload), transform)) {
+        : m_node_data(get_rm().new_emplace<node_data>(std::move(name), std::move(payload), transform)) {
         if(script)
             node_data::attach_script(*this, std::move(script));
         ENSURES(m_node_data);
@@ -246,7 +246,7 @@ namespace engine {
     void node_data::invalidate_global_transform_cache() const {
         if(m_global_transform_cache.has_value()) {
             m_global_transform_cache.reset();
-            for(rc<const node_data> c : children()) {
+            for(const rc<const node_data>& c : children()) {
                 c->invalidate_global_transform_cache();
             }
         }
@@ -277,7 +277,9 @@ namespace engine {
     template<NodePayload T> bool     node_data::has() const { return std::holds_alternative<T>(m_payload); }
     template<NodePayload T> const T& node_data::get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
     template<NodePayload T> T&       node_data::get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
-
+    void node_data::set_payload(node_payload_t p) {
+        m_payload = std::move(p);
+    }
 
 #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
     template TYPE& node_data::get<TYPE>(); \

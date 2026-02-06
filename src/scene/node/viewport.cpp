@@ -12,10 +12,10 @@ namespace engine {
 
     viewport::viewport(glm::vec2 dynamic_size_relative_to_output)
         // a texture with 0 texels causes the fbo to throw a framebuffer_construction_exception
-        : viewport(framebuffer(get_rm().new_mut_from(gal::texture::null())), dynamic_size_relative_to_output) {}
+        : viewport(framebuffer(get_rm().new_from(gal::texture::null())), dynamic_size_relative_to_output) {}
 
     inline viewport copy(const viewport &o) {
-        rc<gal::texture> new_texture = get_rm().new_mut_from<gal::texture>(gal::texture::empty(o.fbo().resolution(), 4));
+        rc<gal::texture> new_texture = get_rm().new_from(gal::texture::empty(o.fbo().resolution(), 4));
         return viewport(framebuffer(std::move(new_texture)), o.dynamic_size_relative_to_output());
     }
 

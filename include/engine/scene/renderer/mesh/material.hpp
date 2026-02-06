@@ -6,6 +6,7 @@
 #include <engine/utils/hash.hpp>
 #include "material/shader.hpp"
 #include <GAL/texture.hpp>
+#include <engine/utils/lin_algebra.hpp>
 
 namespace engine {
     namespace internal {
@@ -42,7 +43,7 @@ namespace engine {
         rc<const gal::texture>& get_texture(size_t);
         const rc<const gal::texture>& get_texture(size_t) const;
 
-        void bind_and_set_uniforms(glm::mat4 mvp, glm::ivec2 output_resolution, float frame_time) const;
+        void bind_and_set_uniforms(mvp_matrices mvp, glm::ivec2 output_resolution, float frame_time) const;
 
         std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() { return m_custom_uniforms; }
         const std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() const { return m_custom_uniforms; }

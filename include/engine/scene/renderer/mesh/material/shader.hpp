@@ -12,6 +12,11 @@ namespace engine {
         bool output_resolution = false;
         bool time = false;
         bool mvp = false;
+        bool model = false;
+        bool view = false;
+        bool projection = false;
+        bool dither_texture = false;
+
         std::vector<std::string> sampler_names = std::vector<std::string>();
     };
 
@@ -35,6 +40,11 @@ namespace engine {
         extern const char output_resolution[]; // = "u_output_resolution";
         extern const char time[]; // = "u_time";
         extern const char mvp[]; // = "u_mvp";
+        extern const char model[]; // = "u_model";
+        extern const char view[]; // = "u_view";
+        extern const char projection[]; // = "u_projection";
+
+        extern const char dither_texture[];// = "u_dither_texture";
     }
 }
 
