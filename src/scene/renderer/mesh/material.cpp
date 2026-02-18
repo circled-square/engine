@@ -1,6 +1,6 @@
 #include "engine/scene/renderer.hpp"
 #include "engine/scene/renderer/mesh/material/shader.hpp"
-#include "slogga/log.hpp"
+#include "slogga/asserts.hpp"
 #include <engine/scene/renderer/mesh/material.hpp>
 #include <engine/utils/format_glm.hpp>
 #include <engine/resources_manager.hpp>

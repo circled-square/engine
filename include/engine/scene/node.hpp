@@ -10,6 +10,7 @@
 #include "node/narrow_phase_collision.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
+#include <engine/utils/api_macro.hpp>
 
 // TODO: consider splitting different classes in this header into separate headers
 
@@ -30,24 +31,24 @@ namespace engine {
     public:
         // constructors and assignment operators
         node() = delete;
-        node(node&& o);
-        node& operator=(node&& o);
-        node& operator=(const node& o);
-        node(const node& o);
-        explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr);
+        ENGINE_API node(node&& o);
+        ENGINE_API node& operator=(node&& o);
+        ENGINE_API node& operator=(const node& o);
+        ENGINE_API node(const node& o);
+        ENGINE_API explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), std::optional<stateless_script> script = std::nullopt);
         //this is expensive (calls deep_copy)
-        explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
-        node deep_copy() const;
+        ENGINE_API explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
+        ENGINE_API node deep_copy() const;
 
-        operator rc<node_data>() const;
-        operator rc<const node_data>() const;
-        operator weak<node_data>() const;
-        operator weak<const node_data>() const;
+        ENGINE_API operator rc<node_data>() const;
+        ENGINE_API operator rc<const node_data>() const;
+        ENGINE_API operator weak<node_data>() const;
+        ENGINE_API operator weak<const node_data>() const;
 
-        void add_child(node c) const;
+        ENGINE_API void add_child(node c) const;
 
-        node_data& operator*() const;
-        node_data* operator->() const;
+        ENGINE_API node_data& operator*() const;
+        ENGINE_API node_data* operator->() const;
     };
 
     class const_node {
@@ -60,7 +61,7 @@ namespace engine {
         const_node(const const_node& o) :m_node(o.m_node) {}
         const_node(node o) : m_node(std::move(o)) {}
 
-        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), rc<const stateless_script> script = nullptr) : m_node(name, payload, transform, script) {}
+        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), std::optional<stateless_script> script = std::nullopt) : m_node(name, payload, transform, script) {}
         //this is expensive (calls deep_copy)
         explicit const_node(rc<const nodetree_blueprint> nt, std::string name = "") : m_node(nt, name) {}
         node deep_copy() const { return m_node.deep_copy(); }
@@ -134,68 +135,69 @@ namespace engine {
         node_data(node_data&&) = delete;
 
         // get child from name
-        node get_child(std::string_view name);
+        ENGINE_API node get_child(std::string_view name);
         // get a span of the node's children
-        const_node_span children() const;
+        ENGINE_API const_node_span children() const;
         // get a span of the node's children
-        std::span<const node> children();
+        ENGINE_API std::span<const node> children();
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
-        void set_children_sorting_preference(bool v);
+        ENGINE_API void set_children_sorting_preference(bool v);
         // get node with relative path
-        node get_descendant_from_path(std::string_view path);
+        ENGINE_API node get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
-        rc<node_data> get_father();
+        ENGINE_API rc<node_data> get_father();
         // get father node, possibly returns null
-        rc<const node_data> get_father() const;
+        ENGINE_API rc<const node_data> get_father() const;
         // get father node, throws if father is null
-        rc<node_data> get_father_checked();
+        ENGINE_API rc<node_data> get_father_checked();
         // get father node, throws if father is null
-        rc<const node_data> get_father_checked() const;
+        ENGINE_API rc<const node_data> get_father_checked() const;
 
         // get this node's name
-        const std::string& name() const;
+        ENGINE_API const std::string& name() const;
         // get this node's absolute path in the node hierarchy
-        std::string absolute_path() const;
+        ENGINE_API std::string absolute_path() const;
 
         // get this node's local transform
-        const glm::mat4& transform() const;
+        ENGINE_API const glm::mat4& transform() const;
         // set this node's local transform
-        void set_transform(const glm::mat4& m);
+        ENGINE_API void set_transform(const glm::mat4& m);
         /* get this node's global transform.
          *
          * Note: the global transform is cached and as such should be fairly inexpensive to compute
          */
-        const glm::mat4& get_global_transform() const;
+        ENGINE_API const glm::mat4& get_global_transform() const;
 
         // get the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        const node_collision_behaviour& get_collision_behaviour();
+        ENGINE_API const node_collision_behaviour& get_collision_behaviour();
         // set the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        void set_collision_behaviour(node_collision_behaviour col_behaviour);
+        ENGINE_API void set_collision_behaviour(node_collision_behaviour col_behaviour);
 
         // handle collision event, recursing up the node tree if necessary
         void react_to_collision(collision_result res, node_data& other);
 
         //script
         // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data)
-        static void attach_script(const node& self, rc<const stateless_script> s);
+        ENGINE_API static void attach_script(const node& self, std::optional<stateless_script> s);
         // explicitly set the script's state
-        void set_script_state(std::any s);
+        ENGINE_API void set_script_state(std::any s);
         // get this node's script
-        std::optional<script>& get_script();
+        ENGINE_API std::optional<script>& get_script();
         // get this node's script
-        const std::optional<script>& get_script() const;
+        ENGINE_API const std::optional<script>& get_script() const;
 
         // special node data access
         // TODO: what is this lol
-        template<Resource T> requires NodePayload<rc<const T>> bool     has() const;
-        template<Resource T> requires NodePayload<rc<const T>> const T& get() const;
+        template<Resource T> requires NodePayload<rc<const T>> ENGINE_API bool     has() const;
+        template<Resource T> requires NodePayload<rc<const T>> ENGINE_API const T& get() const;
 
-        template<NodePayload T> bool     has() const;
-        template<NodePayload T> const T& get() const;
-        template<NodePayload T> T&       get();
-        void set_payload(node_payload_t p);
+        template<NodePayload T> ENGINE_API bool     has() const;
+        template<NodePayload T> ENGINE_API const T& get() const;
+        template<NodePayload T> ENGINE_API T&       get();
+        ENGINE_API void set_payload(node_payload_t p);
     };
+
 
     class node_exception : public std::exception {
         std::string m_name, m_child_name;
@@ -210,7 +212,7 @@ namespace engine {
 
         type get_type() { return m_type; }
 
-        virtual const char* what() const noexcept;
+        ENGINE_API virtual const char* what() const noexcept;
     };
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated

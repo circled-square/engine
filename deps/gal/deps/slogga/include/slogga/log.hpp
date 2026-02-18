@@ -3,6 +3,27 @@
 
 #include <format>
 
+// (handled by cmake) define SLOGGA_AS_SHARED_LIB in all translation units if slogga is meant to be included (and exported) by a shared lib; also define it in translation units which make use of slogga through the shared lib
+#if defined(SLOGGA_AS_SHARED_LIB)
+#    if defined(_MSC_VER) || defined(_WIN32) // Microsoft
+#        define SLOGGA_EXPORT __declspec(dllexport)
+#        define SLOGGA_IMPORT __declspec(dllimport)
+#    else // GCC, or hopefully something GCC compatible
+#        define SLOGGA_EXPORT [[gnu::visibility("default")]]
+#        define SLOGGA_IMPORT [[gnu::visibility("default")]]
+#    endif
+#else
+#    define SLOGGA_EXPORT
+#    define SLOGGA_IMPORT
+#endif
+
+// (handled by cmake) define SLOGGA_BEING_COMPILED in all of slogga's translation units, but not in translation units wanting to import slogga
+#if defined(SLOGGA_BEING_COMPILED)
+#    define SLOGGA_API SLOGGA_EXPORT
+#else
+#    define SLOGGA_API SLOGGA_IMPORT
+#endif
+
 namespace slogga {
 
     /*
@@ -30,10 +51,10 @@ namespace slogga {
         log_level m_log_level;
 
     public:
-        log(std::ostream&, log_level, bool timestamp = false);
-        void set_log_level(log_level l);
+        SLOGGA_API log(std::ostream&, log_level, bool timestamp = false);
+        SLOGGA_API void set_log_level(log_level l);
 
-        void operator()(log_level l, std::string_view fmt, std::format_args args);
+        SLOGGA_API void operator()(log_level l, std::string_view fmt, std::format_args args);
 
         //shorthand for .trace()
         inline void operator()(std::string_view s, auto...args) { this->trace(s, args...); }
@@ -45,10 +66,10 @@ namespace slogga {
         inline void error(std::string_view s, auto...args) { operator()(log_level::ERROR, s, std::make_format_args(args...)); }
         inline void fatal(std::string_view s, auto...args) { operator()(log_level::FATAL, s, std::make_format_args(args...)); }
 
-        ~log();
+        SLOGGA_API ~log();
     };
 
-    extern log stdout_log;
+    SLOGGA_API extern log stdout_log;
 }
 
 

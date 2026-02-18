@@ -3,7 +3,11 @@
 
 #include <engine/resources_manager/rc.hpp>
 #include <engine/application/event.hpp>
+#include <engine/utils/api_macro.hpp>
 #include <glm/glm.hpp>
+
+
+struct ImGuiContext; //avoid including imgui.h (and linking imgui) just for this opaque symbol
 
 namespace engine {
     class scene;
@@ -22,6 +26,8 @@ namespace engine {
             float delta = 0.f;
             float frame_time = 0.f;
             std::span<const event_variant_t> events;
+
+            ENGINE_API ImGuiContext* get_current_imgui_context() const; // this is necessary because each module (dll/exe) needs to call SetCurrentContext
         };
 
     private:
@@ -37,7 +43,7 @@ namespace engine {
         application_channel_t(const application_channel_t&) = delete;
         application_channel_t(application_channel_t&&) = default;
         application_channel_t() = default;
-        application_channel_t(to_app_t to_app, from_app_t from_app);
+        ENGINE_API application_channel_t(to_app_t to_app, from_app_t from_app);
     };
 
 

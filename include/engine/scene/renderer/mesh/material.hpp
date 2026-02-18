@@ -7,6 +7,7 @@
 #include "material/shader.hpp"
 #include <GAL/texture.hpp>
 #include <engine/utils/lin_algebra.hpp>
+#include <engine/utils/api_macro.hpp>
 
 namespace engine {
     namespace internal {
@@ -35,20 +36,20 @@ namespace engine {
         material(material&& o) = default;
         material(const material& o) = default;
 
-        material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures);
-        material(rc<const shader> shader, rc<const gal::texture> texture);
+        ENGINE_API material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures);
+        ENGINE_API material(rc<const shader> shader, rc<const gal::texture> texture);
 
-        const rc<const engine::shader>& get_shader() const;
-        const std::vector<rc<const gal::texture>>& get_textures() const;
-        rc<const gal::texture>& get_texture(size_t);
-        const rc<const gal::texture>& get_texture(size_t) const;
+        ENGINE_API const rc<const engine::shader>& get_shader() const;
+        ENGINE_API const std::vector<rc<const gal::texture>>& get_textures() const;
+        ENGINE_API rc<const gal::texture>& get_texture(size_t);
+        ENGINE_API const rc<const gal::texture>& get_texture(size_t) const;
 
         void bind_and_set_uniforms(mvp_matrices mvp, glm::ivec2 output_resolution, float frame_time) const;
 
         std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() { return m_custom_uniforms; }
         const std::vector<std::pair<std::string, uniform_value_variant>>& get_custom_uniforms() const { return m_custom_uniforms; }
 
-        material& operator=(material&& o);
+        ENGINE_API material& operator=(material&& o);
     };
 }
 

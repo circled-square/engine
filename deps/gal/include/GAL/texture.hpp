@@ -3,6 +3,7 @@
 
 #include "image.hpp"
 #include <GAL/types.hpp>
+#include <GAL/api_macro.hpp>
 
 
 namespace gal {
@@ -39,30 +40,30 @@ namespace gal {
             float max_anisotropy = 16.f; // ignored unless anisotropic_filtering == true
         };
 
-        texture(const specification& spec);
-        texture(const image& image);
-        texture(texture&& o);
-        texture& operator=(texture&& o);
-        ~texture();
+        GAL_API texture(const specification& spec);
+        GAL_API texture(const image& image);
+        GAL_API texture(texture&& o);
+        GAL_API texture& operator=(texture&& o);
+        GAL_API ~texture();
 
-        static texture null();
-        bool is_null();
+        GAL_API static texture null();
+        GAL_API bool is_null();
 
-        void set_texture_data(const void* buffer, sint alignment = 4);
+        GAL_API void set_texture_data(const void* buffer, sint alignment = 4);
 
-        void bind(uint slot) const;
+        GAL_API void bind(uint slot) const;
 
-        int width () const;
-        int height() const;
-        glm::ivec2 resolution() const;
+        GAL_API int width () const;
+        GAL_API int height() const;
+        GAL_API glm::ivec2 resolution() const;
 
-        uint get_gl_id();
+        GAL_API uint get_gl_id();
 
         //returns a texture containing pseudo-random noise
-        static texture noise(glm::ivec2 res, char components = 4);
+        GAL_API static texture noise(glm::ivec2 res, char components = 4);
 
         //returns a texture without setting any data for it
-        static texture empty(glm::ivec2 res, char components = 4);
+        GAL_API static texture empty(glm::ivec2 res, char components = 4);
     };
 }
 

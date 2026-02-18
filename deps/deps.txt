@@ -1,8 +1,8 @@
 gal                    ; https://github.com/circled-square/GAL.git
 glfw                   ; https://github.com/glfw/glfw.git
-slogga                 ; https://github.com/circled-square/SLOGGA.git
 imgui                  ; https://github.com/ocornut/imgui.git
 stb                    ; https://github.com/nothings/stb.git
 tinygltf               ; https://github.com/syoyo/tinygltf -b release
 murmurhash             ; https://github.com/aappleby/smhasher.git
-ankerl_unordered_dense ; https://github.com/martinus/unordered_dense.git -b main
+ankerl_unordered_dense ; https://github.com/martinus/unordered_dense.git
+dylib                  ; https://github.com/martin-olivier/dylib.git

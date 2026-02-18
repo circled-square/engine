@@ -2,6 +2,7 @@
 #define ENGINE_SCENE_NODE_VIEWPORT_HPP
 
 #include <engine/scene/renderer.hpp>
+#include <engine/utils/api_macro.hpp>
 #include <GAL/framebuffer.hpp>
 #include "camera.hpp"
 
@@ -19,17 +20,17 @@ namespace engine {
         std::optional<camera> m_active_camera;
     public:
         //note: the postfx material at this stage contains a null pointer to a texture.
-        viewport(framebuffer fbo, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
-        viewport(glm::vec2 dynamic_size_relative_to_output);
+        ENGINE_API viewport(framebuffer fbo, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
+        ENGINE_API viewport(glm::vec2 dynamic_size_relative_to_output);
         viewport(viewport&& o) = default;
 
-        explicit viewport(const viewport& o);
+        ENGINE_API explicit viewport(const viewport& o);
 
-        framebuffer& fbo();
-        const framebuffer& fbo() const;
-        std::optional<glm::vec2> dynamic_size_relative_to_output() const;
+        ENGINE_API framebuffer& fbo();
+        ENGINE_API const framebuffer& fbo() const;
+        ENGINE_API std::optional<glm::vec2> dynamic_size_relative_to_output() const;
 
-        void bind_draw() const;
+        ENGINE_API void bind_draw() const;
 
         //can be set to null
         void set_active_camera(const std::optional<camera>& c);
@@ -43,7 +44,7 @@ namespace engine {
          */
         void output_resolution_changed(glm::ivec2 native_resolution) const;
 
-        void operator=(viewport&& o);
+        ENGINE_API void operator=(viewport&& o);
     };
 }
 

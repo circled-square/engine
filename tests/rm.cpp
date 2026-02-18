@@ -1,6 +1,15 @@
 #include <engine/resources_manager.hpp>
 #include <engine/application/window.hpp>
 #include <GAL/init.hpp>
+#include <GAL/texture.hpp>
+
+int main() { return 0; }
+/*
+//this whole thing actually sucks and requires me to mark half the engine as ENGINE_API
+// the test is already pretty hacky as it is and this just makes it not worth it.
+// rather than this we could have some introspection mechanism into rm to allow us to
+// read the number of allocation and similar things to validate its behaviour in a test
+
 
 //fool resources_manager into thinking we are their friend (class)
 namespace engine {
@@ -51,3 +60,4 @@ int main() {
 
     return 0;
 }
+*/

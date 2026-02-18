@@ -12,15 +12,11 @@ add_library(engine__application STATIC application.cpp)
 target_link_libraries(engine__application PUBLIC engine__global engine__scene engine__application_window engine__resources_manager)
 target_link_libraries(engine__application PRIVATE imgui GAL)
 
-#entry_point
-add_library(engine__entry_point STATIC entry_point.cpp)
-target_link_libraries(engine__entry_point PUBLIC engine__global engine__scene)
-target_link_libraries(engine__entry_point PRIVATE engine__application)
-
 #resources_manager
 add_library(engine__resources_manager STATIC resources_manager.cpp)
-target_link_libraries(engine__resources_manager PUBLIC engine__global glm GAL engine__scene_renderer_mesh_material_materials engine__scene_node_gltf_loader engine__resources_manager_rc engine__resources_manager_weak)
-target_link_libraries(engine__resources_manager PRIVATE engine__resources_manager_rc_resource)
+target_link_libraries(engine__resources_manager PUBLIC engine__global engine__resources_manager_rc engine__resources_manager_weak)
+target_link_libraries(engine__resources_manager PRIVATE engine__resources_manager_rc_resource dylib engine__scene_renderer_mesh_material_materials engine__scene_node_gltf_loader GAL)
+set_target_properties(engine__resources_manager PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
 
 #scene
 add_library(engine__scene STATIC scene.cpp)
@@ -28,5 +24,16 @@ target_link_libraries(engine__scene PUBLIC engine__global engine__scene_node eng
 target_link_libraries(engine__scene PRIVATE engine__resources_manager imgui)
 
 #engine
-add_library(engine INTERFACE)
-target_link_libraries(engine INTERFACE engine__application engine__entry_point engine__resources_manager engine__scene imgui GAL)
+add_library(engine SHARED entry_point.cpp)
+target_link_libraries(engine PUBLIC glm)
+target_link_libraries(engine PRIVATE GAL engine__global engine__application engine__resources_manager engine__scene imgui slogga)
+target_include_directories(engine PUBLIC ../include/ ../deps/ankerl_unordered_dense/include/ ../deps/gal/deps/slogga/include/ ../deps/gal/deps/glad/include/ ../deps/gal/include)
+
+install(TARGETS engine
+    LIBRARY DESTINATION .
+    ARCHIVE DESTINATION .
+    RUNTIME DESTINATION . #necessary because windows dlls are RUNTIME, not LIBRARY
+)
+
+
+install(DIRECTORY ../include/ TYPE INCLUDE)

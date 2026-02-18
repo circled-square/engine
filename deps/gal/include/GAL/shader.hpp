@@ -7,6 +7,7 @@
 #include <array>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <GAL/api_macro.hpp>
 
 namespace gal {
     namespace internal {
@@ -20,7 +21,7 @@ namespace gal {
         };
 
         //specialization for scalars and vectors
-        uniform_func_t gl_type_id_to_uniform_func(uint id, std::size_t vec_size);
+        GAL_API uniform_func_t gl_type_id_to_uniform_func(uint id, std::size_t vec_size);
 
         template<typename T>
         uniform_func_t type_to_uniform_func() {
@@ -38,15 +39,15 @@ namespace gal {
         template<typename matrix_t>
         struct type_to_uniform_mat_func__struct {};
 
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,2,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,3,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,4,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,2,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,3,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,4,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,2,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,3,float>>{ static uniform_mat_func_t v(); };
-        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,4,float>>{ static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,2,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,3,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<2,4,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,2,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,3,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<3,4,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,2,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,3,float>>{ GAL_API static uniform_mat_func_t v(); };
+        template<> struct type_to_uniform_mat_func__struct<glm::mat<4,4,float>>{ GAL_API static uniform_mat_func_t v(); };
 
         template<typename T>
         uniform_mat_func_t type_to_uniform_mat_func() { return type_to_uniform_mat_func__struct<T>::v(); }
@@ -58,12 +59,12 @@ namespace gal {
         mutable std::unordered_map<std::string, sint> m_uniform_location_cache;
         static uint compile_shader(uint type, const std::string& source);
     public:
-        shader_program(const std::string& vert_shader, const std::string& frag_shader);
-        shader_program(shader_program&& o);
-        ~shader_program();
+        GAL_API shader_program(const std::string& vert_shader, const std::string& frag_shader);
+        GAL_API shader_program(shader_program&& o);
+        GAL_API ~shader_program();
 
-        void bind() const; //sets the program as active
-        sint get_uniform_location(const std::string& name) const;
+        GAL_API void bind() const; //sets the program as active
+        GAL_API sint get_uniform_location(const std::string& name) const;
         //overload this as needed
         void set_uniform(const char* name, auto v) const {
             set_uniform(get_uniform_location(name), v);

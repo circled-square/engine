@@ -56,6 +56,7 @@ namespace slogga {
         }
     }
 
+    // TODO: this is not called for stdout_log since it is a global
     log::~log() {
         //print the count of how many times it was printed and terminate the last line
         if(m_repeated_line_count > 1)

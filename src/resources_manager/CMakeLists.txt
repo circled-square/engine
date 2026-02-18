@@ -1,14 +1,16 @@
 #rc_resource
 add_library(engine__resources_manager_rc_resource STATIC detail/rc_resource.cpp)
 target_link_libraries(engine__resources_manager_rc_resource PUBLIC engine__global)
-target_link_libraries(engine__resources_manager_rc_resource PRIVATE engine__scene)
+target_link_libraries(engine__resources_manager_rc_resource PRIVATE engine__scene dylib slogga)
 
 #rc
 add_library(engine__resources_manager_rc STATIC rc.cpp)
 target_link_libraries(engine__resources_manager_rc PUBLIC engine__global)
-target_link_libraries(engine__resources_manager_rc PRIVATE engine__resources_manager_rc_resource engine__scene)
+target_link_libraries(engine__resources_manager_rc PRIVATE engine__resources_manager_rc_resource engine__scene dylib)
+set_target_properties(engine__resources_manager_rc PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
 
 #weak
 add_library(engine__resources_manager_weak STATIC weak.cpp)
 target_link_libraries(engine__resources_manager_weak PUBLIC engine__global)
-target_link_libraries(engine__resources_manager_weak PRIVATE engine__resources_manager_rc_resource engine__scene)
+target_link_libraries(engine__resources_manager_weak PRIVATE engine__resources_manager_rc_resource engine__scene dylib)
+set_target_properties(engine__resources_manager_weak PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should

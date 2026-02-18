@@ -24,7 +24,7 @@ target_link_libraries(GAL__texture PRIVATE slogga glad)
 target_include_directories(GAL__texture PUBLIC ../include/)
 
 add_library(GAL__image STATIC image.cpp)
-target_link_libraries(GAL__image PRIVATE stb)
+target_link_libraries(GAL__image PRIVATE stb GAL__types)
 target_include_directories(GAL__image PUBLIC ../include/)
 
 add_library(GAL__framebuffer STATIC framebuffer.cpp)
@@ -37,10 +37,13 @@ target_link_libraries(GAL__types PUBLIC glm)
 target_link_libraries(GAL__types PRIVATE glad)
 target_include_directories(GAL__types PUBLIC ../include/)
 
-add_library(GAL__init STATIC init.cpp)
-target_link_libraries(GAL__init PRIVATE slogga glad)
-target_include_directories(GAL__init PUBLIC ../include/)
 
-add_library(GAL INTERFACE)
-target_link_libraries(GAL INTERFACE GAL__shader GAL__buffer GAL__vertex_array GAL__renderer GAL__texture GAL__image GAL__framebuffer GAL__types GAL__init)
-target_include_directories(GAL INTERFACE ../include/)
+
+add_library(GAL STATIC init.cpp)
+target_link_libraries(GAL PUBLIC glm)
+target_link_libraries(GAL PRIVATE slogga glad GAL__shader GAL__buffer GAL__vertex_array GAL__renderer GAL__texture GAL__image GAL__framebuffer GAL__types)
+target_include_directories(GAL PUBLIC ../include/)
+
+if(${GAL_AS_SHARED_LIB})
+    target_compile_definitions(GAL__types PUBLIC GAL_BEING_COMPILED GAL_AS_SHARED_LIB)
+endif()

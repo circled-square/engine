@@ -14,6 +14,7 @@ target_link_libraries(engine__scene_node_narrow_phase_collision PUBLIC engine__g
 # script
 add_library(engine__scene_node_script STATIC script.cpp)
 target_link_libraries(engine__scene_node_script PUBLIC engine__global glm GAL)
+target_link_libraries(engine__scene_node_script PRIVATE dylib)
 
 #gltf_loader
 add_library(engine__scene_node_gltf_loader STATIC gltf_loader.cpp)

@@ -1,5 +1,7 @@
 #include <engine/scene/node/narrow_phase_collision.hpp>
 #include <engine/scene/node.hpp>
+#include <slogga/asserts.hpp>
+#include <climits> // CHAR_BIT
 
 namespace engine {
     using namespace glm;
@@ -188,4 +190,12 @@ namespace engine {
     vec3 collision_result::get_min_translation() const { EXPECTS(this->operator bool()); return -depth * versor; }
 
     collision_result::operator bool() const { return !std::isnan(depth); }
+
+    collision_layers_bitmask collision_layer(int n) {
+        static_assert(sizeof(collision_layers_bitmask) * CHAR_BIT == 64);
+        EXPECTS(0 <= n && n < 64);
+
+        return collision_layers_bitmask(1) << n;
+    }
+
 }

@@ -1,5 +1,4 @@
 #include "engine/resources_manager/detail/typedefs.hpp"
-#include <engine/resources_manager.hpp>
 
 #include <GAL/texture.hpp>
 #include <GAL/vertex_array.hpp>
@@ -12,6 +11,9 @@
 #include <engine/scene.hpp>
 #include <engine/scene/node/script.hpp>
 #include <engine/scene/node.hpp>
+#include <dylib.hpp>
+
+#include <engine/resources_manager.hpp>
 
 namespace engine {
     using namespace detail;
@@ -38,6 +40,12 @@ namespace engine {
     template<> scene construct_from_name<scene>(const std::string& name) {
         EXPECTS(get_rm().m_dbg_scene_ctors.contains(name));
         return get_rm().m_dbg_scene_ctors[name]();
+    }
+    template<> dylib::library construct_from_name<dylib::library>(const std::string& name) {
+        dylib::decorations only_extension = dylib::decorations::os_default();
+        only_extension.prefix = "";
+
+        return dylib::library("assets/" + name, only_extension);
     }
 
     template<Resource T>

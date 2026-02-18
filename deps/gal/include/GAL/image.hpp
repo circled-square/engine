@@ -1,15 +1,17 @@
 #ifndef GAL_IMAGE_HPP
 #define GAL_IMAGE_HPP
 
+#include <GAL/api_macro.hpp>
+
 namespace gal {
     struct image {
         int w, h, channels;
         void* buffer;
 
-        image(const char* filename);
-        image(image&& o);
+        GAL_API image(const char* filename);
+        GAL_API image(image&& o);
 
-        ~image();
+        GAL_API ~image();
     };
 }
 

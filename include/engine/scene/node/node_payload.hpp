@@ -10,7 +10,7 @@
 #include "narrow_phase_collision.hpp"
 
 namespace engine {
-    #define NODE_PAYLOAD_CONTENTS std::monostate, camera, mesh, rc<const collision_shape>, viewport
+    #define NODE_PAYLOAD_CONTENTS std::monostate, engine::camera, engine::mesh, engine::rc<const engine::collision_shape>, engine::viewport
 
     using node_payload_t = std::variant<NODE_PAYLOAD_CONTENTS>;
 

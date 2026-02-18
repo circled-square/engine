@@ -1,5 +1,6 @@
 #include <engine/resources_manager/weak.hpp>
 #include <engine/scene.hpp>
+#include <dylib.hpp>
 
 namespace engine {
     template<Resource T>

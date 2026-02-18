@@ -1,6 +1,12 @@
-#include <engine/entry_point.hpp>
 #include <engine/application.hpp>
 #include <slogga/log.hpp>
+#include <glm/glm.hpp>
+
+#include <engine/entry_point.hpp>
+
+#ifndef ENGINE_BEING_COMPILED
+#error ENGINE_BEING_COMPILED macro should be defined for all engine translation units!
+#endif
 
 namespace engine {
     static void terminate_handler();

@@ -1,4 +1,3 @@
-#include <engine/application.hpp>
 
 #include <GAL/init.hpp>
 #include <engine/resources_manager.hpp>
@@ -8,6 +7,8 @@
 #include <backends/imgui_impl_opengl3.h>
 #include <chrono>
 #include <slogga/log.hpp>
+
+#include <engine/application.hpp>
 
 namespace engine {
     application::application(glm::ivec2 res, const std::string &title, window::hints window_hints)

@@ -21,6 +21,7 @@ namespace engine::detail {
     };
 }
 
+// implementation of std::hash for resource_id
 template<engine::Resource T>
 struct std::hash<engine::detail::resource_id<T>> {
     std::size_t operator()(const engine::detail::resource_id<T>& rid) const noexcept {

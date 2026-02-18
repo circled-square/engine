@@ -6,6 +6,7 @@
 #include "scene/application_channel.hpp"
 
 #include <engine/resources_manager/rc.hpp>
+#include <engine/utils/api_macro.hpp>
 
 namespace engine {
     class scene {
@@ -20,8 +21,8 @@ namespace engine {
         pass_all_broad_phase_collision_detector m_bp_collision_detector;
     public:
         scene() = delete;
-        scene(std::string s, node root, application_channel_t::to_app_t to_app_chan = {});
-        scene(scene&& o);
+        ENGINE_API scene(std::string s, node root, application_channel_t::to_app_t to_app_chan = {});
+        ENGINE_API scene(scene&& o);
 
         // prepare() must be called when the scene is inited and when the application switches from a different scene
         // (requires OpenGL to be inited)

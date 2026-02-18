@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <GAL/types.hpp>
+#include <GAL/api_macro.hpp>
 #include "buffer/vertex_buffer.hpp"
 #include "buffer/index_buffer.hpp"
 
@@ -30,9 +31,9 @@ namespace gal {
         std::vector<index_buffer> m_ibos;
     public:
 
-        vertex_array(vertex_array&& o);
-        vertex_array(vertex_buffer vbo, index_buffer ibo, vertex_layout layout = vertex_layout());
-        vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout = vertex_layout());
+        GAL_API vertex_array(vertex_array&& o);
+        GAL_API vertex_array(vertex_buffer vbo, index_buffer ibo, vertex_layout layout = vertex_layout());
+        GAL_API vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout = vertex_layout());
 
         template<typename vertex_t>
         static vertex_array make(vertex_buffer vbo, index_buffer ibo) {
@@ -40,16 +41,16 @@ namespace gal {
             return vertex_array(std::move(vbo), std::move(ibo), vertex_t::layout_t::to_vertex_layout());
         }
 
-        ~vertex_array();
+        GAL_API ~vertex_array();
 
-        void specify_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized);
-        void specify_attribs(const vertex_layout& layout);
+        GAL_API void specify_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized);
+        GAL_API void specify_attribs(const vertex_layout& layout);
 
-        void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
+        GAL_API void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
 
-        size_t get_triangle_count(uint ibo_index = 0) const;
-        uint get_ibo_element_typeid(uint ibo_index) const;
-        size_t get_ibo_count() const;
+        GAL_API size_t get_triangle_count(uint ibo_index = 0) const;
+        GAL_API uint get_ibo_element_typeid(uint ibo_index) const;
+        GAL_API size_t get_ibo_count() const;
     };
 
 

@@ -1,7 +1,9 @@
 #include <engine/resources_manager/detail/rc_resource.hpp>
 #include <engine/scene.hpp> // to instantiate rc_resource<scene>
 #include <engine/scene/node.hpp>
+#include <dylib.hpp>
 #include <engine/resources_manager/detail/resource_id.hpp>
+#include <slogga/asserts.hpp>
 
 namespace engine::detail {
     template<Resource T>

@@ -2,6 +2,7 @@
 #define ENGINE_RESOURCES_MANAGER_RC_HPP
 
 #include "detail/rc_resource.hpp"
+#include <engine/utils/api_macro.hpp>
 
 // rc is a reference counted pointer managed by the engine's resources manager, which points to a Resource
 
@@ -13,7 +14,7 @@ namespace engine {
 
     // mutable resource template specialization
     template<Resource T>
-    class rc<T> {
+    class ENGINE_API rc<T> {
         detail::rc_resource<T>* m_resource;
 
         // friends which use the private constructor
@@ -31,23 +32,24 @@ namespace engine {
         using element_type = T;
         using mut_element_type = T;
 
-        rc();
-        rc(std::nullptr_t);
+        ENGINE_API rc();
+        ENGINE_API rc(std::nullptr_t);
 
-        rc(const rc& o);
+        ENGINE_API rc(const rc& o);
 
-        rc(rc&& o);
-        ~rc();
+        ENGINE_API rc(rc&& o);
+        ENGINE_API ~rc();
 
-        rc& operator=(const rc& o);
+        ENGINE_API rc& operator=(const rc& o);
 
-        operator bool() const;
-        bool operator!() const;
+        ENGINE_API operator bool() const;
+        ENGINE_API bool operator!() const;
 
         //note: dereferencing a const rc yields a mutable object!
-        T& operator*() const;
-        T* operator->() const;
+        ENGINE_API T& operator*() const;
+        ENGINE_API T* operator->() const;
 
+    private: // are these even needed? & same for the ones in rc<const>, weak, weak<const>
         bool operator==(const rc& o) const;
         bool operator!=(const rc& o) const;
     };
@@ -66,23 +68,34 @@ namespace engine {
         using element_type = const T;
         using mut_element_type = T;
 
-        rc();
-        rc(std::nullptr_t);
-        rc(const rc& o);
-        rc(rc&& o);
-        rc(const rc<T>& o);
-        rc(rc<T>&& o);
+        ENGINE_API rc();
+        ENGINE_API rc(std::nullptr_t);
+        ENGINE_API rc(const rc& o);
+        ENGINE_API rc(rc&& o);
+        ENGINE_API rc(const rc<T>& o);
+        ENGINE_API rc(rc<T>&& o);
 
-        rc& operator=(const rc& o);
+        ENGINE_API rc& operator=(const rc& o);
 
-        operator bool() const;
-        bool operator!() const;
+        ENGINE_API operator bool() const;
+        ENGINE_API bool operator!() const;
 
-        const T& operator*() const;
-        const T* operator->() const;
+        ENGINE_API const T& operator*() const;
+        ENGINE_API const T* operator->() const;
 
+    private:
         bool operator==(const rc& o) const;
         bool operator!=(const rc& o) const;
     };
+
+
+
+    #define INSTANTIATE_RC_TEMPLATE(TYPE) \
+        template class rc<TYPE>; \
+        template class rc<const TYPE>;
+
+    CALL_MACRO_FOR_EACH(INSTANTIATE_RC_TEMPLATE, RESOURCES)
+
+
 }
 #endif // ENGINE_RESOURCES_MANAGER_RC_HPP

@@ -3,6 +3,7 @@
 
 #include "detail/rc_resource.hpp"
 #include "rc.hpp"
+#include <engine/utils/api_macro.hpp>
 
 // weak is a weak reference counted pointer managed by the engine's resources manager;
 // it can be locked to obtain an rc, which will point to a Resource.
@@ -29,17 +30,18 @@ namespace engine {
         using mut_element_type = T;
 
         weak();
-        weak(std::nullptr_t);
-        weak(const weak& o);
-        weak(weak&& o);
-        weak(const rc<T>& o);
-        ~weak();
 
-        weak& operator=(const weak& o);
+        ENGINE_API weak(std::nullptr_t);
+        ENGINE_API weak(const weak& o);
+        ENGINE_API weak(weak&& o);
+        ENGINE_API weak(const rc<T>& o);
+        ENGINE_API ~weak();
+
+        ENGINE_API weak& operator=(const weak& o);
 
         // if the weak<T> points to an allocation with a resource that is alive, locks it
         // if it points to null or to an allocation with a destroyed resource, returns null
-        rc<T> lock() const;
+        ENGINE_API rc<T> lock() const;
     private:
 
         bool operator==(const weak& o) const;
@@ -57,17 +59,17 @@ namespace engine {
         using element_type = const T;
         using mut_element_type = T;
 
-        weak();
-        weak(std::nullptr_t);
-        weak(const weak& o);
-        weak(weak&& o);
-        weak(weak<T> o);
-        weak(const rc<const T>& o);
-        weak(const rc<T>& o);
+        ENGINE_API weak();
+        ENGINE_API weak(std::nullptr_t);
+        ENGINE_API weak(const weak& o);
+        ENGINE_API weak(weak&& o);
+        ENGINE_API weak(weak<T> o);
+        ENGINE_API weak(const rc<const T>& o);
+        ENGINE_API weak(const rc<T>& o);
 
-        weak& operator=(const weak& o);
+        ENGINE_API weak& operator=(const weak& o);
 
-        rc<const T> lock() const;
+        ENGINE_API rc<const T> lock() const;
 
     private:
         bool operator==(const weak& o) const;

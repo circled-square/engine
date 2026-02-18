@@ -4,6 +4,7 @@
 #include "texture.hpp"
 #include <stdexcept>
 #include <optional>
+#include <GAL/api_macro.hpp>
 
 namespace gal {
     class framebuffer_construction_exception : std::exception {
@@ -26,21 +27,21 @@ namespace gal {
             framebuffer(const framebuffer&) = delete;
 
             //may throw construction_exception
-            framebuffer(texture* tex = nullptr);
-            framebuffer(framebuffer&& o);
-            virtual ~framebuffer();
+            GAL_API framebuffer(texture* tex = nullptr);
+            GAL_API framebuffer(framebuffer&& o);
+            GAL_API virtual ~framebuffer();
 
             // switches the texture this fbo is linked to to a different one
-            void link_texture(texture& tex);
+            GAL_API void link_texture(texture& tex);
 
-            void bind_draw();
-            void bind_read() const;
-            void bind();
-            static void unbind();
+            GAL_API void bind_draw();
+            GAL_API void bind_read() const;
+            GAL_API void bind();
+            GAL_API static void unbind();
 
-            const glm::ivec2 resolution() const;
+            GAL_API const glm::ivec2 resolution() const;
 
-            framebuffer& operator=(framebuffer&& o);
+            GAL_API framebuffer& operator=(framebuffer&& o);
         };
     }
 

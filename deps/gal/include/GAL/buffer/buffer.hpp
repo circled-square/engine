@@ -2,6 +2,7 @@
 #define GAL_BUFFER_HPP
 
 #include <GAL/types.hpp>
+#include <GAL/api_macro.hpp>
 #include <concepts>
 
 namespace gal {
@@ -27,17 +28,17 @@ namespace gal {
     class buffer {
         uint m_buf_id;
     public:
-        buffer(const void* data, std::size_t size, buffer_creation_params params = { });
+        GAL_API buffer(const void* data, std::size_t size, buffer_creation_params params = { });
 
         template<Array arr_t>
         buffer(const arr_t& arr, buffer_creation_params params = {})
             : buffer(arr.data(), arr.size() * sizeof(typename arr_t::value_type), params) {}
 
-        buffer(buffer&& o)  noexcept;
+        GAL_API buffer(buffer&& o)  noexcept;
 
-        ~buffer();
+        GAL_API ~buffer();
 
-        void update(std::size_t offset, const void *data, std::size_t size);
+        GAL_API void update(std::size_t offset, const void *data, std::size_t size);
 
 
         bool is_null() const { return m_buf_id == 0; }

@@ -15,7 +15,7 @@ namespace gal {
         glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);
 
         //obligatory parameters
-        uint mag_filter_method = mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
+        uint mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
         uint min_filter_method;
 
         if (spec.enable_mipmaps) {

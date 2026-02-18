@@ -25,8 +25,10 @@ namespace engine {
     node node::deep_copy_internal(rc<const node_data> o) {
         EXPECTS(o);
 
-        node n = node(o->m_name, o->m_payload, o->m_transform,
-                            o->m_script.has_value() ? o->m_script->get_underlying_stateless_script() : nullptr);
+        node n = node(
+            o->m_name, o->m_payload, o->m_transform,
+            o->m_script.transform([](auto& s){ return s.get_underlying_stateless_script(); })
+        );
 
 
         n->m_nodetree_bp_reference = o->m_nodetree_bp_reference;
@@ -46,7 +48,7 @@ namespace engine {
         return n;
     }
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, rc<const stateless_script> script)
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script)
         : m_node_data(get_rm().new_emplace<node_data>(std::move(name), std::move(payload), transform)) {
         if(script)
             node_data::attach_script(*this, std::move(script));
@@ -216,7 +218,6 @@ namespace engine {
                 // pass the collision event to the node's script
                 if(node_cursor->m_script)
                     node_cursor->m_script->react_to_collision(*node_cursor, res, *this, other);
-                //node_cursor->pass_collision_to_script(res, *this, other);
             }
 
             //keep recursing up the node tree if the event needs to be passed to the father
@@ -239,8 +240,8 @@ namespace engine {
 
     const std::optional<script>& node_data::get_script() const { return m_script; }
 
-    void node_data::attach_script(const node& self, rc<const stateless_script> s) {
-        self->m_script = script(std::move(s), self);
+    void node_data::attach_script(const node& self, std::optional<stateless_script> sc) {
+        self->m_script = sc.transform([&](stateless_script s) { return script(std::move(s), self); });
     }
 
     void node_data::invalidate_global_transform_cache() const {

@@ -4,7 +4,6 @@
 #include "../resource_concept.hpp"
 #include <cstdint>
 #include <optional>
-#include <slogga/asserts.hpp>
 
 // rc_resource<T>: internal type for rc and resources_manager.
 // where rc is the pointer to the resource, rc_resource is its allocation, containing also the reference count

@@ -1,7 +1,9 @@
 #include "engine/scene/renderer.hpp"
-#include <engine/scene.hpp>
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
+#define ENGINE_DO_EXPORT
+#include <engine/scene.hpp>
 
 namespace engine {
     using glm::mat4;
