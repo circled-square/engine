@@ -12,6 +12,7 @@
 #include <engine/scene/node/script.hpp>
 #include <engine/scene/node.hpp>
 #include <dylib.hpp>
+#include <sstream>
 
 #include <engine/resources_manager.hpp>
 
@@ -237,6 +238,8 @@ namespace engine {
 
         bool deleted_any;
 
+        std::ostringstream log_ss;
+
         auto delete_all_marked = [&]<class T> (id_hashset<T>& marked_for_deletion_set) {
 
             std::size_t previous_size = m_hashmaps.id_to_resource<T>().size();
@@ -277,20 +280,23 @@ namespace engine {
             }
 
             std::size_t cleared = previous_size - m_hashmaps.id_to_resource<T>().size();
-            if (cleared != 0 || previous_size != 0) {
-                slogga::stdout_log("cleared {} out of {} {}", cleared, previous_size, get_resource_typename<T>());
+            if (cleared != 0 && slogga::stdout_log.would_print(slogga::log_level::TRACE)) {
+                log_ss << cleared << '/' << previous_size << " " << get_resource_typename<T>() << "s "; // yes, i know, adding an 's' at the end is not really the grammatically correct way to pluralize a noun...
             }
         };
 
 
         //actually only scenes can depend on each other, and no resource can depend on one that would get deleted before it. still leaving this behaviour for testing (and because who knows, maybe in the future this won't be the case)
         do {
-            slogga::stdout_log("gc pass");
             deleted_any = false;
 
             std::apply([&](auto&... args) {
                 ((delete_all_marked(args)), ...);
             }, m_hashmaps.all_marked_for_deletion_sets());
+
+            if(deleted_any) {
+                slogga::stdout_log.trace("gc pass cleared {}", log_ss.str());
+            }
         } while(deleted_any == true);
     }
 

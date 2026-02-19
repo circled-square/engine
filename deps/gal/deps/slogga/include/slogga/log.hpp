@@ -56,6 +56,8 @@ namespace slogga {
 
         SLOGGA_API void operator()(log_level l, std::string_view fmt, std::format_args args);
 
+        SLOGGA_API bool would_print(log_level l);
+
         //shorthand for .trace()
         inline void operator()(std::string_view s, auto...args) { this->trace(s, args...); }
 

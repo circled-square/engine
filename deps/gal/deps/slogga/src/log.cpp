@@ -30,7 +30,7 @@ namespace slogga {
     }
 
     void log::operator()(log_level l, std::string_view fmt, std::format_args args) {
-        if (l <= m_log_level) {
+        if (would_print(l)) {
             //only perform formatting if necessary
             std::string line = std::vformat(fmt, args);
 
@@ -54,6 +54,10 @@ namespace slogga {
                 m_last_line_hash = line_hash;
             }
         }
+    }
+
+    bool log::would_print(log_level l) {
+        return l <= m_log_level;
     }
 
     // TODO: this is not called for stdout_log since it is a global
