@@ -24,7 +24,7 @@ target_link_libraries(GAL__texture PRIVATE slogga glad)
 target_include_directories(GAL__texture PUBLIC ../include/)
 
 add_library(GAL__image STATIC image.cpp)
-target_link_libraries(GAL__image PRIVATE stb GAL__types)
+target_link_libraries(GAL__image PRIVATE stb_image GAL__types)
 target_include_directories(GAL__image PUBLIC ../include/)
 
 add_library(GAL__framebuffer STATIC framebuffer.cpp)
