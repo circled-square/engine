@@ -27,7 +27,7 @@ target_link_libraries(engine__scene PRIVATE engine__resources_manager imgui)
 add_library(engine SHARED entry_point.cpp)
 target_link_libraries(engine PUBLIC glm)
 target_link_libraries(engine PRIVATE GAL engine__global engine__application engine__resources_manager engine__scene imgui slogga)
-target_include_directories(engine PUBLIC ../include/ ../deps/ankerl_unordered_dense/include/ ../deps/gal/deps/slogga/include/ ../deps/gal/deps/glad/include/ ../deps/gal/include)
+target_include_directories(engine PUBLIC ../include/ ../deps/ankerl_unordered_dense/include/ ../deps/gal/deps/slogga/include/ ../deps/gal/deps/glad/include/ ../deps/gal/include/ ../deps/imgui/)
 
 install(TARGETS engine
     LIBRARY DESTINATION .

@@ -13,16 +13,15 @@ namespace engine {
     class collision_result;
 
     struct script_vtable {
-        using construct_fn_t = std::any (const node&);
+        using construct_fn_t = std::any (const node&, const std::any&);
         using process_fn_t = void (const node&, std::any&, application_channel_t&);
         // NOTE: react_to_collision takes "const node_data&"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
         using react_to_collision_fn_t = void (const node_data&, std::any&, collision_result, const node_data& event_src, const node_data& other);
 
-        construct_fn_t* construct = [](const node&) { return std::any(std::monostate()); };
+        construct_fn_t* construct = [](const node&, const std::any& construction_args) { return std::any(std::monostate()); };
         process_fn_t* process = [](const node&, std::any&, application_channel_t&) {};
         // NOTE: react_to_collision takes "const node_data&"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
         std::optional<react_to_collision_fn_t*> react_to_collision = std::nullopt;
-
     };
 
     struct stateless_script {
@@ -38,18 +37,14 @@ namespace engine {
     class script {
         stateless_script m_script;
         std::any m_state;
-
-        script(stateless_script sl_script, std::any state);//used by from_state()
     public:
         script() = delete;
         script(const script& o) = default;
         script(script&& o) = default;
-        ENGINE_API script(stateless_script sl_script, const node& n);
-        ENGINE_API static script from_state(stateless_script sl_script, std::any state);
+        ENGINE_API script(stateless_script sl_script, const node& n, const std::any& params);
 
         script& operator=(script&& o) = default;
 
-        ENGINE_API void set_state(std::any s);
         ENGINE_API const std::any& get_state() const;
         ENGINE_API const stateless_script& get_underlying_stateless_script() const;
 

@@ -6,18 +6,9 @@
 
 
 namespace engine {
-    script::script(stateless_script sl_script, std::any state) : m_script(std::move(sl_script)), m_state(std::move(state)) {
+    script::script(stateless_script sl_script, const node& n, const std::any& params) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n, params)) {
         EXPECTS(m_state.has_value());
     }
-
-    script::script(stateless_script sl_script, const node& n) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n)) {
-        EXPECTS(m_state.has_value());
-    }
-    script script::from_state(const stateless_script sl_script, std::any state) {
-        return script(std::move(sl_script), std::move(state));
-    }
-
-    void script::set_state(std::any s) { m_state = std::move(s); }
 
     const std::any& script::get_state() const { return m_state; }
 

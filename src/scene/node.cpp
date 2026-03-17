@@ -25,10 +25,10 @@ namespace engine {
     node node::deep_copy_internal(rc<const node_data> o) {
         EXPECTS(o);
 
-        node n = node(
-            o->m_name, o->m_payload, o->m_transform,
-            o->m_script.transform([](auto& s){ return s.get_underlying_stateless_script(); })
-        );
+        node n = o->get_script().has_value()
+            ? node(o->m_name, o->m_payload, o->m_transform, o->m_script->get_underlying_stateless_script())
+            : node(o->m_name, o->m_payload, o->m_transform)
+        ;
 
 
         n->m_nodetree_bp_reference = o->m_nodetree_bp_reference;
@@ -48,11 +48,12 @@ namespace engine {
         return n;
     }
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script)
-        : m_node_data(get_rm().new_emplace<node_data>(std::move(name), std::move(payload), transform)) {
-        if(script)
-            node_data::attach_script(*this, std::move(script));
-        ENSURES(m_node_data);
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform)
+        : m_node_data(get_rm().new_emplace<node_data>(std::move(name), std::move(payload), transform)) {}
+
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params)
+        : node(std::move(name), std::move(payload), transform) {
+        node_data::attach_script(*this, std::move(script), params);
     }
 
     node::node(rc<const nodetree_blueprint> nt, std::string name)
@@ -230,18 +231,12 @@ namespace engine {
             }
         }
     }
-
-    void node_data::set_script_state(std::any s) {
-        EXPECTS(m_script.has_value());
-        m_script->set_state(std::move(s));
-    }
-
     std::optional<script>& node_data::get_script() { return m_script; }
 
     const std::optional<script>& node_data::get_script() const { return m_script; }
 
-    void node_data::attach_script(const node& self, std::optional<stateless_script> sc) {
-        self->m_script = sc.transform([&](stateless_script s) { return script(std::move(s), self); });
+    void node_data::attach_script(const node& self, stateless_script sc, const std::any& params) {
+        self->m_script = script(std::move(sc), self, params);
     }
 
     void node_data::invalidate_global_transform_cache() const {

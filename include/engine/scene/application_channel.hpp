@@ -26,8 +26,9 @@ namespace engine {
             float delta = 0.f;
             float frame_time = 0.f;
             std::span<const event_variant_t> events;
+            std::string scene_name;
 
-            ENGINE_API ImGuiContext* get_current_imgui_context() const; // this is necessary because each module (dll/exe) needs to call SetCurrentContext
+            ENGINE_API ImGuiContext* get_current_imgui_context() const; // this is necessary because each module (dll/exe) needs to call SetCurrentContext; NOTE: SetAllocatorFunctions may also need to be called
         };
 
     private:

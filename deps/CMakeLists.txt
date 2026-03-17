@@ -2,6 +2,7 @@ add_subdirectory(ankerl_unordered_dense/ EXCLUDE_FROM_ALL) #ankerl::unordered_de
 install(DIRECTORY "ankerl_unordered_dense/include/" TYPE INCLUDE)
 
 add_subdirectory(dylib/ EXCLUDE_FROM_ALL)
+set(GLFW_BUILD_DOCS OFF)
 add_subdirectory(glfw/ EXCLUDE_FROM_ALL)
 
 set(GAL_AS_SHARED_LIB ON)
@@ -23,7 +24,8 @@ add_library(imgui STATIC
 target_compile_options(imgui PRIVATE "-Wno-all") # no useless warnings inside of imgui
 target_include_directories(imgui PUBLIC imgui/)
 target_link_libraries(imgui PRIVATE glfw) #for imgui_impl_glfw
-install(FILES imgui/imgui.h imgui/imconfig.h DESTINATION include/)
+target_compile_definitions(imgui PUBLIC IMGUI_USER_CONFIG="../imconfig.h")
+install(FILES imgui/imgui.h imconfig.h DESTINATION include/)
 
 # stb
 if(NOT TARGET stb) #everything is inside this guard to avoid redefining target "stb". this is done because GAL currently depends on STB, but that may change in the future, and GAL does not export STB's functionality

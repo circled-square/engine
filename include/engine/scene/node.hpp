@@ -35,7 +35,8 @@ namespace engine {
         ENGINE_API node& operator=(node&& o);
         ENGINE_API node& operator=(const node& o);
         ENGINE_API node(const node& o);
-        ENGINE_API explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), std::optional<stateless_script> script = std::nullopt);
+        ENGINE_API explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1));
+        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params = {});
         //this is expensive (calls deep_copy)
         ENGINE_API explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
         ENGINE_API node deep_copy() const;
@@ -61,7 +62,8 @@ namespace engine {
         const_node(const const_node& o) :m_node(o.m_node) {}
         const_node(node o) : m_node(std::move(o)) {}
 
-        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1), std::optional<stateless_script> script = std::nullopt) : m_node(name, payload, transform, script) {}
+        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1)) : m_node(name, payload, transform) {}
+        explicit const_node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params = {}) : m_node(name, payload, transform, script, params) {}
         //this is expensive (calls deep_copy)
         explicit const_node(rc<const nodetree_blueprint> nt, std::string name = "") : m_node(nt, name) {}
         node deep_copy() const { return m_node.deep_copy(); }
@@ -178,10 +180,8 @@ namespace engine {
         void react_to_collision(collision_result res, node_data& other);
 
         //script
-        // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data)
-        ENGINE_API static void attach_script(const node& self, std::optional<stateless_script> s);
-        // explicitly set the script's state
-        ENGINE_API void set_script_state(std::any s);
+        // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data); params are the parameters to the script's constructor
+        ENGINE_API static void attach_script(const node& self, stateless_script s, const std::any& params = std::monostate());
         // get this node's script
         ENGINE_API std::optional<script>& get_script();
         // get this node's script

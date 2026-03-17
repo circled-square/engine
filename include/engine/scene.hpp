@@ -24,11 +24,11 @@ namespace engine {
         ENGINE_API scene(std::string s, node root, application_channel_t::to_app_t to_app_chan = {});
         ENGINE_API scene(scene&& o);
 
-        // prepare() must be called when the scene is inited and when the application switches from a different scene
+        // prepare() is called when the scene is inited and when the application switches from a different scene
         // (requires OpenGL to be inited)
         void prepare();
 
-        //update() & render() must be called every frame
+        //update() & render() are called every frame
         void update();
         void render();
 

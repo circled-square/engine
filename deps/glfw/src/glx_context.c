@@ -119,9 +119,7 @@ static GLFWbool chooseGLXFBConfig(const _GLFWfbconfig* desired,
         u->accumAlphaBits = getGLXFBConfigAttrib(n, GLX_ACCUM_ALPHA_SIZE);
 
         u->auxBuffers = getGLXFBConfigAttrib(n, GLX_AUX_BUFFERS);
-
-        if (getGLXFBConfigAttrib(n, GLX_STEREO))
-            u->stereo = GLFW_TRUE;
+        u->stereo = getGLXFBConfigAttrib(n, GLX_STEREO);
 
         if (_glfw.glx.ARB_multisample)
             u->samples = getGLXFBConfigAttrib(n, GLX_SAMPLES);

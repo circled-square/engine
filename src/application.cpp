@@ -16,9 +16,9 @@ namespace engine {
               m_prev_mouse_cursor_pos(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()),
               m_ignore_mouse_move_on_next_event(true)
     {
-        //init opengl (after glfw)
+        // init opengl (after glfw)
         gal::initialize_opengl((gal::opengl_function_loader_t)m_window.get_opengl_function_loader());
-        //init resources_manager (after opengl)
+        // init resources_manager (after opengl)
         resources_manager::init_instance();
 
 
@@ -67,7 +67,7 @@ namespace engine {
 
         // init imgui (after setting glfw callbacks and after init of opengl)
         ImGui::CreateContext();
-        ImGui_ImplGlfw_InitForOpenGL(m_window, true);// after setting callbacks, this way imgui can handle dispatching inputs to itself or to us
+        ImGui_ImplGlfw_InitForOpenGL(m_window, true); // after setting callbacks, this way imgui can handle dispatching inputs to itself or to us
         ImGui_ImplOpenGL3_Init(); // after init of opengl
         ImGui::StyleColorsDark();
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
