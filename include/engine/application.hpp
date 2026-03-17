@@ -12,7 +12,7 @@ namespace engine {
     class application {
         window::window m_window;
 
-        rc<scene> m_active_scene;
+        nullable_rc<scene> m_active_scene;
         glm::vec2 m_prev_mouse_cursor_pos;
         bool m_ignore_mouse_move_on_next_event;
         std::vector<event_variant_t> m_events_this_frame;

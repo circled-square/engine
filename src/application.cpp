@@ -81,7 +81,8 @@ namespace engine {
     }
 
     application::~application() {
-        m_active_scene.~rc(); // deinit this before resources_manager, or else it will be dangling by the time its destructor is called
+        if(m_active_scene)
+            m_active_scene = std::nullopt; // deinit this before resources_manager, or else it will be dangling by the time its destructor is called
 
         resources_manager::deinit_instance();
 
@@ -102,7 +103,7 @@ namespace engine {
 
             // read and write to the channel to the scene
             EXPECTS(m_active_scene);
-            rc<scene> scene_to_change_to = std::move(m_active_scene->app_channel().to_app().scene_to_change_to);
+            nullable_rc<scene> scene_to_change_to = std::move(m_active_scene->app_channel().to_app().scene_to_change_to);
             if(scene_to_change_to) {
                 ASSERTS(m_active_scene->app_channel().from_app_mut().scene_is_active);
 

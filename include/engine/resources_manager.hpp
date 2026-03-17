@@ -33,7 +33,7 @@ namespace engine {
         template<Resource T>
         friend T construct_from_name(const std::string& name);
 
-        rc<const shader> m_default_3d_shader;
+        std::optional<rc<const shader>> m_default_3d_shader;
 
         resources_manager() = default;
         ~resources_manager();
@@ -81,7 +81,7 @@ namespace engine {
         // get/set default 3d shader (for models loaded from file). if it is null (it is by default) the "simple 3d shader" is used instead
         ///TODO: allow user to embed shader information in gltf (which would also allow different meshes in the same gltf to use different shaders)
         [[nodiscard]] ENGINE_API rc<const shader> get_default_3d_shader();
-        ENGINE_API void set_default_3d_shader(rc<const shader> s);
+        ENGINE_API void set_default_3d_shader(std::optional<rc<const shader>> s);
 
         // useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
         ENGINE_API void dbg_add_scene_constructor(std::string name, std::function<scene()> scene_constructor);

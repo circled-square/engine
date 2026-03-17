@@ -6,9 +6,7 @@
 
 namespace engine {
     viewport::viewport(framebuffer fbo, std::optional<glm::vec2> dynamic_size_relative_to_output)
-        : m_fbo(std::move(fbo)), m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {
-            EXPECTS(m_fbo.get_texture());
-        }
+        : m_fbo(std::move(fbo)), m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {}
 
     viewport::viewport(glm::vec2 dynamic_size_relative_to_output)
         // a texture with 0 texels causes the fbo to throw a framebuffer_construction_exception

@@ -23,8 +23,6 @@ namespace engine {
           m_script() {}
 
     node node::deep_copy_internal(rc<const node_data> o) {
-        EXPECTS(o);
-
         node n = o->get_script().has_value()
             ? node(o->m_name, o->m_payload, o->m_transform, o->m_script->get_underlying_stateless_script())
             : node(o->m_name, o->m_payload, o->m_transform)
@@ -43,8 +41,6 @@ namespace engine {
             child->m_father = n;
         }
 
-        ENSURES(n.m_node_data);
-
         return n;
     }
 
@@ -61,33 +57,24 @@ namespace engine {
         if(!name.empty())
             m_node_data->m_name = name;
         m_node_data->m_nodetree_bp_reference = std::move(nt);
-        ENSURES(m_node_data);
     }
 
-    node::node(node&& o) : m_node_data(std::move(o.m_node_data)) {
-        EXPECTS(m_node_data);
-    }
+    node::node(node&& o) : m_node_data(std::move(o.m_node_data)) {}
 
     node& node::operator=(node&& o) {
         m_node_data = std::move(o.m_node_data);
-        EXPECTS(m_node_data);
         return *this;
     }
 
     node& node::operator=(const node& o) {
         m_node_data = o.m_node_data;
-        EXPECTS(m_node_data);
         return *this;
     }
 
-    node::node(const node& o) : m_node_data(o.m_node_data) {
-        EXPECTS(m_node_data);
-    }
+    node::node(const node& o) : m_node_data(o.m_node_data) {}
 
     node node::deep_copy() const {
-        EXPECTS(m_node_data);
         node ret = node::deep_copy_internal(this->m_node_data);
-        ENSURES(ret.m_node_data);
         return ret;
     }
 
@@ -131,25 +118,25 @@ namespace engine {
     }
 
 
-    rc<node_data> node_data::get_father() {
+    nullable_rc<node_data> node_data::get_father() {
         return m_father.lock();
     }
 
-    rc<const node_data> node_data::get_father() const {
+    nullable_rc<const node_data> node_data::get_father() const {
         return m_father.lock();
     }
 
     rc<node_data> node_data::get_father_checked() {
-        if(rc<node_data> f = m_father.lock(); f)
-            return std::move(f);
+        if(auto f = m_father.lock(); f)
+            return std::move(f.as_nonnull());
         else
             throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name);
     }
 
 
     rc<const node_data> node_data::get_father_checked() const {
-        if(rc<node_data> f = m_father.lock(); f)
-            return std::move(f);
+        if(auto f = m_father.lock(); f)
+            return std::move(f.as_nonnull());
         else
             throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name);
     }
@@ -168,7 +155,7 @@ namespace engine {
     }
 
     std::string node_data::absolute_path() const {
-        rc<const node_data> f = get_father();
+        nullable_rc<const node_data> f = get_father();
         return f ? f->absolute_path() + "/" + m_name : m_name;
     }
     const std::string& node_data::name() const { return m_name; }
@@ -182,7 +169,7 @@ namespace engine {
 
     const mat4& node_data::get_global_transform() const {
         if(!m_global_transform_cache.has_value()) {
-            rc<const node_data> f = get_father();
+            nullable_rc<const node_data> f = get_father();
             if(f) {
                 m_global_transform_cache = f->get_global_transform() * transform();
             } else {
@@ -206,7 +193,7 @@ namespace engine {
             auto& col_behaviour = node_cursor->get_collision_behaviour();
 
             if(col_behaviour.moves_away_on_collision) {
-                rc<node_data> father_p = node_cursor->get_father();
+                nullable_rc<node_data> father_p = node_cursor->get_father();
                 mat4 father_inverse_globtrans = father_p ? glm::inverse(father_p->get_global_transform()) : mat4(1);
 
                 glm::vec3 local_space_min_translation = father_inverse_globtrans * glm::vec4(-res.get_min_translation(), 0);
@@ -223,7 +210,7 @@ namespace engine {
 
             //keep recursing up the node tree if the event needs to be passed to the father
             if(col_behaviour.passes_events_to_father == true) {
-                if(rc<node_data> father = node_cursor->get_father(); father) {
+                if(nullable_rc<node_data> father = node_cursor->get_father(); father) {
                     node_cursor = &*father;
                 }
             } else {
@@ -263,6 +250,7 @@ namespace engine {
             }
         }
     }
+
     template<> bool node_data::has<collision_shape>() const { return has<rc<const collision_shape>>(); }
     template<> const collision_shape& node_data::get<collision_shape>() const {
         const rc<const collision_shape>& p = get<rc<const collision_shape>>();

@@ -41,7 +41,7 @@ namespace engine {
 
         // if the weak<T> points to an allocation with a resource that is alive, locks it
         // if it points to null or to an allocation with a destroyed resource, returns null
-        ENGINE_API rc<T> lock() const;
+        ENGINE_API nullable_rc<T> lock() const;
     private:
 
         bool operator==(const weak& o) const;
@@ -69,7 +69,7 @@ namespace engine {
 
         ENGINE_API weak& operator=(const weak& o);
 
-        ENGINE_API rc<const T> lock() const;
+        ENGINE_API nullable_rc<const T> lock() const;
 
     private:
         bool operator==(const weak& o) const;

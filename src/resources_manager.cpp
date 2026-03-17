@@ -221,7 +221,7 @@ namespace engine {
 
 
     resources_manager::~resources_manager() {
-        set_default_3d_shader(nullptr);
+        set_default_3d_shader(std::nullopt);
         collect_garbage();
     }
 
@@ -230,8 +230,8 @@ namespace engine {
         m_dbg_scene_ctors.insert({name, std::move(scene_constructor)});
     }
 
-    rc<const shader> resources_manager::get_default_3d_shader() { return m_default_3d_shader ? m_default_3d_shader : load<shader>(internal_resource_name_t::simple_3d_shader); }
-    void resources_manager::set_default_3d_shader(rc<const shader> s) { m_default_3d_shader = std::move(s); }
+    rc<const shader> resources_manager::get_default_3d_shader() { return m_default_3d_shader.value_or(load<shader>(internal_resource_name_t::simple_3d_shader)); }
+    void resources_manager::set_default_3d_shader(std::optional<rc<const shader>> s) { m_default_3d_shader = std::move(s); }
 
     void resources_manager::collect_garbage() {
         slogga::stdout_log("called resources_manager::collect_garbage");

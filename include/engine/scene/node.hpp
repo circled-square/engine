@@ -13,6 +13,22 @@
 #include <engine/utils/api_macro.hpp>
 
 // TODO: consider splitting different classes in this header into separate headers
+/*
+ *the node/node_data split is just really weird, there should just be one of them.
+
+I would proceed as follows
+
+    node gets deleted
+    all methods currently in node become static methods (or methods) of node_data
+    node_data should be renamed to node
+
+the usage would change in the following ways
+
+    current usages of node would be substituted for rc<node>
+    current usages of node_data would be substituted for node
+    n.add_child(m) would become node::add_child(n, m) (and the same would happen to some other methods)
+
+ */
 
 namespace engine {
     class nodetree_blueprint;
@@ -105,7 +121,7 @@ namespace engine {
         void invalidate_global_transform_cache() const;
 
         node_payload_t m_payload;
-        rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
+        std::optional<rc<const nodetree_blueprint>> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
         node_collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
@@ -148,9 +164,9 @@ namespace engine {
         ENGINE_API node get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
-        ENGINE_API rc<node_data> get_father();
+        ENGINE_API nullable_rc<node_data> get_father();
         // get father node, possibly returns null
-        ENGINE_API rc<const node_data> get_father() const;
+        ENGINE_API nullable_rc<const node_data> get_father() const;
         // get father node, throws if father is null
         ENGINE_API rc<node_data> get_father_checked();
         // get father node, throws if father is null

@@ -70,30 +70,30 @@ namespace engine {
         struct payload_t {
             glm::ivec2 out_res;
             mvp_matrices viewproj;
-            rc<const node_data> vp_node;
+            nullable_rc<const node_data> vp_node;
         };
 
-        constexpr std::nullptr_t default_framebuffer = nullptr;
+        constexpr std::nullopt_t default_framebuffer = std::nullopt;
 
         depth_first_traversal(root, payload_t {out_res, viewproj, default_framebuffer},
             //preorder: construction of payload
             [frame_time, &r](const_node& n, const payload_t& father_payload) {
                 payload_t children_payload;
 
-                EXPECTS(n.operator rc<const node_data>());
+                // EXPECTS(n.operator rc<const node_data>());
 
                 // if n is a viewport first setup rendering of children,
                 // otherwise render them to the same viewport as n
                 if (n->has<viewport>()) {
                     n->get<viewport>().output_resolution_changed(father_payload.out_res);
 
-                    children_payload.vp_node = n;
+                    children_payload.vp_node = nullable_rc<const node_data>(rc<const node_data>(n));
                     children_payload.out_res = n->get<viewport>().fbo().resolution();
 
-                    children_payload.vp_node->get<viewport>().bind_draw();
+                    n->get<viewport>().bind_draw();
 
                     mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_payload.out_res.x / children_payload.out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
-                    mat4 view_mat = children_payload.vp_node->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
+                    mat4 view_mat = n->get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
                     children_payload.viewproj = mvp_matrices { .m=glm::mat4(1.), .v=view_mat, .p=proj_mat };
                     r.clear();
                 } else {
@@ -129,7 +129,7 @@ namespace engine {
 
     //sets the cameras for all viewports in the hierarchy, and returns the camera to use for the default framebuffer.
     [[nodiscard]]
-    static std::optional<camera> set_cameras(node n, rc<node_data> forefather_vp_node) {
+    static std::optional<camera> set_cameras(node n, std::optional<rc<node_data>> forefather_vp_node) {
         std::optional<camera> default_fb_camera = std::nullopt;
 
         //if this is a camera set it as active for it forefather (/default) viewport
@@ -137,8 +137,8 @@ namespace engine {
             n->get<camera>().set_view_mat(glm::inverse(n->get_global_transform()));
 
             if(forefather_vp_node) {
-                EXPECTS(forefather_vp_node->has<viewport>());
-                forefather_vp_node->get<viewport>().set_active_camera(n->get<camera>());
+                EXPECTS((*forefather_vp_node)->has<viewport>());
+                (*forefather_vp_node)->get<viewport>().set_active_camera(n->get<camera>());
             } else {
                 default_fb_camera = n->get<camera>();
             }
@@ -147,7 +147,7 @@ namespace engine {
         //if this is a viewport set its camera to null and use it for its children
         if(n->has<viewport>())
             n->get<viewport>().set_active_camera(std::nullopt);
-        rc<node_data> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
+        std::optional<rc<node_data>> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
 
         // process children
         for(const node& child : n->children()) {
@@ -183,7 +183,7 @@ namespace engine {
         glm::ivec2 resolution = m_application_channel.from_app().framebuffer_size;
         float frame_time = m_application_channel.from_app().frame_time;
 
-        std::optional<camera> default_fb_camera = set_cameras(get_root(), nullptr);
+        std::optional<camera> default_fb_camera = set_cameras(get_root(), std::nullopt);
 
         m_renderer.clear(m_application_channel.to_app().clear_color);
         mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)

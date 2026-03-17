@@ -16,15 +16,7 @@ namespace engine {
     detail::rc_resource<T>* rc<T>::get_resource_ptr() const { return m_resource; }
 
     template<Resource T> ENGINE_API
-    rc<T>::rc() : m_resource(nullptr) {}
-
-    template<Resource T> ENGINE_API
-    rc<T>::rc(std::nullptr_t) : rc() {}
-
-    template<Resource T> ENGINE_API
-    rc<T>::rc(const rc<T>& o) : rc() {
-        this->operator=(o);
-    }
+    rc<T>::rc(const rc<T>& o) : rc(o.m_resource) {}
 
     template<Resource T> ENGINE_API
     rc<T>::rc(rc<T>&& o) : m_resource(o.m_resource) {
@@ -53,12 +45,6 @@ namespace engine {
     }
 
     template<Resource T> ENGINE_API
-    rc<T>::operator bool() const { return m_resource; }
-
-    template<Resource T> ENGINE_API
-    bool rc<T>::operator!() const { return !m_resource; }
-
-    template<Resource T> ENGINE_API
     T& rc<T>::operator*() const {
         EXPECTS(m_resource);
         EXPECTS(m_resource->resource().has_value());
@@ -80,17 +66,9 @@ namespace engine {
 
 
 
-
-
     //private constructor used by resources_manager
     template<Resource T> ENGINE_API
     rc<const T>::rc(detail::rc_resource<T> *resource) : rc<T>(resource) {}
-
-    template<Resource T> ENGINE_API
-    rc<const T>::rc() : rc<T>() {}
-
-    template<Resource T> ENGINE_API
-    rc<const T>::rc(std::nullptr_t) : rc() {}
 
     template<Resource T> ENGINE_API
     rc<const T>::rc(const rc<T>& o) : rc<T>(o) {}
@@ -118,14 +96,6 @@ namespace engine {
     template<Resource T> ENGINE_API
     const T& rc<const T>::operator*() const { return rc<T>::operator*(); }
 
-
-    template<Resource T> ENGINE_API
-    bool rc<const T>::operator!() const { return rc<T>::operator!(); }
-
-    template<Resource T> ENGINE_API
-    rc<const T>::operator bool() const { return rc<T>::operator bool(); }
-
-
     template<Resource T> ENGINE_API
     bool rc<const T>::operator!=(const rc<const T> &o) const { return rc<T>::operator!=(o); }
 
@@ -133,9 +103,9 @@ namespace engine {
     bool rc<const T>::operator==(const rc<const T> &o) const { return rc<T>::operator==(o); }
 
 
-    // #define INSTANTIATE_RC_TEMPLATE(TYPE) \
-        // template class rc<TYPE>; \
-        // template class rc<const TYPE>;
+    #define INSTANTIATE_RC_TEMPLATE(TYPE) \
+        template class rc<TYPE>; \
+        template class rc<const TYPE>;
 
-    // CALL_MACRO_FOR_EACH(INSTANTIATE_RC_TEMPLATE, RESOURCES)
+    CALL_MACRO_FOR_EACH(INSTANTIATE_RC_TEMPLATE, RESOURCES)
 }
