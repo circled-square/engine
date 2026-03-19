@@ -10,22 +10,23 @@
 #include "node/narrow_phase_collision.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
+#include <engine/resources_manager.hpp>
 #include <engine/utils/api_macro.hpp>
 
 // TODO: consider splitting different classes in this header into separate headers
 /*
- *the node/node_data split is just really weird, there should just be one of them.
+ *the node/node split is just really weird, there should just be one of them.
 
 I would proceed as follows
 
     node gets deleted
-    all methods currently in node become static methods (or methods) of node_data
-    node_data should be renamed to node
+    all methods currently in node become static methods (or methods) of node
+    node should be renamed to node
 
 the usage would change in the following ways
 
     current usages of node would be substituted for rc<node>
-    current usages of node_data would be substituted for node
+    current usages of node would be substituted for node
     n.add_child(m) would become node::add_child(n, m) (and the same would happen to some other methods)
 
  */
@@ -34,75 +35,20 @@ namespace engine {
     class nodetree_blueprint;
     class const_node_span;
 
-
-    /* A node in the scene graph.
-     * TODO: better doc comment
-     */
-    class node {
-        friend class const_node;
-        rc<node_data> m_node_data;
-
-        static node deep_copy_internal(rc<const node_data> o);
-
-    public:
-        // constructors and assignment operators
-        node() = delete;
-        ENGINE_API node(node&& o);
-        ENGINE_API node& operator=(node&& o);
-        ENGINE_API node& operator=(const node& o);
-        ENGINE_API node(const node& o);
-        ENGINE_API explicit node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1));
-        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params = {});
-        //this is expensive (calls deep_copy)
-        ENGINE_API explicit node(rc<const nodetree_blueprint> nt, std::string name = "");
-        ENGINE_API node deep_copy() const;
-
-        ENGINE_API operator rc<node_data>() const;
-        ENGINE_API operator rc<const node_data>() const;
-        ENGINE_API operator weak<node_data>() const;
-        ENGINE_API operator weak<const node_data>() const;
-
-        ENGINE_API void add_child(node c) const;
-
-        ENGINE_API node_data& operator*() const;
-        ENGINE_API node_data* operator->() const;
-    };
-
-    class const_node {
-        node m_node;
-    public:
-        const_node() = delete;
-        const_node(const_node&& o) : m_node(std::move(o.m_node)) {}
-        const_node& operator=(const_node&& o) { m_node = std::move(o.m_node); return *this; }
-        const_node& operator=(const_node& o) { m_node = o.m_node; return *this; }
-        const_node(const const_node& o) :m_node(o.m_node) {}
-        const_node(node o) : m_node(std::move(o)) {}
-
-        explicit const_node(std::string name, node_payload_t payload = std::monostate(), const glm::mat4& transform = glm::mat4(1)) : m_node(name, payload, transform) {}
-        explicit const_node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params = {}) : m_node(name, payload, transform, script, params) {}
-        //this is expensive (calls deep_copy)
-        explicit const_node(rc<const nodetree_blueprint> nt, std::string name = "") : m_node(nt, name) {}
-        node deep_copy() const { return m_node.deep_copy(); }
-
-        operator rc<const node_data>() const { return m_node; }
-        operator weak<const node_data>() const { return m_node; }
-
-        const node_data& operator*() const { return *m_node; }
-        const node_data* operator->() const { return m_node.operator->(); }
-    };
-
+    // specifies how a node reacts to collisions
     struct node_collision_behaviour {
         bool moves_away_on_collision : 1 = false;
         bool passes_events_to_script : 1 = false;
         bool passes_events_to_father : 1 = false;
     };
 
-    class node_data {
-        friend class node;
-
-        std::vector<node> m_children;
+    /* A node in the scene graph.
+     * TODO: better doc comment
+     */
+    class node {
+        std::vector<rc<node>> m_children;
         bool m_children_is_sorted;
-        weak<node_data> m_father;
+        weak<node> m_father;
         std::string m_name;
         glm::mat4 m_transform;
 
@@ -121,12 +67,13 @@ namespace engine {
         void invalidate_global_transform_cache() const;
 
         node_payload_t m_payload;
-        std::optional<rc<const nodetree_blueprint>> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
+        nullable_rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
         node_collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
+
     public:
-        static void add_child(const node& self, node c);
+        ENGINE_API static void add_child(const rc<node>& self, rc<node> c);
 
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
@@ -144,33 +91,39 @@ namespace engine {
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        explicit node_data(std::string name, node_payload_t payload, const glm::mat4& transform);
-        // this is expensive (calls deep-copy constructor)
-        explicit node_data(rc<const nodetree_blueprint> nt, std::string name);
 
-        node_data() = delete;
-        node_data(const node_data&) = delete;
-        node_data(node_data&&) = delete;
+        ENGINE_API static rc<node> make(std::string name, std::optional<stateless_script> script = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1));
+        ENGINE_API static rc<node> make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1));
+        // expensive
+        ENGINE_API static rc<node> deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
+        // expensive
+        ENGINE_API static rc<node> deep_copy(rc<const node> o, std::optional<std::string> name = std::nullopt);
+
+        // this must be public (& ENGINE_API) because rm::new_emplace must be able to construct node, and to do so through std::optional
+        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform);
+        node() = delete;
+        node(const node&) = delete;
+        node(node&&) = delete;
 
         // get child from name
-        ENGINE_API node get_child(std::string_view name);
+        ENGINE_API rc<node> get_child(std::string_view name);
         // get a span of the node's children
         ENGINE_API const_node_span children() const;
         // get a span of the node's children
-        ENGINE_API std::span<const node> children();
+        ENGINE_API std::span<const rc<node>> children();
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
         ENGINE_API void set_children_sorting_preference(bool v);
         // get node with relative path
-        ENGINE_API node get_descendant_from_path(std::string_view path);
+        ENGINE_API rc<node> get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
-        ENGINE_API nullable_rc<node_data> get_father();
+        ENGINE_API nullable_rc<node> get_father();
         // get father node, possibly returns null
-        ENGINE_API nullable_rc<const node_data> get_father() const;
+        ENGINE_API nullable_rc<const node> get_father() const;
         // get father node, throws if father is null
-        ENGINE_API rc<node_data> get_father_checked();
+        ENGINE_API rc<node> get_father_checked();
         // get father node, throws if father is null
-        ENGINE_API rc<const node_data> get_father_checked() const;
+        ENGINE_API rc<const node> get_father_checked() const;
 
         // get this node's name
         ENGINE_API const std::string& name() const;
@@ -193,11 +146,12 @@ namespace engine {
         ENGINE_API void set_collision_behaviour(node_collision_behaviour col_behaviour);
 
         // handle collision event, recursing up the node tree if necessary
-        void react_to_collision(collision_result res, node_data& other);
+        static void react_to_collision(const rc<node>& self, collision_result res, const rc<node>& other);
 
         //script
         // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data); params are the parameters to the script's constructor
-        ENGINE_API static void attach_script(const node& self, stateless_script s, const std::any& params = std::monostate());
+        ENGINE_API static void attach_script(const rc<node>& self, stateless_script s, const std::any& params = std::monostate());
+        ENGINE_API static void attach_script(const rc<node>& self, script s);
         // get this node's script
         ENGINE_API std::optional<script>& get_script();
         // get this node's script
@@ -233,36 +187,37 @@ namespace engine {
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
     class nodetree_blueprint {
-        node m_root;
+        rc<node> m_root;
         std::string m_name;
     public:
-        nodetree_blueprint(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(rc<node> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
-        rc<const node_data> root() const { return m_root; }
+        rc<const node> root() const { return m_root; }
 
-        node into_node() { return std::move(m_root); }
+        rc<node> into_node() { return std::move(m_root); }
     };
 
     /* const_node_span is used for iterating on the children of a node in an immutable manner.
-     * we cannot simply use std::span<const const_node> because we cannot construct a span of const_node over a vector of node
+     * we cannot simply use std::span<const rc<const node>> because we cannot construct a span of rc<const node> over a vector of rc<node>
      */
     class const_node_span {
-        std::span<const node> m_span;
+        std::span<const rc<node>> m_span;
     public:
         class iterator {
-            std::span<const node>::iterator m_it;
+            using span_iterator = std::span<const rc<node>>::iterator;
+            span_iterator m_it;
         public:
-            iterator(std::span<const node>::iterator it) : m_it(it) {}
+            iterator(span_iterator it) : m_it(it) {}
             void operator++() { m_it++; }
             bool operator!=(const iterator& o) const { return m_it != o.m_it; }
-            const_node operator*() { return *m_it; }
+            rc<const node> operator*() { return *m_it; }
         };
 
-        const_node_span(std::span<const node> span) : m_span(span) {}
+        const_node_span(std::span<const rc<node>> span) : m_span(span) {}
         iterator begin() { return iterator(m_span.begin()); }
         iterator end() { return iterator(m_span.end()); }
         size_t size() const { return m_span.size(); }
-        const_node operator[](size_t i) const { return m_span[i]; }
+        rc<const node> operator[](size_t i) const { return m_span[i]; }
     };
 }
 

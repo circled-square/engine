@@ -1,6 +1,7 @@
 #include "engine/scene/renderer.hpp"
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <engine/resources_manager/rc.hpp>
 
 #define ENGINE_DO_EXPORT
 #include <engine/scene.hpp>
@@ -8,28 +9,28 @@
 namespace engine {
     using glm::mat4;
 
+    template<typename T> concept NodePtr = AnyOneOf<T, rc<node>, rc<const node>, nullable_rc<node>, nullable_rc<const node>>;
+
     //pre-order dfs, without recursion
-    template<typename node_t, Callable<void(node_t&)> callable_t>
-    inline void depth_first_traversal(node_t root, const callable_t& callable)
-        requires(std::same_as<node_t, node> || std::same_as<node_t, const_node>)
-    {
+    template<NodePtr node_t, Callable<void(node_t&)> callable_t>
+    inline void depth_first_traversal(node_t root, const callable_t& callable) {
         std::vector<node_t> stack;
         stack.push_back(root);
         while(!stack.empty()) {
             node_t n = stack.back();
             stack.pop_back();
             //iterate in reverse, so the first child is added last, which means it is visited first
-            for(std::int64_t i = n->children().size()-1; i >= 0; i--)
-                stack.push_back(std::move(n->children()[i]));
+            const auto children = n->children();
+            for(std::int64_t i = children.size()-1; i >= 0; i--)
+                stack.push_back(std::move(children[i]));
 
             callable(n);
         }
     }
 
     //pre+post-order dfs, without recursion
-    template<typename node_t, typename traversal_payload_t, Callable<traversal_payload_t(node_t&, const traversal_payload_t&)> preorder_t, Callable<void(node_t&, const traversal_payload_t&)> postorder_t>
+    template<NodePtr node_t, typename traversal_payload_t, Callable<traversal_payload_t(node_t&, const traversal_payload_t&)> preorder_t, Callable<void(node_t&, const traversal_payload_t&)> postorder_t>
     inline void depth_first_traversal(node_t root, const traversal_payload_t& root_params, const preorder_t& preorder, const postorder_t& postorder)
-        requires(std::same_as<node_t, node> || std::same_as<node_t, const_node>)
     {
         struct stack_entry_t {
             node_t n;
@@ -66,28 +67,28 @@ namespace engine {
         }
     }
 
-    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, const_node root, const mvp_matrices& viewproj, glm::ivec2 out_res, float frame_time) {
+    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, rc<const node> root, const mvp_matrices& viewproj, glm::ivec2 out_res, float frame_time) {
         struct payload_t {
             glm::ivec2 out_res;
             mvp_matrices viewproj;
-            nullable_rc<const node_data> vp_node;
+            nullable_rc<const node> vp_node;
         };
 
         constexpr std::nullopt_t default_framebuffer = std::nullopt;
 
         depth_first_traversal(root, payload_t {out_res, viewproj, default_framebuffer},
             //preorder: construction of payload
-            [frame_time, &r](const_node& n, const payload_t& father_payload) {
+            [frame_time, &r](rc<const node>& n, const payload_t& father_payload) {
                 payload_t children_payload;
 
-                // EXPECTS(n.operator rc<const node_data>());
+                // EXPECTS(n.operator rc<const node>());
 
                 // if n is a viewport first setup rendering of children,
                 // otherwise render them to the same viewport as n
                 if (n->has<viewport>()) {
                     n->get<viewport>().output_resolution_changed(father_payload.out_res);
 
-                    children_payload.vp_node = nullable_rc<const node_data>(rc<const node_data>(n));
+                    children_payload.vp_node = nullable_rc<const node>(rc<const node>(n));
                     children_payload.out_res = n->get<viewport>().fbo().resolution();
 
                     n->get<viewport>().bind_draw();
@@ -103,7 +104,7 @@ namespace engine {
                 return children_payload;
             },
             //postorder: rendering and viewport switching
-            [frame_time, &r, &whole_screen_vao](const_node& n, const payload_t& father_payload){
+            [frame_time, &r, &whole_screen_vao](rc<const node>& n, const payload_t& father_payload){
                 // render self
                 if (n->has<mesh>()){
                     r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
@@ -128,8 +129,10 @@ namespace engine {
     }
 
     //sets the cameras for all viewports in the hierarchy, and returns the camera to use for the default framebuffer.
+    // TODO: eliminate recursion from this function: profiling shows it is more relevant than I thought
+    // TODO: check whether we can reduce the number of depth_first_traversals per frame
     [[nodiscard]]
-    static std::optional<camera> set_cameras(node n, std::optional<rc<node_data>> forefather_vp_node) {
+    static std::optional<camera> set_cameras(const rc<node>& n, std::optional<rc<node>> forefather_vp_node) {
         std::optional<camera> default_fb_camera = std::nullopt;
 
         //if this is a camera set it as active for it forefather (/default) viewport
@@ -147,10 +150,10 @@ namespace engine {
         //if this is a viewport set its camera to null and use it for its children
         if(n->has<viewport>())
             n->get<viewport>().set_active_camera(std::nullopt);
-        std::optional<rc<node_data>> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
+        std::optional<rc<node>> children_vp = n->has<viewport>() ? n : std::move(forefather_vp_node);
 
         // process children
-        for(const node& child : n->children()) {
+        for(const rc<node>& child : n->children()) {
             auto other_camera = set_cameras(child, children_vp);
 
             if(!default_fb_camera)
@@ -159,7 +162,7 @@ namespace engine {
         return default_fb_camera;
     }
 
-    scene::scene(std::string name, node root, application_channel_t::to_app_t to_app_chan)
+    scene::scene(std::string name, rc<node> root, application_channel_t::to_app_t to_app_chan)
         : m_root(std::move(root)),
           m_name(std::move(name)),
           m_renderer(),
@@ -194,7 +197,7 @@ namespace engine {
 
     void scene::update() {
         // process nodes
-        depth_first_traversal(get_root(), [&](node& n){
+        depth_first_traversal(get_root(), [&](rc<node>& n){
             visit_optional(n->get_script(), [&](auto& s) {
                 s.process(n, m_application_channel);
             });
@@ -203,9 +206,9 @@ namespace engine {
         // TODO: currently resubscribing all colliders at every update: is it ok? ideally colliders would subscribe/unsubscribe themselves, making this unnecessary
         m_bp_collision_detector.reset_subscriptions();
 
-        depth_first_traversal(get_root(), [&](node& n){
+        depth_first_traversal(get_root(), [&](rc<node>& n){
             if(n->has<collision_shape>())
-                m_bp_collision_detector.subscribe(*n);
+                m_bp_collision_detector.subscribe(n);
         });
 
         m_bp_collision_detector.check_collisions_and_trigger_reactions();
@@ -215,9 +218,9 @@ namespace engine {
         m_renderer.get_low_level_renderer().set_render_flags(m_render_flags);
     }
 
-    node scene::get_root() { return m_root; }
+    const rc<node>& scene::get_root() { return m_root; }
 
-    node scene::get_node(std::string_view path) {
+    rc<node> scene::get_node(std::string_view path) {
         if(path[0] != '/')
             throw invalid_path_exception(path);
 

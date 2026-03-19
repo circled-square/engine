@@ -57,7 +57,7 @@ namespace engine {
     };
 
 
-    // immutable resource template specialization
+    // immutable resource template speciaization
     template<Resource T>
     class rc<const T> : rc<T> {
         friend class resources_manager;
@@ -126,7 +126,7 @@ namespace engine {
             EXPECTS(this->m_ptr.has_value());
             return m_ptr->operator->();
         }
-        rc<element_type> as_nonnull() const {
+        const rc<element_type>& as_nonnull() const {
             //TODO: add exception throw on null
             EXPECTS(this->m_ptr.has_value());
             return *m_ptr;
@@ -168,7 +168,7 @@ namespace engine {
             EXPECTS(this->m_ptr.has_value());
             return m_ptr->operator->();
         }
-        rc<element_type> as_nonnull() const {
+        const rc<element_type>& as_nonnull() const {
             //TODO: add exception throw on null
             EXPECTS(this->m_ptr.has_value());
             return *m_ptr;

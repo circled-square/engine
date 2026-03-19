@@ -19,13 +19,13 @@ namespace engine {
     class shader;
     class scene;
     class nodetree_blueprint;
-    class node_data;
+    class node;
     class stateless_script;
     class collision_shape;
 }
 
 namespace engine {
-    #define RESOURCES scene, nodetree_blueprint, node_data, shader, gal::texture, gal::vertex_array, collision_shape, dylib::library
+    #define RESOURCES scene, nodetree_blueprint, node, shader, gal::texture, gal::vertex_array, collision_shape, dylib::library
     #define MOVEABLE_RESOURCES scene, nodetree_blueprint, shader, gal::texture, gal::vertex_array, collision_shape, dylib::library
 
     // technically not a concept, but nonetheless this is not a type supposed to be used as is, but instead it is supposed to be used
@@ -41,7 +41,7 @@ namespace engine {
     constexpr const char* get_resource_typename() {
         if(std::same_as<T, scene>) return "scene";
         if(std::same_as<T, nodetree_blueprint>) return "nodetree blueprint";
-        if(std::same_as<T, node_data>) return "node";
+        if(std::same_as<T, node>) return "node";
         if(std::same_as<T, shader>) return "shader";
         if(std::same_as<T, gal::texture>) return "texture";
         if(std::same_as<T, gal::vertex_array>) return "vertex array";

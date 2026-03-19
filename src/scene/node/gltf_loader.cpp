@@ -356,25 +356,22 @@ namespace engine {
         }
     }
 
-    static node load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
+    static rc<node> load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
         const tinygltf::Node& gltf_node = model.nodes[idx];
 
         node_payload_t node_data_variant = load_node_data(model, gltf_node, shader);
 
         glm::mat4 transform = get_node_transform(gltf_node);
-        node root(gltf_node.name, std::move(node_data_variant), transform);
-        { // set collision behaviour
-            node_collision_behaviour col_behaviour {
-                .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "moves_away_on_collision"),
-                .passes_events_to_script = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_script"),
-                .passes_events_to_father = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_father"),
-            };
-            root->set_collision_behaviour(col_behaviour);
-        }
+        auto root = node::make(gltf_node.name, std::move(node_data_variant), transform);
+        root->set_collision_behaviour(node_collision_behaviour {
+            .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "moves_away_on_collision"),
+            .passes_events_to_script = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_script"),
+            .passes_events_to_father = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_father"),
+        });
 
 
         for(int child_idx : gltf_node.children) {
-            root.add_child(load_node_subtree(model, child_idx, shader));
+            node::add_child(root, load_node_subtree(model, child_idx, shader));
         }
 
         return root;
@@ -389,12 +386,12 @@ namespace engine {
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
-        node root(filepath);
+        auto root = node::make(filepath);
 
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;
         for (int node_idx : scene.nodes)
-            root.add_child(load_node_subtree(model, node_idx, shader));
+            node::add_child(root, load_node_subtree(model, node_idx, shader));
 
         return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }

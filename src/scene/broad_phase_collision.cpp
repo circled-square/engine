@@ -7,36 +7,36 @@ namespace engine {
     void pass_all_broad_phase_collision_detector::check_collisions_and_trigger_reactions() {
         for(size_t i = 0; i < m_subscribers.size(); i++) {
             EXPECTS(m_subscribers[i]);
-            node_data& a = *m_subscribers[i];
-            EXPECTS(a.has<rc<const collision_shape>>());
+            const rc<node>& a = m_subscribers[i];
+            EXPECTS(a->has<rc<const collision_shape>>());
 
             for(size_t j = i + 1; j < m_subscribers.size(); j++) {
                 EXPECTS(m_subscribers[j]);
-                node_data& b = *m_subscribers[j];
-                EXPECTS(b.has<rc<const collision_shape>>());
+                const rc<node>& b = m_subscribers[j];
+                EXPECTS(b->has<rc<const collision_shape>>());
 
                 //TODO: check layer correctness
-                auto& a_cs = a.get<collision_shape>();
-                auto& b_cs = b.get<collision_shape>();
+                auto& a_cs = a->get<collision_shape>();
+                auto& b_cs = b->get<collision_shape>();
                 bool a_sees_b = a_cs.sees_layers & b_cs.is_layers;
                 bool b_sees_a = b_cs.sees_layers & a_cs.is_layers;
                 if(!a_sees_b && !b_sees_a)
                     continue;
 
-                collision_result res = check_collision(a_cs, a.get_global_transform(), b_cs, b.get_global_transform());
+                collision_result res = check_collision(a_cs, a->get_global_transform(), b_cs, b->get_global_transform());
 
                 if(res) {
                     if(a_sees_b)
-                        a.react_to_collision(res, b);
+                        node::react_to_collision(a, res, b);
                     if(b_sees_a)
-                        b.react_to_collision(-res, a);
+                        node::react_to_collision(b, -res, a);
                 }
             }
         }
     }
 
-    void pass_all_broad_phase_collision_detector::subscribe(node_data& n) {
-        m_subscribers.push_back(&n);
+    void pass_all_broad_phase_collision_detector::subscribe(rc<node> n) {
+        m_subscribers.push_back(n);
     }
 
     void pass_all_broad_phase_collision_detector::reset_subscriptions() {

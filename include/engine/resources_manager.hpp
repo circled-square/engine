@@ -46,8 +46,8 @@ namespace engine {
         rc<T> new_from(T&& res);
 
         // inplace-construct a resource owned by resources_manager; useful for non move-constructible resources
-        template<Resource T, typename... Ts> [[nodiscard]]
-        rc<T> new_emplace(Ts... args) {
+        template<Resource T, typename... Ts> //requires (std::is_constructible_v<T, Ts...>) [[nodiscard]]
+        rc<T> new_emplace(Ts&&... args) {
             // allocate memory
             detail::rc_ptr<T> p(new detail::rc_resource<T>(std::nullopt));
             detail::rc_resource<T>* allocation = p.get();
@@ -57,12 +57,11 @@ namespace engine {
             m_hashmaps.id_to_resource<T>().insert({ key, std::tuple(std::monostate(), std::move(p)) });
 
             //in-place construct
-            allocation->resource().emplace(std::forward<Ts>(args)...);
+            allocation->resource().template emplace<Ts...>(std::forward<Ts>(args)...);
 
             //make rc pointer to memory and return
             return rc<T>(allocation);
         }
-
 
         template<AnyOneOf<shader, nodetree_blueprint> T> ENGINE_API
         void hot_reload(const std::string& name);

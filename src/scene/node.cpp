@@ -5,13 +5,13 @@ namespace engine {
     using glm::mat4;
     static std::string fix_name(std::string s) {
         for(char& c : s) {
-            if(!std::isalnum(c) && node_data::special_chars_allowed_in_node_name.find(c) == std::string_view::npos)
+            if(!std::isalnum(c) && node::special_chars_allowed_in_node_name.find(c) == std::string_view::npos)
                 c = '_';
         }
         return s;
     }
 
-    node_data::node_data(std::string name, node_payload_t payload, const mat4& transform)
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform)
         : m_children(),
           m_children_is_sorted(true),
           m_father(),
@@ -22,76 +22,50 @@ namespace engine {
           m_nodetree_bp_reference(),
           m_script() {}
 
-    node node::deep_copy_internal(rc<const node_data> o) {
-        node n = o->get_script().has_value()
-            ? node(o->m_name, o->m_payload, o->m_transform, o->m_script->get_underlying_stateless_script())
-            : node(o->m_name, o->m_payload, o->m_transform)
-        ;
+    rc<node> node::make(std::string name, std::optional<stateless_script> s, const std::any& params, node_payload_t payload, const glm::mat4& transform) {
+        // auto n = get_rm().new_emplace<node>(std::move(name), std::move(payload), std::move(transform));
+        auto n = get_rm().new_emplace<node>(std::move(name), std::move(payload), std::move(transform));
 
+        if(s.has_value())
+            node::attach_script(n, *s, params);
+
+        return n;
+    }
+
+    rc<node> node::make(std::string name, node_payload_t pl, const glm::mat4& transform) {
+        return node::make(std::move(name), std::nullopt, std::monostate(), std::move(pl), transform);
+    }
+
+    rc<node> node::deep_copy(rc<const node> o, std::optional<std::string> name) {
+        rc<node> n = node::make(name.value_or(o->m_name), std::nullopt, std::monostate(), o->m_payload, o->m_transform);
+        if(o->get_script().has_value()) {
+            // clone the script AND its state
+            node::attach_script(n, *o->get_script());
+        }
 
         n->m_nodetree_bp_reference = o->m_nodetree_bp_reference;
         n->m_col_behaviour = o->m_col_behaviour;
         n->set_children_sorting_preference(o->m_children_is_sorted);
         for(int i = 0; i < o->m_children.size(); i++) {
-            n->m_children.push_back(o->m_children[i].deep_copy());
+            n->m_children.push_back(node::deep_copy(o->m_children[i]));
         }
 
         // fix the children's father pointers
-        for(node& child : n->m_children) {
+        for(rc<node>& child : n->m_children) {
             child->m_father = n;
         }
 
         return n;
     }
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform)
-        : m_node_data(get_rm().new_emplace<node_data>(std::move(name), std::move(payload), transform)) {}
+    rc<node> node::deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name) {
+        rc<node> ret = node::deep_copy(nt->root(), name.value_or(nt->name()));
+        ret->m_nodetree_bp_reference = nt;
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, stateless_script script, const std::any& params)
-        : node(std::move(name), std::move(payload), transform) {
-        node_data::attach_script(*this, std::move(script), params);
-    }
-
-    node::node(rc<const nodetree_blueprint> nt, std::string name)
-        : node(node::deep_copy_internal(nt->root())) {
-        if(!name.empty())
-            m_node_data->m_name = name;
-        m_node_data->m_nodetree_bp_reference = std::move(nt);
-    }
-
-    node::node(node&& o) : m_node_data(std::move(o.m_node_data)) {}
-
-    node& node::operator=(node&& o) {
-        m_node_data = std::move(o.m_node_data);
-        return *this;
-    }
-
-    node& node::operator=(const node& o) {
-        m_node_data = o.m_node_data;
-        return *this;
-    }
-
-    node::node(const node& o) : m_node_data(o.m_node_data) {}
-
-    node node::deep_copy() const {
-        node ret = node::deep_copy_internal(this->m_node_data);
         return ret;
     }
 
-    node::operator rc<node_data>() const { return m_node_data; }
-    node::operator rc<const node_data>() const { return m_node_data; }
-
-    node::operator weak<node_data>() const { return m_node_data; }
-    node::operator weak<const node_data>() const { return m_node_data; }
-    void node::add_child(node c) const {
-        node_data::add_child(*this, c);
-    }
-
-    node_data& node::operator*() const { return *m_node_data; }
-
-    node_data* node::operator->() const { return &*m_node_data; }
-
-    void node_data::add_child(const node& self, node c) {
+    void node::add_child(const rc<node>& self, rc<node> c) {
         c->m_father = self;
 
         if(self->m_children_is_sorted) {
@@ -103,14 +77,14 @@ namespace engine {
         }
     }
 
-    node node_data::get_child(std::string_view name) {
+    rc<node> node::get_child(std::string_view name) {
         if(m_children_is_sorted) {
-            auto less_than = [](const rc<node_data>& n, const std::string_view& s) { return n->name() < s; };
+            auto less_than = [](const rc<node>& n, const std::string_view& s) { return n->name() < s; };
             if(auto it = std::lower_bound(m_children.begin(), m_children.end(), name, less_than); it != m_children.end() && (*it)->name() == name) {
                 return *it;
             }
         } else {
-            if (auto it = std::ranges::find_if(m_children, [&name](const rc<node_data>& n){ return n->name() == name; }); it != m_children.end()) {
+            if (auto it = std::ranges::find_if(m_children, [&name](const rc<node>& n){ return n->name() == name; }); it != m_children.end()) {
                 return *it;
             }
         }
@@ -118,15 +92,15 @@ namespace engine {
     }
 
 
-    nullable_rc<node_data> node_data::get_father() {
+    nullable_rc<node> node::get_father() {
         return m_father.lock();
     }
 
-    nullable_rc<const node_data> node_data::get_father() const {
+    nullable_rc<const node> node::get_father() const {
         return m_father.lock();
     }
 
-    rc<node_data> node_data::get_father_checked() {
+    rc<node> node::get_father_checked() {
         if(auto f = m_father.lock(); f)
             return std::move(f.as_nonnull());
         else
@@ -134,42 +108,42 @@ namespace engine {
     }
 
 
-    rc<const node_data> node_data::get_father_checked() const {
+    rc<const node> node::get_father_checked() const {
         if(auto f = m_father.lock(); f)
             return std::move(f.as_nonnull());
         else
             throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name);
     }
 
-    const_node_span node_data::children() const {
+    const_node_span node::children() const {
         return const_node_span(std::span(m_children.begin(), m_children.end()));
     }
-    std::span<const node> node_data::children() { return std::span(m_children.begin(), m_children.end()); }
+    std::span<const rc<node>> node::children() { return std::span(m_children.begin(), m_children.end()); }
 
-    void node_data::set_children_sorting_preference(bool v) {
+    void node::set_children_sorting_preference(bool v) {
         if(v && !m_children_is_sorted) {
             std::sort(m_children.begin(), m_children.end(),
-                      [](const rc<node_data>& a, const rc<node_data>& b) { return a->name() < b->name(); });
+                      [](const rc<node>& a, const rc<node>& b) { return a->name() < b->name(); });
         }
         m_children_is_sorted = v;
     }
 
-    std::string node_data::absolute_path() const {
-        nullable_rc<const node_data> f = get_father();
+    std::string node::absolute_path() const {
+        nullable_rc<const node> f = get_father();
         return f ? f->absolute_path() + "/" + m_name : m_name;
     }
-    const std::string& node_data::name() const { return m_name; }
+    const std::string& node::name() const { return m_name; }
 
-    const mat4& node_data::transform() const { return m_transform; }
+    const mat4& node::transform() const { return m_transform; }
 
-    void node_data::set_transform(const glm::mat4& m) {
+    void node::set_transform(const glm::mat4& m) {
         invalidate_global_transform_cache();
         this->m_transform = m;
     }
 
-    const mat4& node_data::get_global_transform() const {
+    const mat4& node::get_global_transform() const {
         if(!m_global_transform_cache.has_value()) {
-            nullable_rc<const node_data> f = get_father();
+            nullable_rc<const node> f = get_father();
             if(f) {
                 m_global_transform_cache = f->get_global_transform() * transform();
             } else {
@@ -181,19 +155,19 @@ namespace engine {
         return *m_global_transform_cache;
     }
 
-    const node_collision_behaviour& node_data::get_collision_behaviour() { return m_col_behaviour; }
+    const node_collision_behaviour& node::get_collision_behaviour() { return m_col_behaviour; }
 
-    void node_data::set_collision_behaviour(node_collision_behaviour col_behaviour) {
+    void node::set_collision_behaviour(node_collision_behaviour col_behaviour) {
         m_col_behaviour = col_behaviour;
     }
 
-    void node_data::react_to_collision(collision_result res, node_data& other) {
-        node_data* node_cursor = this;
+    void node::react_to_collision(const rc<node>& self, collision_result res, const rc<node>& other) {
+        rc<node> node_cursor = self;
         while(true) {
             auto& col_behaviour = node_cursor->get_collision_behaviour();
 
             if(col_behaviour.moves_away_on_collision) {
-                nullable_rc<node_data> father_p = node_cursor->get_father();
+                nullable_rc<node> father_p = node_cursor->get_father();
                 mat4 father_inverse_globtrans = father_p ? glm::inverse(father_p->get_global_transform()) : mat4(1);
 
                 glm::vec3 local_space_min_translation = father_inverse_globtrans * glm::vec4(-res.get_min_translation(), 0);
@@ -205,39 +179,44 @@ namespace engine {
 
                 // pass the collision event to the node's script
                 if(node_cursor->m_script)
-                    node_cursor->m_script->react_to_collision(*node_cursor, res, *this, other);
+                    node_cursor->m_script->react_to_collision(node_cursor, res, self, other);
             }
 
             //keep recursing up the node tree if the event needs to be passed to the father
             if(col_behaviour.passes_events_to_father == true) {
-                if(nullable_rc<node_data> father = node_cursor->get_father(); father) {
-                    node_cursor = &*father;
+                if(nullable_rc<node> father = node_cursor->get_father(); father) {
+                    node_cursor = father.as_nonnull();
                 }
             } else {
                 break;
             }
         }
     }
-    std::optional<script>& node_data::get_script() { return m_script; }
+    std::optional<script>& node::get_script() { return m_script; }
 
-    const std::optional<script>& node_data::get_script() const { return m_script; }
+    const std::optional<script>& node::get_script() const { return m_script; }
 
-    void node_data::attach_script(const node& self, stateless_script sc, const std::any& params) {
+    void node::attach_script(const rc<node>& self, stateless_script sc, const std::any& params) {
         self->m_script = script(std::move(sc), self, params);
     }
 
-    void node_data::invalidate_global_transform_cache() const {
+    void node::attach_script(const rc<node>& self, script sc) {
+        self->m_script = std::move(sc);
+    }
+
+
+    void node::invalidate_global_transform_cache() const {
         if(m_global_transform_cache.has_value()) {
             m_global_transform_cache.reset();
-            for(const rc<const node_data>& c : children()) {
+            for(const rc<const node>& c : children()) {
                 c->invalidate_global_transform_cache();
             }
         }
     }
 
-    node node_data::get_descendant_from_path(std::string_view path) {
+    rc<node> node::get_descendant_from_path(std::string_view path) {
         std::string_view subpath = path;
-        node_data* current_node = this;
+        node* current_node = this;
         while(true) {
             size_t separator_position = subpath.find('/');
             if (separator_position == std::string_view::npos) {
@@ -251,24 +230,22 @@ namespace engine {
         }
     }
 
-    template<> bool node_data::has<collision_shape>() const { return has<rc<const collision_shape>>(); }
-    template<> const collision_shape& node_data::get<collision_shape>() const {
-        const rc<const collision_shape>& p = get<rc<const collision_shape>>();
-        EXPECTS(p);
-        return *p;
+    template<> bool node::has<collision_shape>() const { return has<rc<const collision_shape>>(); }
+    template<> const collision_shape& node::get<collision_shape>() const {
+        return *get<rc<const collision_shape>>();
     }
 
-    template<NodePayload T> bool     node_data::has() const { return std::holds_alternative<T>(m_payload); }
-    template<NodePayload T> const T& node_data::get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
-    template<NodePayload T> T&       node_data::get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
-    void node_data::set_payload(node_payload_t p) {
+    template<NodePayload T> bool     node::has() const { return std::holds_alternative<T>(m_payload); }
+    template<NodePayload T> const T& node::get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
+    template<NodePayload T> T&       node::get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
+    void node::set_payload(node_payload_t p) {
         m_payload = std::move(p);
     }
 
 #define INSTANTIATE_NODE_TEMPLATES(TYPE) \
-    template TYPE& node_data::get<TYPE>(); \
-    template const TYPE& node_data::get<TYPE>() const; \
-    template bool node_data::has<TYPE>() const;
+    template TYPE& node::get<TYPE>(); \
+    template const TYPE& node::get<TYPE>() const; \
+    template bool node::has<TYPE>() const;
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_NODE_TEMPLATES, NODE_PAYLOAD_CONTENTS)
 
