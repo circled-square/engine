@@ -6,7 +6,7 @@
 
 
 namespace engine {
-    script::script(stateless_script sl_script, const rc<node>& n, const std::any& params) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n, params)) {
+    script::script(stateless_script sl_script, node& n, const std::any& params) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n, params)) {
         EXPECTS(m_state.has_value());
     }
 
@@ -14,9 +14,9 @@ namespace engine {
 
     const stateless_script& script::get_underlying_stateless_script() const { return m_script; }
 
-    void script::process(const rc<node>& n, application_channel_t& app_chan) { m_script.vtable.process(n, m_state, app_chan); }
+    void script::process(node& n, application_channel_t& app_chan) { m_script.vtable.process(n, m_state, app_chan); }
 
-    void script::react_to_collision(const rc<const node>& self, collision_result res, const rc<const node>& event_src, const rc<const node>& other) {
+    void script::react_to_collision(const node& self, collision_result res, const node& event_src, const node& other) {
         EXPECTS(m_script.vtable.react_to_collision != std::nullopt);
         (*m_script.vtable.react_to_collision)(self, this->m_state, res, event_src, other);
     }

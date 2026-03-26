@@ -7,12 +7,12 @@ namespace engine {
     void pass_all_broad_phase_collision_detector::check_collisions_and_trigger_reactions() {
         for(size_t i = 0; i < m_subscribers.size(); i++) {
             EXPECTS(m_subscribers[i]);
-            const rc<node>& a = m_subscribers[i];
+            node* a = m_subscribers[i];
             EXPECTS(a->has<rc<const collision_shape>>());
 
             for(size_t j = i + 1; j < m_subscribers.size(); j++) {
                 EXPECTS(m_subscribers[j]);
-                const rc<node>& b = m_subscribers[j];
+                node* b = m_subscribers[j];
                 EXPECTS(b->has<rc<const collision_shape>>());
 
                 //TODO: check layer correctness
@@ -27,15 +27,15 @@ namespace engine {
 
                 if(res) {
                     if(a_sees_b)
-                        node::react_to_collision(a, res, b);
+                        node::react_to_collision(*a, res, *b);
                     if(b_sees_a)
-                        node::react_to_collision(b, -res, a);
+                        node::react_to_collision(*b, -res, *a);
                 }
             }
         }
     }
 
-    void pass_all_broad_phase_collision_detector::subscribe(rc<node> n) {
+    void pass_all_broad_phase_collision_detector::subscribe(node* n) {
         m_subscribers.push_back(n);
     }
 

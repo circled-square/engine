@@ -356,7 +356,7 @@ namespace engine {
         }
     }
 
-    static rc<node> load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
+    static std::unique_ptr<node> load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
         const tinygltf::Node& gltf_node = model.nodes[idx];
 
         node_payload_t node_data_variant = load_node_data(model, gltf_node, shader);
@@ -371,7 +371,7 @@ namespace engine {
 
 
         for(int child_idx : gltf_node.children) {
-            node::add_child(root, load_node_subtree(model, child_idx, shader));
+            node::add_child(*root, load_node_subtree(model, child_idx, shader));
         }
 
         return root;
@@ -391,7 +391,7 @@ namespace engine {
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;
         for (int node_idx : scene.nodes)
-            node::add_child(root, load_node_subtree(model, node_idx, shader));
+            node::add_child(*root, load_node_subtree(model, node_idx, shader));
 
         return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }

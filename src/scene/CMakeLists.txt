@@ -10,8 +10,6 @@ target_link_libraries(engine__scene_renderer PRIVATE GAL glm engine__resources_m
 add_library(engine__scene_node STATIC node.cpp)
 target_link_libraries(engine__scene_node PUBLIC engine__global glm GAL engine__scene_node_node_data)
 target_link_libraries(engine__scene_node PRIVATE engine__resources_manager engine__scene_renderer)
-set_target_properties(engine__scene_node PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
-
 
 #bp_collision
 add_library(engine__scene_bp_collision STATIC broad_phase_collision.cpp)

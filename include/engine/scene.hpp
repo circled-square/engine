@@ -10,7 +10,8 @@
 
 namespace engine {
     class scene {
-        rc<node> m_root;
+        std::unique_ptr<node> m_root;
+
         std::string m_name;
         engine::renderer m_renderer;
         rc<const gal::vertex_array> m_whole_screen_vao; // for post-processing
@@ -22,7 +23,7 @@ namespace engine {
     public:
         scene() = delete;
         //TODO: these should not be ENGINE_API
-        ENGINE_API scene(std::string s, rc<node> root, application_channel_t::to_app_t to_app_chan = {});
+        ENGINE_API scene(std::string s, std::unique_ptr<node> root, application_channel_t::to_app_t to_app_chan = {});
         ENGINE_API scene(scene&& o);
 
         // prepare() is called when the scene is inited and when the application switches from a different scene
@@ -38,8 +39,8 @@ namespace engine {
 
         const std::string& get_name() const { return m_name; }
 
-        const rc<node>& get_root();
-        rc<node> get_node(std::string_view path);
+        node& get_root();
+        node& get_node(std::string_view path);
 
         //used by engine::application to communicate with the scene
         const application_channel_t& app_channel() const { return m_application_channel; }

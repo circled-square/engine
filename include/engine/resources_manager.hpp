@@ -46,7 +46,7 @@ namespace engine {
         rc<T> new_from(T&& res);
 
         // inplace-construct a resource owned by resources_manager; useful for non move-constructible resources
-        template<Resource T, typename... Ts> //requires (std::is_constructible_v<T, Ts...>) [[nodiscard]]
+        template<Resource T, typename... Ts> requires (std::is_constructible_v<T, Ts...>) [[nodiscard]]
         rc<T> new_emplace(Ts&&... args) {
             // allocate memory
             detail::rc_ptr<T> p(new detail::rc_resource<T>(std::nullopt));

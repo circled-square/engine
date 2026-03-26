@@ -2,12 +2,17 @@
 #include <engine/scene/node.hpp>
 #include <slogga/asserts.hpp>
 #include <climits> // CHAR_BIT
+#include <engine/utils/format_glm.hpp>
+#include <slogga/log.hpp>
 
 namespace engine {
     using namespace glm;
 
     //we care not for the orientation of the normal/edge vectors, so we reverse all with y<0 (some with y=0) so vecs inverse to each other are not counted (since everything goes through a hashset)
     inline glm::vec3 normalize_without_verse(glm::vec3 v) {
+        if (glm::dot(v, v) == 0.f) {
+            return glm::vec3(0);
+        }
         v = glm::normalize(v);
         if(v.y < 0 || (v.y == 0 && v.x < 0) || (v.x == 0 && v.y == 0 && v.z < 0))
             v = -v;
@@ -109,7 +114,7 @@ namespace engine {
                     return collision_result { min_col_dir, min_col };
 
                 vec3 axis = normalize_without_verse(glm::cross(vec3(a_edge), vec3(b_edge)));
-                if (std::isnan(axis.x)) { continue; }
+                if (axis == vec3(0)) { continue; }
 
                 if(!project_and_update_min(axis, a.verts, b.verts, b_to_a_space_trans, dont_repeat, min_col, min_col_dir, a_trans)) {
                     return collision_result::null();
@@ -183,13 +188,13 @@ namespace engine {
         return from_mesh_impl<glm::u16vec3>(mesh_verts, mesh_indices, is_layers, sees_layers);
     }
 
-    collision_result collision_result::null() { return {glm::vec3(0), std::numeric_limits<float>::quiet_NaN()}; }
+    collision_result collision_result::null() { return {glm::vec3(0), 0}; }
 
     bool collision_result::is_shallow() const { EXPECTS(this->operator bool()); return depth == 0.f; }
 
     vec3 collision_result::get_min_translation() const { EXPECTS(this->operator bool()); return -depth * versor; }
 
-    collision_result::operator bool() const { return !std::isnan(depth); }
+    collision_result::operator bool() const { return versor != vec3(0); }
 
     collision_layers_bitmask collision_layer(int n) {
         static_assert(sizeof(collision_layers_bitmask) * CHAR_BIT == 64);

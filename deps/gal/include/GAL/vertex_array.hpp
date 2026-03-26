@@ -19,6 +19,7 @@ namespace gal {
             sint size;
             uint vao_vbo_bind_index; 
             bool normalized;
+            bool per_instance = false;
         };
 
         size_t vertex_size = 0; //only optionally set
@@ -29,6 +30,11 @@ namespace gal {
         uint m_vao;
         std::vector<vertex_buffer> m_vbos;
         std::vector<index_buffer> m_ibos;
+        size_t m_number_of_temporary_vbo_bindings;
+
+        void specify_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized, bool per_instance);
+        void specify_attribs(const vertex_layout& layout);
+
     public:
 
         GAL_API vertex_array(vertex_array&& o);
@@ -43,14 +49,25 @@ namespace gal {
 
         GAL_API ~vertex_array();
 
-        GAL_API void specify_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized);
-        GAL_API void specify_attribs(const vertex_layout& layout);
-
-        GAL_API void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
-
         GAL_API size_t get_triangle_count(uint ibo_index = 0) const;
         GAL_API uint get_ibo_element_typeid(uint ibo_index) const;
         GAL_API size_t get_ibo_count() const;
+
+        GAL_API const vertex_layout& get_vertex_layout();
+
+        void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
+
+        // Note: the following functions are meant to allow the user more control in handling dynamic vertex attributes.
+        // Be careful:
+        // - not to leave a vbo binding active past the end of the lifetime of the vertex buffer it references
+        // - not to delete/overwrite a non-temporary attrib
+
+        // returns the newly created vbo binding's index
+        GAL_API uint make_temporary_vbo_binding(const gal::vertex_buffer& vbo);
+        // deletes the last temporary vbo binding and returns its index
+        GAL_API uint delete_temporary_vbo_binding();
+        GAL_API void make_temporary_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized, bool per_instance = false);
+        GAL_API void delete_temporary_attrib(uint attrib_index);
     };
 
 

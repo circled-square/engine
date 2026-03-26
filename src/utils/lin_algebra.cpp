@@ -7,7 +7,4 @@ namespace engine {
         mat[3] = vec4(0);
         return mat;
     }
-    vec3 extract_position(const mat4& m) {
-        return vec3(m[3]);
-    }
 }

@@ -46,6 +46,16 @@ namespace engine {
         dylib::decorations only_extension = dylib::decorations::os_default();
         only_extension.prefix = "";
 
+#ifndef NDEBUG
+        dylib::decorations debug_prefix = only_extension;
+        debug_prefix.prefix = "dbgsym_";
+        try {
+            return dylib::library("assets/" + name, debug_prefix);
+        } catch(...) {
+            slogga::stdout_log.warn("failed to load shared library {} with prefix '{}', despite engine being built in debug mode; debug symbols for this shared library will not be available", name, debug_prefix.prefix);
+        }
+#endif
+
         return dylib::library("assets/" + name, only_extension);
     }
 

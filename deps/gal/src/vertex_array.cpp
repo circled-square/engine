@@ -1,9 +1,12 @@
 #include <GAL/vertex_array.hpp>
 #include <glad/glad.h>
 #include <slogga/log.hpp>
+#include <slogga/asserts.hpp>
 
 namespace gal {
-    vertex_array::vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout) : m_vbos(std::move(vbos)), m_ibos(std::move(ibos)) {
+    vertex_array::vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout) : m_vbos(std::move(vbos)), m_ibos(std::move(ibos))
+          , m_number_of_temporary_vbo_bindings(0)
+{
         glCreateVertexArrays(1, &m_vao);
 
         for(size_t i = 0; i < m_vbos.size(); i++) {
@@ -32,7 +35,9 @@ namespace gal {
     vertex_array::vertex_array(vertex_buffer vbo, index_buffer ibo, vertex_layout layout)
         : vertex_array(vbo_to_vbos_vec(std::move(vbo)), ibo_to_ibos_vec(std::move(ibo)), std::move(layout)) {}
 
-    vertex_array::vertex_array(vertex_array&& o) : m_vao(o.m_vao), m_vbos(std::move(o.m_vbos)), m_ibos(std::move(o.m_ibos)) {
+    vertex_array::vertex_array(vertex_array&& o) : m_vao(o.m_vao), m_vbos(std::move(o.m_vbos)), m_ibos(std::move(o.m_ibos))
+          , m_number_of_temporary_vbo_bindings(o.m_number_of_temporary_vbo_bindings)
+    {
         o.m_vao = 0;
     }
 
@@ -41,14 +46,20 @@ namespace gal {
         m_vao = 0;
     }
 
-    void vertex_array::specify_attrib(uint attrib_index, uint offset, uint type_id, sint size, uint vao_vbo_bind_index, bool normalized_bool) {
+    void vertex_array::specify_attrib(uint attrib_index, uint offset, uint type_id, sint size, uint vao_vbo_bind_index, bool normalized_bool, bool per_instance) {
         GLboolean normalized = normalized_bool ? GL_TRUE : GL_FALSE;
 
         //the vertex array contains vertices with the following attribs:
-        glEnableVertexArrayAttrib(m_vao, attrib_index); //enable the attrib {2} for the vao {1} (can be done after call to glVertexAttribPointer I think)
+        glEnableVertexArrayAttrib(m_vao, attrib_index); //enable the attrib {2} for the vao {1} (can be done after call to glVertexAttribFormat/Binding I think)
         //the {1} vao's {2}th attrib is {3} elements of type {4}; they do/don't({5}) need normalization; {6} is the offset of the attrib from the start of the vertex.
         glVertexArrayAttribFormat(m_vao, attrib_index, size, type_id, normalized, offset); 
         glVertexArrayAttribBinding(m_vao, attrib_index, vao_vbo_bind_index); // bind the attrib {2} to the {3}th vbo of the vao {1}
+
+       // if this is a per-instance attribute (as opposed to per-vertex)
+       if(per_instance) {
+           //advance the attribute (pointer) once every {3} instances (if 0 once per vertex) for attribute(s) of the {2}th vbo of the vao {1}
+           glVertexArrayBindingDivisor(m_vao, vao_vbo_bind_index, 1);
+       }
     }
 
     void vertex_array::specify_attribs(const vertex_layout& layout) {
@@ -58,12 +69,12 @@ namespace gal {
                 for(auto& vbo : m_vbos) {
                     vbos_stride_sum += vbo.get_stride();
                 }
-                assert(vbos_stride_sum == layout.vertex_size);
+                EXPECTS(vbos_stride_sum == layout.vertex_size);
             }
         #endif
         
         for(const vertex_layout::vertex_array_attrib& attrib : layout.attribs) {
-            specify_attrib(attrib.index, attrib.offset, attrib.type_id, attrib.size, attrib.vao_vbo_bind_index, attrib.normalized);
+            specify_attrib(attrib.index, attrib.offset, attrib.type_id, attrib.size, attrib.vao_vbo_bind_index, attrib.normalized, attrib.per_instance);
         }
     }
 
@@ -84,5 +95,34 @@ namespace gal {
 
     size_t vertex_array::get_ibo_count() const {
         return m_ibos.size();
+    }
+
+    uint vertex_array::make_temporary_vbo_binding(const gal::vertex_buffer& vbo) {
+        const uint bind_index = m_vbos.size() + m_number_of_temporary_vbo_bindings;
+
+        glVertexArrayVertexBuffer(m_vao, bind_index, vbo.get_gl_id(), 0, (int)vbo.get_stride());
+
+        m_number_of_temporary_vbo_bindings++;
+
+        return bind_index;
+    }
+
+    uint vertex_array::delete_temporary_vbo_binding() {
+        EXPECTS(m_number_of_temporary_vbo_bindings > 0);
+        m_number_of_temporary_vbo_bindings--;
+
+        const uint bind_index = m_vbos.size() + m_number_of_temporary_vbo_bindings;
+
+        glVertexArrayVertexBuffer(m_vao, bind_index, 0, 0, 0);
+
+        return bind_index;
+    }
+
+    void vertex_array::make_temporary_attrib(uint attrib_index, uint offset, uint type, sint size, uint vao_vbo_bind_index, bool normalized, bool per_instance) {
+        specify_attrib(attrib_index, offset, type, size, vao_vbo_bind_index, normalized, per_instance);
+    }
+
+    void vertex_array::delete_temporary_attrib(uint attrib_index) {
+        glDisableVertexArrayAttrib(m_vao, attrib_index); //disable the attrib {2} for the vao {1}
     }
 }

@@ -13,28 +13,9 @@
 #include <engine/resources_manager.hpp>
 #include <engine/utils/api_macro.hpp>
 
-// TODO: consider splitting different classes in this header into separate headers
-/*
- *the node/node split is just really weird, there should just be one of them.
-
-I would proceed as follows
-
-    node gets deleted
-    all methods currently in node become static methods (or methods) of node
-    node should be renamed to node
-
-the usage would change in the following ways
-
-    current usages of node would be substituted for rc<node>
-    current usages of node would be substituted for node
-    n.add_child(m) would become node::add_child(n, m) (and the same would happen to some other methods)
-
- */
+// TODO: split different classes in this header into separate headers
 
 namespace engine {
-    class nodetree_blueprint;
-    class const_node_span;
-
     // specifies how a node reacts to collisions
     struct node_collision_behaviour {
         bool moves_away_on_collision : 1 = false;
@@ -42,13 +23,62 @@ namespace engine {
         bool passes_events_to_father : 1 = false;
     };
 
+    class nodetree_blueprint;
+
+    /* const_node_span is used for iterating on the children of a node in an immutable manner.
+     * we cannot simply use std::span<const rc<const node>> because we cannot construct a span of rc<const node> over a vector of std::unique_ptr<node>
+     */
+    class const_node_span {
+        std::span<const std::unique_ptr<node>> m_span;
+    public:
+        class iterator {
+            using span_iterator = std::span<const std::unique_ptr<node>>::iterator;
+            span_iterator m_it;
+        public:
+            iterator(span_iterator it) : m_it(it) {}
+            void operator++() { m_it++; }
+            bool operator!=(const iterator& o) const { return m_it != o.m_it; }
+            const node& operator*() { return **m_it; }
+        };
+
+        const_node_span(std::span<const std::unique_ptr<node>> span) : m_span(span) {}
+        iterator begin() { return iterator(m_span.begin()); }
+        iterator end() { return iterator(m_span.end()); }
+        size_t size() const { return m_span.size(); }
+        bool empty() const { return m_span.empty(); }
+        const node& operator[](size_t i) const { return *m_span[i]; }
+    };
+    class node_span {
+        std::span<std::unique_ptr<node>> m_span;
+    public:
+        class iterator {
+            using span_iterator = std::span<std::unique_ptr<node>>::iterator;
+            span_iterator m_it;
+        public:
+            iterator(span_iterator it) : m_it(it) {}
+            void operator++() { m_it++; }
+            bool operator!=(const iterator& o) const { return m_it != o.m_it; }
+            node& operator*() { return **m_it; }
+        };
+
+        node_span(std::span<std::unique_ptr<node>> span) : m_span(span) {}
+        iterator begin() { return iterator(m_span.begin()); }
+        iterator end() { return iterator(m_span.end()); }
+        size_t size() const { return m_span.size(); }
+        bool empty() const { return m_span.empty(); }
+        node& operator[](size_t i) { return *m_span[i]; }
+    };
+
+
     /* A node in the scene graph.
      * TODO: better doc comment
+     * TODO: change all static methods accepting a `node& self` parameter into being instance methods (without that parameter)
      */
     class node {
-        std::vector<rc<node>> m_children;
+        std::vector<std::unique_ptr<node>> m_children;
         bool m_children_is_sorted;
-        weak<node> m_father;
+        node* m_father;
+
         std::string m_name;
         glm::mat4 m_transform;
 
@@ -72,8 +102,9 @@ namespace engine {
 
         std::optional<script> m_script;
 
+
     public:
-        ENGINE_API static void add_child(const rc<node>& self, rc<node> c);
+        ENGINE_API static void add_child(node& self, std::unique_ptr<node> c);
 
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
@@ -91,47 +122,51 @@ namespace engine {
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
+        static std::unique_ptr<node> make(std::string name, std::optional<stateless_script> s = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1)) {
+            return std::make_unique<node>(std::move(name), std::move(pl), std::move(transform), s, params);
+        }
+        static std::unique_ptr<node> make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1)) {
+            return node::make(std::move(name), std::nullopt, std::monostate(), std::move(pl), transform);
+        }
 
-        ENGINE_API static rc<node> make(std::string name, std::optional<stateless_script> script = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1));
-        ENGINE_API static rc<node> make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1));
         // expensive
-        ENGINE_API static rc<node> deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
+        ENGINE_API static std::unique_ptr<node> deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
         // expensive
-        ENGINE_API static rc<node> deep_copy(rc<const node> o, std::optional<std::string> name = std::nullopt);
+        ENGINE_API static std::unique_ptr<node> deep_copy(const node& o, std::optional<std::string> name = std::nullopt);
 
-        // this must be public (& ENGINE_API) because rm::new_emplace must be able to construct node, and to do so through std::optional
-        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform);
         node() = delete;
         node(const node&) = delete;
         node(node&&) = delete;
+        // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
+        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script>, const std::any& params);
 
         // get child from name
-        ENGINE_API rc<node> get_child(std::string_view name);
+        ENGINE_API node& get_child(std::string_view name);
         // get a span of the node's children
-        ENGINE_API const_node_span children() const;
+        const_node_span children() const { return const_node_span(std::span(m_children.begin(), m_children.end())); }
         // get a span of the node's children
-        ENGINE_API std::span<const rc<node>> children();
+        node_span children() { return node_span(std::span(m_children.begin(), m_children.end())); }
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
         ENGINE_API void set_children_sorting_preference(bool v);
         // get node with relative path
-        ENGINE_API rc<node> get_descendant_from_path(std::string_view path);
+        ENGINE_API node& get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
-        ENGINE_API nullable_rc<node> get_father();
+        node* get_father() { return m_father; }
         // get father node, possibly returns null
-        ENGINE_API nullable_rc<const node> get_father() const;
+        const node* get_father() const { return m_father; }
         // get father node, throws if father is null
-        ENGINE_API rc<node> get_father_checked();
+        ENGINE_API node& get_father_checked();
         // get father node, throws if father is null
-        ENGINE_API rc<const node> get_father_checked() const;
+        ENGINE_API const node& get_father_checked() const;
 
         // get this node's name
-        ENGINE_API const std::string& name() const;
+        const std::string& name() const { return m_name; }
         // get this node's absolute path in the node hierarchy
-        ENGINE_API std::string absolute_path() const;
+        std::string absolute_path() const { return m_father ? m_father->absolute_path() + "/" + m_name : m_name; }
 
         // get this node's local transform
-        ENGINE_API const glm::mat4& transform() const;
+        const glm::mat4& transform() const { return m_transform; }
         // set this node's local transform
         ENGINE_API void set_transform(const glm::mat4& m);
         /* get this node's global transform.
@@ -141,33 +176,43 @@ namespace engine {
         ENGINE_API const glm::mat4& get_global_transform() const;
 
         // get the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        ENGINE_API const node_collision_behaviour& get_collision_behaviour();
+        const node_collision_behaviour& get_collision_behaviour() { return m_col_behaviour; }
         // set the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        ENGINE_API void set_collision_behaviour(node_collision_behaviour col_behaviour);
+        void set_collision_behaviour(node_collision_behaviour col_behaviour) { m_col_behaviour = col_behaviour; }
+
 
         // handle collision event, recursing up the node tree if necessary
-        static void react_to_collision(const rc<node>& self, collision_result res, const rc<node>& other);
+        static void react_to_collision(node& self, collision_result res, node& other);
 
         //script
-        // attach a script to a node; requires a node because the script construction must be able to access everything (not just the node data); params are the parameters to the script's constructor
-        ENGINE_API static void attach_script(const rc<node>& self, stateless_script s, const std::any& params = std::monostate());
-        ENGINE_API static void attach_script(const rc<node>& self, script s);
+        // instantiates a script and attaches it to a node; params are for the script's constructor
+        ENGINE_API static void attach_script(node& self, stateless_script s, const std::any& params = std::monostate());
+        // attach an already-instantiated script to a node;
+        ENGINE_API static void attach_script(node& self, script s);
+
         // get this node's script
-        ENGINE_API std::optional<script>& get_script();
+        std::optional<script>& get_script() { return m_script; }
         // get this node's script
-        ENGINE_API const std::optional<script>& get_script() const;
+        const std::optional<script>& get_script() const { return m_script; }
 
         // special node data access
-        // TODO: what is this lol
-        template<Resource T> requires NodePayload<rc<const T>> ENGINE_API bool     has() const;
-        template<Resource T> requires NodePayload<rc<const T>> ENGINE_API const T& get() const;
+        template<NodePayload T> bool     has() const { return std::holds_alternative<T>(m_payload); }
+        template<NodePayload T> const T& get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
+        template<NodePayload T> T&       get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
 
-        template<NodePayload T> ENGINE_API bool     has() const;
-        template<NodePayload T> ENGINE_API const T& get() const;
-        template<NodePayload T> ENGINE_API T&       get();
-        ENGINE_API void set_payload(node_payload_t p);
+        //allow has<collision_shape> instead of has<rc<collision_shape>>
+        template<Resource T> requires NodePayload<rc<const T>> bool     has() const { return has<rc<const collision_shape>>(); }
+        template<Resource T> requires NodePayload<rc<const T>> const T& get() const { return *get<rc<const collision_shape>>(); }
+
+        void set_payload(node_payload_t p) {
+            m_payload = std::move(p);
+        }
+        //separate logic for rc<collision_shape>
+        void set_payload(rc<collision_shape> p) {
+            m_payload = std::move(p);
+        }
+
     };
-
 
     class node_exception : public std::exception {
         std::string m_name, m_child_name;
@@ -187,37 +232,14 @@ namespace engine {
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
     class nodetree_blueprint {
-        rc<node> m_root;
+        std::unique_ptr<node> m_root;
         std::string m_name;
     public:
-        nodetree_blueprint(rc<node> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
+        nodetree_blueprint(std::unique_ptr<node> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) { EXPECTS(m_root.get()); }
         const std::string& name() const { return m_name; }
-        rc<const node> root() const { return m_root; }
+        const node& root() const { EXPECTS(m_root.get()); return *m_root; }
 
-        rc<node> into_node() { return std::move(m_root); }
-    };
-
-    /* const_node_span is used for iterating on the children of a node in an immutable manner.
-     * we cannot simply use std::span<const rc<const node>> because we cannot construct a span of rc<const node> over a vector of rc<node>
-     */
-    class const_node_span {
-        std::span<const rc<node>> m_span;
-    public:
-        class iterator {
-            using span_iterator = std::span<const rc<node>>::iterator;
-            span_iterator m_it;
-        public:
-            iterator(span_iterator it) : m_it(it) {}
-            void operator++() { m_it++; }
-            bool operator!=(const iterator& o) const { return m_it != o.m_it; }
-            rc<const node> operator*() { return *m_it; }
-        };
-
-        const_node_span(std::span<const rc<node>> span) : m_span(span) {}
-        iterator begin() { return iterator(m_span.begin()); }
-        iterator end() { return iterator(m_span.end()); }
-        size_t size() const { return m_span.size(); }
-        rc<const node> operator[](size_t i) const { return m_span[i]; }
+        std::unique_ptr<node> into_node() { return std::move(m_root); }
     };
 }
 
