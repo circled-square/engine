@@ -25,7 +25,7 @@ namespace engine {
           m_script()
     {
         if(s.has_value())
-            node::attach_script(*this, *s, params);
+            attach_script(*s, params);
     }
 
 
@@ -34,7 +34,7 @@ namespace engine {
         std::unique_ptr<node> n = node::make(name.value_or(o.m_name), std::nullopt, std::monostate(), o.m_payload, o.m_transform);
         if(o.get_script().has_value()) {
             // clone the script AND its state
-            node::attach_script(*n, *o.get_script());
+            n->attach_script(*o.get_script());
         }
 
         n->m_nodetree_bp_reference = o.m_nodetree_bp_reference;
@@ -59,15 +59,15 @@ namespace engine {
         return ret;
     }
 
-    void node::add_child(node& self, std::unique_ptr<node> c) {
-        c->m_father = &self;
+    void node::add_child(std::unique_ptr<node> c) {
+        c->m_father = this;
 
-        if(self.m_children_is_sorted) {
+        if(m_children_is_sorted) {
             auto compare = [](auto& a, auto& b) { return a->name() < b->name(); };
-            auto upper_bound = std::upper_bound(self.m_children.begin(), self.m_children.end(), c, compare);
-            self.m_children.emplace(upper_bound, std::move(c));
+            auto upper_bound = std::upper_bound(m_children.begin(), m_children.end(), c, compare);
+            m_children.emplace(upper_bound, std::move(c));
         } else {
-            self.m_children.emplace_back(std::move(c));
+            m_children.emplace_back(std::move(c));
         }
     }
 
@@ -127,8 +127,8 @@ namespace engine {
         return *m_global_transform_cache;
     }
 
-    void node::react_to_collision(node& self, collision_result res, node& other) {
-        node* node_cursor = &self;
+    void node::react_to_collision(collision_result res, node& other) {
+        node* node_cursor = this;
         while(true) {
             auto& col_behaviour = node_cursor->get_collision_behaviour();
 
@@ -145,7 +145,7 @@ namespace engine {
 
                 // pass the collision event to the node's script
                 if(node_cursor->m_script)
-                    node_cursor->m_script->react_to_collision(*node_cursor, res, self, other);
+                    node_cursor->m_script->react_to_collision(*node_cursor, res, *this, other);
             }
 
             //keep recursing up the node tree if the event needs to be passed to the father
@@ -159,12 +159,12 @@ namespace engine {
         }
     }
 
-    void node::attach_script(node& self, stateless_script sc, const std::any& params) {
-        self.m_script = script(std::move(sc), self, params);
+    void node::attach_script(stateless_script sc, const std::any& params) {
+        m_script = script(std::move(sc), *this, params);
     }
 
-    void node::attach_script(node& self, script sc) {
-        self.m_script = std::move(sc);
+    void node::attach_script(script sc) {
+        m_script = std::move(sc);
     }
 
 

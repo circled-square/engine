@@ -371,7 +371,7 @@ namespace engine {
 
 
         for(int child_idx : gltf_node.children) {
-            node::add_child(*root, load_node_subtree(model, child_idx, shader));
+            root->add_child(load_node_subtree(model, child_idx, shader));
         }
 
         return root;
@@ -391,7 +391,7 @@ namespace engine {
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;
         for (int node_idx : scene.nodes)
-            node::add_child(*root, load_node_subtree(model, node_idx, shader));
+            root->add_child(load_node_subtree(model, node_idx, shader));
 
         return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
     }

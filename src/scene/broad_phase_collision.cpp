@@ -27,9 +27,9 @@ namespace engine {
 
                 if(res) {
                     if(a_sees_b)
-                        node::react_to_collision(*a, res, *b);
+                        a->react_to_collision(res, *b);
                     if(b_sees_a)
-                        node::react_to_collision(*b, -res, *a);
+                        b->react_to_collision(-res, *a);
                 }
             }
         }

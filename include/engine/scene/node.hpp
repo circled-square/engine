@@ -8,6 +8,7 @@
 #include "node/script.hpp"
 #include "node/node_payload.hpp"
 #include "node/narrow_phase_collision.hpp"
+#include "node/node_span.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
 #include <engine/resources_manager.hpp>
@@ -25,54 +26,8 @@ namespace engine {
 
     class nodetree_blueprint;
 
-    /* const_node_span is used for iterating on the children of a node in an immutable manner.
-     * we cannot simply use std::span<const rc<const node>> because we cannot construct a span of rc<const node> over a vector of std::unique_ptr<node>
-     */
-    class const_node_span {
-        std::span<const std::unique_ptr<node>> m_span;
-    public:
-        class iterator {
-            using span_iterator = std::span<const std::unique_ptr<node>>::iterator;
-            span_iterator m_it;
-        public:
-            iterator(span_iterator it) : m_it(it) {}
-            void operator++() { m_it++; }
-            bool operator!=(const iterator& o) const { return m_it != o.m_it; }
-            const node& operator*() { return **m_it; }
-        };
-
-        const_node_span(std::span<const std::unique_ptr<node>> span) : m_span(span) {}
-        iterator begin() { return iterator(m_span.begin()); }
-        iterator end() { return iterator(m_span.end()); }
-        size_t size() const { return m_span.size(); }
-        bool empty() const { return m_span.empty(); }
-        const node& operator[](size_t i) const { return *m_span[i]; }
-    };
-    class node_span {
-        std::span<std::unique_ptr<node>> m_span;
-    public:
-        class iterator {
-            using span_iterator = std::span<std::unique_ptr<node>>::iterator;
-            span_iterator m_it;
-        public:
-            iterator(span_iterator it) : m_it(it) {}
-            void operator++() { m_it++; }
-            bool operator!=(const iterator& o) const { return m_it != o.m_it; }
-            node& operator*() { return **m_it; }
-        };
-
-        node_span(std::span<std::unique_ptr<node>> span) : m_span(span) {}
-        iterator begin() { return iterator(m_span.begin()); }
-        iterator end() { return iterator(m_span.end()); }
-        size_t size() const { return m_span.size(); }
-        bool empty() const { return m_span.empty(); }
-        node& operator[](size_t i) { return *m_span[i]; }
-    };
-
-
     /* A node in the scene graph.
      * TODO: better doc comment
-     * TODO: change all static methods accepting a `node& self` parameter into being instance methods (without that parameter)
      */
     class node {
         std::vector<std::unique_ptr<node>> m_children;
@@ -104,7 +59,7 @@ namespace engine {
 
 
     public:
-        ENGINE_API static void add_child(node& self, std::unique_ptr<node> c);
+        ENGINE_API void add_child(std::unique_ptr<node> c);
 
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
@@ -182,13 +137,13 @@ namespace engine {
 
 
         // handle collision event, recursing up the node tree if necessary
-        static void react_to_collision(node& self, collision_result res, node& other);
+        void react_to_collision(collision_result res, node& other);
 
         //script
         // instantiates a script and attaches it to a node; params are for the script's constructor
-        ENGINE_API static void attach_script(node& self, stateless_script s, const std::any& params = std::monostate());
+        ENGINE_API void attach_script(stateless_script s, const std::any& params = std::monostate());
         // attach an already-instantiated script to a node;
-        ENGINE_API static void attach_script(node& self, script s);
+        ENGINE_API void attach_script(script s);
 
         // get this node's script
         std::optional<script>& get_script() { return m_script; }
