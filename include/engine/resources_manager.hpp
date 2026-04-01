@@ -99,8 +99,6 @@ namespace engine {
 
     template<Resource T>
     void flag_for_deletion(resources_manager& rm, detail::resource_id<T> resource);
-
-
 }
 
 #endif // ENGINE_RESOURCES_MANAGER_HPP

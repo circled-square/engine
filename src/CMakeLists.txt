@@ -15,8 +15,7 @@ target_link_libraries(engine__application PRIVATE imgui GAL)
 #resources_manager
 add_library(engine__resources_manager STATIC resources_manager.cpp)
 target_link_libraries(engine__resources_manager PUBLIC engine__global engine__resources_manager_rc engine__resources_manager_weak)
-target_link_libraries(engine__resources_manager PRIVATE engine__resources_manager_rc_resource dylib engine__scene_renderer_mesh_material_materials engine__scene_node_gltf_loader GAL)
-set_target_properties(engine__resources_manager PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
+target_link_libraries(engine__resources_manager PRIVATE engine__resources_manager_template_defs engine__resources_manager_rc_resource dylib GAL)
 
 #scene
 add_library(engine__scene STATIC scene.cpp)

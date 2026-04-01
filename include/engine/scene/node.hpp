@@ -4,7 +4,6 @@
 #include <string>
 #include <span>
 #include <optional>
-#include <GAL/framebuffer.hpp>
 #include "node/script.hpp"
 #include "node/node_payload.hpp"
 #include "node/narrow_phase_collision.hpp"

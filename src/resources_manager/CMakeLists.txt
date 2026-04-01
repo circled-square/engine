@@ -1,3 +1,10 @@
+#resources_manager template definitions
+add_library(engine__resources_manager_template_defs STATIC template_defs.cpp)
+target_link_libraries(engine__resources_manager_template_defs PUBLIC engine__global)
+target_link_libraries(engine__resources_manager_template_defs PRIVATE slogga GAL dylib)
+target_link_libraries(engine__resources_manager_template_defs PRIVATE slogga GAL dylib engine__resources_manager_rc_resource engine__scene_renderer_mesh_material_materials engine__scene_node_gltf_loader)
+set_target_properties(engine__resources_manager_template_defs PROPERTIES CXX_VISIBILITY_PRESET default) # visibility for function templates doesn't work as it should
+
 #rc_resource
 add_library(engine__resources_manager_rc_resource STATIC detail/rc_resource.cpp)
 target_link_libraries(engine__resources_manager_rc_resource PUBLIC engine__global)
@@ -7,10 +14,10 @@ target_link_libraries(engine__resources_manager_rc_resource PRIVATE engine__scen
 add_library(engine__resources_manager_rc STATIC rc.cpp)
 target_link_libraries(engine__resources_manager_rc PUBLIC engine__global)
 target_link_libraries(engine__resources_manager_rc PRIVATE engine__resources_manager_rc_resource engine__scene dylib)
-set_target_properties(engine__resources_manager_rc PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
+set_target_properties(engine__resources_manager_rc PROPERTIES CXX_VISIBILITY_PRESET default) # visibility for function templates doesn't work as it should
 
 #weak
 add_library(engine__resources_manager_weak STATIC weak.cpp)
 target_link_libraries(engine__resources_manager_weak PUBLIC engine__global)
 target_link_libraries(engine__resources_manager_weak PRIVATE engine__resources_manager_rc_resource engine__scene dylib)
-set_target_properties(engine__resources_manager_weak PROPERTIES CXX_VISIBILITY_PRESET default) # visibility in template classes doesn't work as it should
+set_target_properties(engine__resources_manager_weak PROPERTIES CXX_VISIBILITY_PRESET default) # visibility for function templates doesn't work as it should
