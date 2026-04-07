@@ -82,7 +82,7 @@ namespace engine {
 
     application::~application() {
         if(m_active_scene)
-            m_active_scene = std::nullopt; // deinit this before resources_manager, or else it will be dangling by the time its destructor is called
+            m_active_scene = nullptr; // deinit this before resources_manager, or else it will be dangling by the time its destructor is called
 
         resources_manager::deinit_instance();
 

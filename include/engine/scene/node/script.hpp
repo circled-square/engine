@@ -27,7 +27,7 @@ namespace engine {
         script_vtable vtable = script_vtable{};
         std::string name = std::string();
         // this pointer is necessary to make sure the dynamic library is not unloaded while the object's fn ptrs still point to it
-        nullable_rc<const dylib::library> dynlib_ref = std::nullopt;
+        nullable_rc<const dylib::library> dynlib_ref = nullptr;
 
         ENGINE_API static std::vector<std::pair<const char*, stateless_script>> from(rc<const dylib::library> dynlib);
         ENGINE_API static stateless_script from(rc<const dylib::library> dynlib, const char* name);
