@@ -13,7 +13,7 @@
 namespace engine {
     application::application(glm::ivec2 res, const std::string &title, window::hints window_hints)
             : m_window(res, title, window_hints), m_active_scene(),
-              m_prev_mouse_cursor_pos(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity()),
+              m_prev_mouse_cursor_pos(0.f, 0.f),
               m_ignore_mouse_move_on_next_event(true)
     {
         // init opengl (after glfw)
@@ -41,11 +41,7 @@ namespace engine {
             glm::vec2 pos = {xpos, ypos};
             glm::vec2 movement;
 
-            if(std::isinf(app->m_prev_mouse_cursor_pos.x)) {
-                //first event is garbage unfortunately
-                app->m_prev_mouse_cursor_pos = {0,0};
-                return;
-            } else if(app->m_ignore_mouse_move_on_next_event) {
+            if(app->m_ignore_mouse_move_on_next_event) {
                 movement = {0,0};
                 app->m_ignore_mouse_move_on_next_event = false;
             } else {
