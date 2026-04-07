@@ -55,7 +55,7 @@ namespace gal {
 
         GAL_API const vertex_layout& get_vertex_layout();
 
-        void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
+        GAL_API void bind(uint ibo_index = 0) const; // bind the vao (and the specified ibo)
 
         // Note: the following functions are meant to allow the user more control in handling dynamic vertex attributes.
         // Be careful:

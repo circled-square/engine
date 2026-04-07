@@ -48,10 +48,12 @@ while read DEPENDENCY; do
   fi
 
   echo "    cloning into dir $CLONE_DIR from \"$CLONE_SRC\"..."
-  git clone --depth 1 $CLONE_SRC $CLONE_DIR | sed -E 's/(.*)/        git: \1/'
+  git clone --recurse-submodules --depth 1 $CLONE_SRC $CLONE_DIR | sed -E 's/(.*)/        git: \1/'
 
-  echo "    removing .git directory \"$CLONE_DIR/.git/\"..."
-  rm -fr -- $CLONE_DIR/.git/
+  echo "    removing .git directory \"$CLONE_DIR/.git/\", as well as for submodules..."
+  find $CLONE_DIR/ -type d -name '.git' -exec rm -rf "{}" +
+  echo "    removing any .github directories..."
+  find $CLONE_DIR/ -type d -name '.github' -exec rm -rf "{}" +
 
   echo "    updating hash cache..."
   if grep $DEP_NAME $DEPS_HASH_CACHE_FILE; then
