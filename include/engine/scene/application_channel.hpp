@@ -16,7 +16,7 @@ namespace engine {
     struct application_channel_t {
         struct to_app_t {
             bool wants_mouse_cursor_captured = false;
-            nullable_rc<scene> scene_to_change_to = std::nullopt;
+            nullable_rc<scene> scene_to_change_to = nullptr;
             glm::vec4 clear_color = {0,0,0,0};
         };
         struct from_app_t {

@@ -9,7 +9,7 @@ target_link_libraries(engine__scene_node_viewport PRIVATE engine__resources_mana
 
 # collisions
 add_library(engine__scene_node_narrow_phase_collision STATIC narrow_phase_collision.cpp)
-target_link_libraries(engine__scene_node_narrow_phase_collision PUBLIC engine__global glm GAL)
+target_link_libraries(engine__scene_node_narrow_phase_collision PUBLIC engine__global glm GAL engine__scene_node)
 
 # script
 add_library(engine__scene_node_script STATIC script.cpp)

@@ -32,7 +32,7 @@ namespace engine {
             stateless_script s {
                 .vtable = imported_plugins[i].second,
                 .name = imported_plugins[i].first,
-                .dynlib_ref = dynlib,
+                .dynlib_ref = nullable_rc<const dylib::library>(dynlib),
             };
             ret.push_back(std::pair(imported_plugins[i].first, std::move(s)));
         }
