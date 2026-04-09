@@ -20,3 +20,8 @@ target_link_libraries(engine__scene_bp_collision PRIVATE engine__resources_manag
 add_library(engine__scene_application_channel STATIC application_channel.cpp)
 target_link_libraries(engine__scene_application_channel PUBLIC engine__global glm engine__resources_manager)
 target_link_libraries(engine__scene_application_channel PRIVATE imgui)
+
+#application_channel
+add_library(engine__scene_yaml_loader STATIC yaml_loader.cpp)
+target_link_libraries(engine__scene_yaml_loader PUBLIC engine__global engine__resources_manager)
+target_link_libraries(engine__scene_yaml_loader PRIVATE ryml::ryml engine__scene_node)

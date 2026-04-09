@@ -211,6 +211,7 @@ namespace engine {
           m_render_flags(),
           m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t{ .scene_name = m_name }) {
         //the root of a scene's name should always be unnamed.
+        EXPECTS(m_root.get());
         EXPECTS(m_root->name().empty());
     }
 

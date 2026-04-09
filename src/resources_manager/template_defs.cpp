@@ -16,36 +16,37 @@ namespace engine {
 
 
     template<Resource T>
-    T construct_from_name(const std::string& p) { throw std::runtime_error("unimplemented!"); }
-    template<> shader construct_from_name<shader>(const std::string& p) { return shader::from_file("assets/" + p); }
-    template<> nodetree_blueprint construct_from_name<nodetree_blueprint>(const std::string& p) {
-        std::string path = "assets/" + p;
+    T construct_from_name(std::string_view p) { throw std::runtime_error("unimplemented!"); }
+    template<> shader construct_from_name<shader>(std::string_view p) { return shader::from_file(std::format("assets/{}", p)); }
+    template<> nodetree_blueprint construct_from_name<nodetree_blueprint>(std::string_view p) {
+        std::string path = std::format("assets/{}", p);
         return load_nodetree_from_gltf(path.c_str(), get_rm().get_default_3d_shader());
     }
-    template<> gal::texture construct_from_name<gal::texture>(const std::string& p) {
-        std::string path = "assets/" + p;
+    template<> gal::texture construct_from_name<gal::texture>(std::string_view p) {
+        std::string path = std::format("assets/{}", p);
         return gal::texture(gal::image(path.c_str()));
     }
     //temporary debug implementation, since we currently do not support loading scenes from file
-    template<> scene construct_from_name<scene>(const std::string& name) {
-        EXPECTS(get_rm().m_dbg_scene_ctors.contains(name));
-        return get_rm().m_dbg_scene_ctors[name]();
+    template<> scene construct_from_name<scene>(std::string_view name) {
+        std::string name_string(name);
+        EXPECTS(get_rm().get_dbg_scene_ctors().contains(name_string));
+        return get_rm().get_dbg_scene_ctors().at(name_string)();
     }
-    template<> dylib::library construct_from_name<dylib::library>(const std::string& name) {
+    template<> dylib::library construct_from_name<dylib::library>(std::string_view name) {
         dylib::decorations only_extension = dylib::decorations::os_default();
         only_extension.prefix = "";
-
+        std::string path = std::format("assets/{}", name);
 #ifndef NDEBUG
         dylib::decorations debug_prefix = only_extension;
         debug_prefix.prefix = "dbgsym_";
         try {
-            return dylib::library("assets/" + name, debug_prefix);
+            return dylib::library(path, debug_prefix);
         } catch(std::exception&) {
             slogga::stdout_log.warn("failed to load shared library {} with prefix '{}', despite engine being built in debug mode; debug symbols for this shared library will not be available", name, debug_prefix.prefix);
         }
 #endif
 
-        return dylib::library("assets/" + name, only_extension);
+        return dylib::library(path, only_extension);
     }
 
     template<Resource T>
@@ -150,7 +151,7 @@ namespace engine {
         // then, if it is not already loaded, load the resource
         if(!ret->resource().has_value()) {
             match_variant(name,
-                [&](const std::string& n) { ret->emplace(construct_from_name<T>(n)); },
+                [&](std::string_view n) { ret->emplace(construct_from_name<T>(n)); },
                 [&](std::uint8_t n) { ret->emplace(construct_from_name<T>(internal_resource_name_t(n))); },
                 [](std::monostate) {}
             );
@@ -165,11 +166,11 @@ namespace engine {
 
 
     template<AnyOneOf<shader, nodetree_blueprint, gal::texture, scene> T>
-    rc<T> resources_manager::load_mut(const std::string& p) {
+    rc<T> resources_manager::load_mut(std::string_view p) {
         return new_from(construct_from_name<T>(p));
     }
 
-    template<AnyOneOf<shader, nodetree_blueprint> T> void resources_manager::hot_reload(const std::string& identifier) {
+    template<AnyOneOf<shader, nodetree_blueprint> T> void resources_manager::hot_reload(std::string_view identifier) {
         //first retrieve the memory location
         if (auto search = m_hashmaps.name_to_id<T>().find(identifier); search != m_hashmaps.name_to_id<T>().end()) {
             // we already have the memory
@@ -194,13 +195,13 @@ namespace engine {
 
 
     // not implementable for all resource types
-    template void resources_manager::hot_reload<shader>(const std::string&);
-    template void resources_manager::hot_reload<nodetree_blueprint>(const std::string&);
+    template void resources_manager::hot_reload<shader>(std::string_view);
+    template void resources_manager::hot_reload<nodetree_blueprint>(std::string_view);
 
-    template rc<shader> resources_manager::load_mut<shader>(const std::string& p);
-    template rc<nodetree_blueprint> resources_manager::load_mut<nodetree_blueprint>(const std::string& p);
-    template rc<gal::texture> resources_manager::load_mut<gal::texture>(const std::string& p);
-    template rc<scene> resources_manager::load_mut<scene>(const std::string& p);
+    template rc<shader> resources_manager::load_mut<shader>(std::string_view p);
+    template rc<nodetree_blueprint> resources_manager::load_mut<nodetree_blueprint>(std::string_view p);
+    template rc<gal::texture> resources_manager::load_mut<gal::texture>(std::string_view p);
+    template rc<scene> resources_manager::load_mut<scene>(std::string_view p);
 
     #define INSTANTIATE_RM_TEMPLATES(TYPE) \
         template void flag_for_deletion<TYPE>(resources_manager&, detail::resource_id<TYPE>); \

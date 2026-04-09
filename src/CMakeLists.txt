@@ -19,12 +19,12 @@ target_link_libraries(engine__resources_manager PRIVATE engine__resources_manage
 
 #scene
 add_library(engine__scene STATIC scene.cpp)
-target_link_libraries(engine__scene PUBLIC engine__global engine__scene_node engine__scene_bp_collision engine__scene_application_channel)
+target_link_libraries(engine__scene PUBLIC engine__global engine__scene_node engine__scene_bp_collision engine__scene_application_channel engine__scene_yaml_loader)
 target_link_libraries(engine__scene PRIVATE engine__resources_manager imgui)
 
 #engine
 add_library(engine SHARED entry_point.cpp)
-target_link_libraries(engine PUBLIC glm)
+target_link_libraries(engine PUBLIC glm engine__scene)
 target_link_libraries(engine PRIVATE GAL engine__global engine__utils engine__application engine__resources_manager engine__scene imgui slogga)
 target_include_directories(engine PUBLIC ../include/ ../deps/ankerl_unordered_dense/include/ ../deps/gal/deps/slogga/include/ ../deps/gal/deps/glad/include/ ../deps/gal/include/ ../deps/imgui/)
 

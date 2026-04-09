@@ -31,7 +31,7 @@ namespace engine {
 
         // NOTE: necessary because of the debug implementation of scene_construction
         template<Resource T>
-        friend T construct_from_name(const std::string& name);
+        friend T construct_from_name(std::string_view name);
 
         std::optional<rc<const shader>> m_default_3d_shader;
 
@@ -64,18 +64,18 @@ namespace engine {
         }
 
         template<AnyOneOf<shader, nodetree_blueprint> T> ENGINE_API
-        void hot_reload(const std::string& name);
+        void hot_reload(std::string_view name);
 
         // load resource from disk (or get it if already loaded)
         template<AnyOneOf<shader, nodetree_blueprint, gal::texture, scene, dylib::library> T> [[nodiscard]]
-        rc<const T> load(const std::string& name) { return load_impl<T>(name); }
+        rc<const T> load(std::string_view name) { return load_impl<T>(name); }
         // load internal resource (or get it if already loaded)
         template<AnyOneOf<shader, gal::texture, gal::vertex_array> T> [[nodiscard]]
         rc<const T> load(internal_resource_name_t name) { return load_impl<T>(uint8_t(name)); }
 
         // load resource from disk as mutable (build new one regardless if already loaded)
         template<AnyOneOf<shader, nodetree_blueprint, gal::texture, scene> T> [[nodiscard]] ENGINE_API
-        rc<T> load_mut(const std::string& p);
+        rc<T> load_mut(std::string_view p);
 
         // get/set default 3d shader (for models loaded from file). if it is null (it is by default) the "simple 3d shader" is used instead
         ///TODO: allow user to embed shader information in gltf (which would also allow different meshes in the same gltf to use different shaders)
@@ -84,6 +84,7 @@ namespace engine {
 
         // useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
         ENGINE_API void dbg_add_scene_constructor(std::string name, std::function<scene()> scene_constructor);
+        const auto& get_dbg_scene_ctors() const { return m_dbg_scene_ctors; }
 
         // destroys and deallocates resources not in use
         ENGINE_API void collect_garbage();

@@ -1,7 +1,7 @@
 add_subdirectory(ankerl_unordered_dense/ EXCLUDE_FROM_ALL) #ankerl::unordered_dense::{map,set}
 install(DIRECTORY "ankerl_unordered_dense/include/" TYPE INCLUDE)
 
-add_subdirectory(rapidyaml/ )
+add_subdirectory(rapidyaml/ EXCLUDE_FROM_ALL)
 
 add_subdirectory(dylib/ EXCLUDE_FROM_ALL)
 set(GLFW_BUILD_DOCS OFF)

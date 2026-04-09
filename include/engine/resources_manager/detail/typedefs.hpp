@@ -11,7 +11,7 @@ namespace engine::detail {
     // An owning pointer with reference counting, can be used to construct a rc
     template<Resource T> using rc_ptr = std::unique_ptr<rc_resource<T>>;
 
-    using resource_name_t = std::variant<std::monostate, std::string, uint8_t>;
+    using resource_name_t = std::variant<std::monostate, std::string_view, uint8_t>;
     // these aliases are necessary to compose complex types from resource_tuple_t with map_tuple
     // map from id to (name, resource)
     template<Resource T> using id_to_resource_hashmap = hashmap<resource_id<T>, std::tuple<resource_name_t, rc_ptr<T>>>;
