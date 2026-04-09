@@ -8,7 +8,7 @@ target_link_libraries(engine__scene_renderer PRIVATE GAL glm engine__resources_m
 
 #node
 add_library(engine__scene_node STATIC node.cpp)
-target_link_libraries(engine__scene_node PUBLIC engine__global glm GAL engine__scene_node_node_data)
+target_link_libraries(engine__scene_node PUBLIC engine__global glm GAL engine__scene_node_node_data engine__scene_node_script)
 target_link_libraries(engine__scene_node PRIVATE engine__resources_manager engine__scene_renderer)
 
 #bp_collision
@@ -23,5 +23,5 @@ target_link_libraries(engine__scene_application_channel PRIVATE imgui)
 
 #application_channel
 add_library(engine__scene_yaml_loader STATIC yaml_loader.cpp)
-target_link_libraries(engine__scene_yaml_loader PUBLIC engine__global engine__resources_manager)
-target_link_libraries(engine__scene_yaml_loader PRIVATE ryml::ryml engine__scene_node)
+target_link_libraries(engine__scene_yaml_loader PUBLIC engine__global engine__scene)
+target_link_libraries(engine__scene_yaml_loader PRIVATE ryml::ryml engine__resources_manager)

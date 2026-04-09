@@ -107,7 +107,7 @@ namespace engine {
         using const_element_type = const T;
 
         nullable_rc() = default;
-        nullable_rc(std::nullopt_t) : nullable_rc() {}
+        nullable_rc(std::nullptr_t) : nullable_rc() {}
         nullable_rc(rc<element_type>&& o) : m_ptr(std::move(o)) {}
         nullable_rc(const rc<element_type>& o) : m_ptr(o) {}
 
@@ -146,7 +146,7 @@ namespace engine {
         using const_element_type = const T;
 
         nullable_rc() = default;
-        nullable_rc(std::nullopt_t) : nullable_rc() {}
+        nullable_rc(std::nullptr_t) : nullable_rc() {}
         nullable_rc(rc<element_type>&& o) : m_ptr(std::move(o)) {}
         nullable_rc(const rc<element_type>& o) : m_ptr(o) {}
 

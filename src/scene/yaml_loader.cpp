@@ -8,7 +8,7 @@
 #include <engine/scene/node.hpp>
 
 
-//formatter for rapidyaml ConstNodeRef
+//formatter for rapidyaml ConstNodeRef for debugging purposes
 template<>
 struct std::formatter<ryml::ConstNodeRef, char> {
     template<class ParseContext>
@@ -52,6 +52,7 @@ namespace engine {
 
     inline std::string_view get_val(ryml::ConstNodeRef n) {
         EXPECTS_WITH_MSG(n.has_val(), std::format("({}).has_val()", n.id()));
+        n.is_val_literal();
         return ryml_substr_to_std_string_view(n.val());
     }
 
@@ -63,6 +64,39 @@ namespace engine {
         return get_optional_val(get_optional_child(n, child_names...));
     }
 
+    template <class T>
+    inline T as_num(std::string_view sv) {
+        T ret;
+        std::from_chars_result res = std::from_chars(sv.begin(), sv.end(), ret);
+
+        if (res.ec == std::errc::invalid_argument || res.ptr != sv.end()) {
+            throw std::invalid_argument{"invalid_argument"};
+        } else if (res.ec == std::errc::result_out_of_range) {
+            throw std::out_of_range{"out_of_range"};
+        }
+
+        return ret;
+    }
+    template<typename T, size_t N>
+    inline std::array<T, N> children_as_array(ryml::ConstNodeRef n) {
+        EXPECTS(n.num_children() == N);
+
+        std::array<T, N> ret;
+        auto iter = n.cchildren().begin();
+        for(size_t i = 0; i < N; i++) {
+            ret[i] = as_num<T>(get_val(*iter));
+            ++iter;
+        }
+
+        return ret;
+    }
+
+    template<typename T, size_t N>
+    inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
+        auto arr(children_as_array<float, 3>(n));
+        return glm::vec3(arr[0], arr[1], arr[2]);
+    }
+
     template<typename payload_t>
     payload_t simple_dfs(payload_t father_payload, ryml::ConstNodeRef n, const auto& func) {
         auto payload = func(father_payload, n);
@@ -72,10 +106,11 @@ namespace engine {
             }
         }
 
-        return std::move(payload);
+        return payload;
     }
-    std::unique_ptr<node> yaml_example() {
-        std::string file_contents = read_file("assets/example.yml");
+
+    scene load_scene_from_yaml(const char* filename) {
+        std::string file_contents = read_file(filename);
         ryml::Tree tree = ryml::parse_in_arena(ryml::to_csubstr(file_contents.c_str()));
 
         // read from the tree:
@@ -92,10 +127,59 @@ namespace engine {
                     stateless_script script = stateless_script::from(get_rm().load<dylib::library>(script_path), script_name.c_str());
                     return std::optional(script);
                 });
-            // HANDLE GLTF
+
+            glm::mat4 transform = get_optional_child(n, "transform")
+                .and_then([](ryml::ConstNodeRef trans_node) -> std::optional<glm::mat4> {
+                    glm::vec3 pos = get_optional_child(trans_node, "position")
+                        .transform(children_as_glm_vec<float, 3>)
+                        .value_or({0, 0, 0});
+
+                    return (std::optional<glm::mat4>)get_optional_child(trans_node, "look_at")
+                        .transform([&](ryml::ConstNodeRef look_at_node) {
+                            glm::vec3 center = get_optional_child(look_at_node, "center")
+                                .transform(children_as_glm_vec<float, 3>)
+                                .value_or({0, 0, 0});
+                            glm::vec3 up = get_optional_child(look_at_node, "up")
+                                .transform(children_as_glm_vec<float, 3>)
+                                .value_or({0, 1, 0});
+
+                            return glm::inverse(glm::lookAt(pos, center, up));
+                        })
+                        .or_else([&]() { return std::optional{ glm::translate(glm::mat4(1), pos) }; })
+                        .value();
+                })
+                .value_or(glm::mat4(1));
+
+            // TODO: handle viewport payload as well
+            node_payload_t payload = get_optional_child(n, "payload")
+                .and_then([](ryml::ConstNodeRef pl_node) {
+                    return get_optional_child_val(pl_node, "type")
+                        .and_then([](std::string_view type_str){
+                            if(type_str == "camera")
+                                return std::optional(node_payload_t(camera()));
+                            else
+                                return std::optional<node_payload_t>{};
+                        });
+                })
+                .value_or(std::monostate());
+
+            std::optional<rc<const nodetree_blueprint>> blueprint = get_optional_child_val(n, "load")
+                .transform([](std::string_view bp_path) {
+                    return get_rm().load<nodetree_blueprint>(bp_path);
+            });
+
+            // HANDLE SCRIPT PARAMS
             // HANDLE WHATNOT
 
-            std::unique_ptr<node> owning = node::make(std::string(name), std::move(script));
+
+            std::unique_ptr<node> owning;
+            if(blueprint.has_value()) {
+                owning = node::deep_copy(*blueprint, std::string(name));
+                owning->set_transform(transform * owning->transform());
+            } else {
+                owning = node::make(std::string(name), std::move(script), std::monostate(), std::move(payload), transform);
+            }
+
             node* ret = owning.get();
 
             if(father) {
@@ -105,12 +189,12 @@ namespace engine {
                 owning.release();
             }
 
-            // slogga::stdout_log.warn("visiting {} with script {}", name, script);
             return ret;
         });
 
         std::unique_ptr<node> scene_root(root_raw_ptr);
+        scene s(filename, std::move(scene_root));
 
-        return scene_root;
+        return s;
     }
 }

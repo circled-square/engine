@@ -4,6 +4,7 @@
 #include <string>
 
 namespace engine {
+    std::string read_file(const char* fname);
     std::string read_file(const std::string& fname);
 }
 

@@ -2,11 +2,9 @@
 #define YAML_LOADER_HPP
 
 #include <engine/utils/api_macro.hpp>
-#include <memory>
+#include <engine/scene.hpp>
 
 namespace engine {
-    class node;
-
-    ENGINE_API std::unique_ptr<node> yaml_example();
+    ENGINE_API scene load_scene_from_yaml(const char* filename);
 }
 #endif // YAML_LOADER_HPP

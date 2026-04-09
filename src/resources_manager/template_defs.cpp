@@ -5,6 +5,7 @@
 #include <GAL/texture.hpp>
 #include <engine/scene.hpp>
 #include <dylib.hpp>
+#include <engine/scene/yaml_loader.hpp>
 
 namespace engine {
 
@@ -29,8 +30,12 @@ namespace engine {
     //temporary debug implementation, since we currently do not support loading scenes from file
     template<> scene construct_from_name<scene>(std::string_view name) {
         std::string name_string(name);
-        EXPECTS(get_rm().get_dbg_scene_ctors().contains(name_string));
-        return get_rm().get_dbg_scene_ctors().at(name_string)();
+        if(get_rm().get_dbg_scene_ctors().contains(name_string)) {
+            return get_rm().get_dbg_scene_ctors().at(name_string)();
+        } else {
+            std::string path_string = std::format("assets/{}", name);
+            return load_scene_from_yaml(path_string.c_str());
+        }
     }
     template<> dylib::library construct_from_name<dylib::library>(std::string_view name) {
         dylib::decorations only_extension = dylib::decorations::os_default();

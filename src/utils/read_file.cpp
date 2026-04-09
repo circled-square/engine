@@ -3,7 +3,7 @@
 #include <fstream>
 
 namespace engine {
-    std::string read_file(const std::string& fname) {
+    std::string read_file(const char* fname) {
         try {
             std::ifstream fi(fname);
             fi.exceptions(std::ifstream::failbit); // causes exceptions to be thrown in case of errors
@@ -12,5 +12,9 @@ namespace engine {
         } catch (std::exception& e) {
             throw std::runtime_error(std::format("could not read file {}", fname));
         }
-    };
+    }
+
+    std::string read_file(const std::string &fname) {
+        return read_file(fname.c_str());
+    }
 }

@@ -56,7 +56,7 @@ namespace engine {
         if(m_resource)
             return rc<T>(m_resource);
         else
-            return std::nullopt;
+            return nullptr;
     }
 
 
