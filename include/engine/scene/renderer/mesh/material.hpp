@@ -39,10 +39,11 @@ namespace engine {
         ENGINE_API material(rc<const shader> shader, std::vector<rc<const gal::texture>> textures);
         ENGINE_API material(rc<const shader> shader, rc<const gal::texture> texture);
 
-        ENGINE_API const rc<const engine::shader>& get_shader() const;
-        ENGINE_API const std::vector<rc<const gal::texture>>& get_textures() const;
-        ENGINE_API rc<const gal::texture>& get_texture(size_t);
-        ENGINE_API const rc<const gal::texture>& get_texture(size_t) const;
+        void set_shader(rc<const engine::shader> s) { m_shader = std::move(s);}
+        const rc<const engine::shader>& get_shader() const { return m_shader; }
+        const std::vector<rc<const gal::texture>>& get_textures() const { return m_textures; }
+        rc<const gal::texture>& get_texture(size_t i) { return m_textures[i]; }
+        const rc<const gal::texture>& get_texture(size_t i) const { return m_textures[i]; }
 
         void bind_and_set_uniforms(mvp_matrices mvp, glm::ivec2 output_resolution, float frame_time) const;
 

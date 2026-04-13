@@ -33,7 +33,7 @@ namespace engine {
         if(get_rm().get_dbg_scene_ctors().contains(name_string)) {
             return get_rm().get_dbg_scene_ctors().at(name_string)();
         } else {
-            std::string path_string = std::format("assets/{}", name);
+            std::string path_string = std::format("assets/scenes/{}", name);
             return load_scene_from_yaml(path_string.c_str());
         }
     }

@@ -13,20 +13,6 @@ namespace engine {
 
     material::material(rc<const shader> shader, rc<const gal::texture> texture) : material(std::move(shader), std::vector { std::move(texture) }){}
 
-    const rc<const shader>& material::get_shader() const { return m_shader; }
-
-    const std::vector<rc<const gal::texture>>& material::get_textures() const { return m_textures; }
-
-    rc<const gal::texture>& material::get_texture(size_t index) {
-        EXPECTS(index < m_textures.size());
-        return m_textures[index];
-    }
-    const rc<const gal::texture>& material::get_texture(size_t index) const {
-        EXPECTS(index < m_textures.size());
-        return m_textures[index];
-    }
-
-
     void material::bind_and_set_uniforms(mvp_matrices mvp, glm::ivec2 output_resolution, float frame_time) const {
         EXPECTS(m_shader->get_uniforms().sampler_names.size() == m_textures.size());
         m_shader->get_program().bind();

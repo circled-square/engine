@@ -127,6 +127,7 @@ namespace engine {
                     stateless_script script = stateless_script::from(get_rm().load<dylib::library>(script_path), script_name.c_str());
                     return std::optional(script);
                 });
+            auto script_construction_args = std::any(std::monostate()); //TODO
 
             glm::mat4 transform = get_optional_child(n, "transform")
                 .and_then([](ryml::ConstNodeRef trans_node) -> std::optional<glm::mat4> {
@@ -176,8 +177,10 @@ namespace engine {
             if(blueprint.has_value()) {
                 owning = node::deep_copy(*blueprint, std::string(name));
                 owning->set_transform(transform * owning->transform());
+                if(script.has_value())
+                    owning->attach_script(std::move(*script), script_construction_args);
             } else {
-                owning = node::make(std::string(name), std::move(script), std::monostate(), std::move(payload), transform);
+                owning = node::make(std::string(name), std::move(script), script_construction_args, std::move(payload), transform);
             }
 
             node* ret = owning.get();
