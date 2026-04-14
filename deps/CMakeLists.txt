@@ -38,4 +38,4 @@ target_include_directories(tinygltf PUBLIC tinygltf/)
 set_target_properties(tinygltf PROPERTIES CXX_STANDARD 20) # tinygltf uses literal operators (operator ""_...) but puts a space between the quotes and the operator name, which is deprecated in c++23 and causes warnings
 target_link_directories(tinygltf PUBLIC stb_image) # stb_image target is defined by gal (which depends on it)
 
-set_target_properties(imgui dylib PROPERTIES CXX_CLANG_TIDY "") # no clangtidy errors on code we do not control
+set_target_properties(imgui dylib ryml PROPERTIES CXX_CLANG_TIDY "") # no clangtidy errors on code we do not control
