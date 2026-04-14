@@ -1,5 +1,5 @@
 # glad
-add_library(glad STATIC glad/src/glad.c)
+add_library(glad STATIC glad/src/glad.c glad/include/glad/glad.h glad/include/KHR/khrplatform.h)
 target_include_directories(glad PUBLIC glad/include)
 target_compile_options(glad PRIVATE -Wno-pedantic)
 
@@ -24,4 +24,4 @@ target_include_directories(stb_image PUBLIC stb/)
 # target_compile_options(stb_image PRIVATE "-Wno-all") # stb fails to compile with -Wall -Werror in release mode
 set_property(TARGET stb_image PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-
+set_target_properties(glm glm-header-only glad stb_image PROPERTIES CXX_CLANG_TIDY "") # no clangtidy errors on code we do not control
