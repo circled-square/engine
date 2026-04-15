@@ -26,7 +26,7 @@ namespace engine {
             char* m_p;
             std::size_t m_stride;
         public:
-            iterator(char* p) : m_p(p){ }
+            iterator(char* p, std::size_t stride) : m_p(p), m_stride(stride) { }
             void operator++() { m_p += m_stride; }
             T& operator*() { return *reinterpret_cast<T*>(m_p); }
             bool operator!=(iterator& o) { return m_p != o.m_p; }

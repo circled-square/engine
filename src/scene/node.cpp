@@ -149,7 +149,7 @@ namespace engine {
             }
 
             //keep recursing up the node tree if the event needs to be passed to the father
-            if(col_behaviour.passes_events_to_father == true) {
+            if(col_behaviour.passes_events_to_father) {
                 if(node* father = node_cursor->get_father(); father) {
                     node_cursor = father;
                 }

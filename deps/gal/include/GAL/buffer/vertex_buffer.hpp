@@ -8,6 +8,12 @@ namespace gal {
         buffer m_buf;
         size_t m_stride;
     public:
+        vertex_buffer() = delete;
+        vertex_buffer(const vertex_buffer& o) = delete;
+        vertex_buffer& operator=(vertex_buffer&&) = delete;
+        vertex_buffer& operator=(const vertex_buffer&) = delete;
+        ~vertex_buffer() = default;
+
         GAL_API vertex_buffer(vertex_buffer&& o)  noexcept;
         GAL_API vertex_buffer(buffer buf, size_t stride);
 

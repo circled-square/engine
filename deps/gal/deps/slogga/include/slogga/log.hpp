@@ -51,7 +51,15 @@ namespace slogga {
         log_level m_log_level;
 
     public:
-        SLOGGA_API log(std::ostream&, log_level, bool timestamp = false);
+        log() = delete;
+        log(log&&) = delete;
+        log(const log&) = delete;
+        log& operator=(log&&) = delete;
+        log& operator=(const log&) = delete;
+
+        SLOGGA_API log(std::ostream& os, log_level level, bool timestamp = false);
+        SLOGGA_API ~log();
+
         SLOGGA_API void set_log_level(log_level l);
 
         SLOGGA_API void operator()(log_level l, std::string_view fmt, std::format_args args);
@@ -67,8 +75,6 @@ namespace slogga {
         inline void warn (std::string_view s, auto...args) { operator()(log_level::WARN,  s, std::make_format_args(args...)); }
         inline void error(std::string_view s, auto...args) { operator()(log_level::ERROR, s, std::make_format_args(args...)); }
         inline void fatal(std::string_view s, auto...args) { operator()(log_level::FATAL, s, std::make_format_args(args...)); }
-
-        SLOGGA_API ~log();
     };
 
     SLOGGA_API extern log stdout_log;

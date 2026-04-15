@@ -18,7 +18,7 @@ namespace gal {
         shader.bind();
         vao.bind();
 
-        glDrawArrays(GL_TRIANGLES, first, count);
+        glDrawArrays(GL_TRIANGLES, (sint)first, count);
     }
 
 

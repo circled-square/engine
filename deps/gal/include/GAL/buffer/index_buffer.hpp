@@ -17,6 +17,12 @@ namespace gal {
 
         size_t stride();
     public:
+        index_buffer() = delete;
+        index_buffer(const index_buffer&) = delete;
+        index_buffer& operator=(index_buffer&&) = delete;
+        index_buffer& operator=(const index_buffer&) = delete;
+        ~index_buffer() = default;
+
         GAL_API index_buffer(index_buffer&& o)  noexcept;
         GAL_API index_buffer(buffer buf, size_t tri_count, uint element_typeid);
 

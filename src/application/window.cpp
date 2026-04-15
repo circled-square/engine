@@ -14,7 +14,7 @@ namespace engine::window {
 
     window::window(glm::ivec2 res, const std::string& title, hints win_hints) {
         //Initialize the library
-        if(!window_count)
+        if(window_count == 0)
             throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
 
 
@@ -53,10 +53,7 @@ namespace engine::window {
 
         // Unfortunately multiple windows will not respect this feature correctly, but since GLFW is not
         // thread-safe I'm not sure this would be useful in any way.
-        if(win_hints.vsync)
-            glfwSwapInterval(1);
-        else
-            glfwSwapInterval(0);
+        glfwSwapInterval(win_hints.vsync ? 1 : 0);
 
         window::window_count++;
     }
@@ -66,7 +63,7 @@ namespace engine::window {
         window::window_count--;
 
         // If no windows are left terminate glfw
-        if(!window::window_count)
+        if(window::window_count == 0)
             glfwTerminate();
 
         m_window_ptr = nullptr;

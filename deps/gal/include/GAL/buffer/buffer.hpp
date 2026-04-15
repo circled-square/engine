@@ -8,14 +8,14 @@
 namespace gal {
 
     struct buffer_creation_params {
-        enum flags_t { dynamic_storage = 1 };
-        enum hints_t { dynamic_draw = 1 };
+        struct flags_t { bool dynamic_storage; };
+        struct hints_t { bool dynamic_draw; };
 
         bool is_static = true;
         // apply when is_static = true => glNamedBufferStorage
-        unsigned flags = dynamic_storage; // GL_DYNAMIC_STORAGE_BIT;
+        flags_t flags { .dynamic_storage = true }; // GL_DYNAMIC_STORAGE_BIT;
         // apply when is_static = false => glNamedBufferData
-        unsigned hints = dynamic_draw; // GL_DYNAMIC_DRAW
+        hints_t hints { .dynamic_draw = true}; // GL_DYNAMIC_DRAW
     };
 
     template<typename T>
@@ -34,9 +34,14 @@ namespace gal {
         buffer(const arr_t& arr, buffer_creation_params params = {})
             : buffer(arr.data(), arr.size() * sizeof(typename arr_t::value_type), params) {}
 
+        buffer() = delete;
+        buffer(const buffer&) = delete;
         GAL_API buffer(buffer&& o)  noexcept;
 
         GAL_API ~buffer();
+
+        buffer& operator=(buffer&&) = delete;
+        buffer& operator=(const buffer&) = delete;
 
         GAL_API void update(std::size_t offset, const void *data, std::size_t size);
 
