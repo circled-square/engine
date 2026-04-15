@@ -6,7 +6,7 @@ using namespace glm;
 namespace gal {
     index_buffer::index_buffer(buffer buf, size_t tri_count, uint element_typeid) : m_buf(std::move(buf)), m_triangle_count(tri_count), m_element_typeid(element_typeid) {}
 
-    size_t index_buffer::stride() {
+    size_t index_buffer::stride() const {
         return 3 * (
                    m_element_typeid == GL_UNSIGNED_INT ? sizeof(uint) :
                        m_element_typeid == GL_UNSIGNED_SHORT ? sizeof(ushort) : 0

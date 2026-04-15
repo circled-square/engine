@@ -12,7 +12,7 @@ namespace gal {
         std::string m_what;
     public:
         framebuffer_construction_exception(unsigned int error_code);
-        virtual const char* what() const noexcept;
+        const char* what() const noexcept override;
         unsigned int get_code() const noexcept;
     };
 
@@ -25,11 +25,14 @@ namespace gal {
 
         public:
             framebuffer(const framebuffer&) = delete;
+            framebuffer& operator=(const framebuffer&) = delete;
 
             //may throw construction_exception
             GAL_API framebuffer(texture* tex = nullptr);
-            GAL_API framebuffer(framebuffer&& o);
+            GAL_API framebuffer(framebuffer&& o) noexcept;
             GAL_API virtual ~framebuffer();
+
+            GAL_API framebuffer& operator=(framebuffer&& o) noexcept;
 
             // switches the texture this fbo is linked to to a different one
             GAL_API void link_texture(texture& tex);
@@ -39,9 +42,8 @@ namespace gal {
             GAL_API void bind();
             GAL_API static void unbind();
 
-            GAL_API const glm::ivec2 resolution() const;
+            GAL_API glm::ivec2 resolution() const;
 
-            GAL_API framebuffer& operator=(framebuffer&& o);
         };
     }
 
@@ -67,6 +69,8 @@ namespace gal {
     public:
         framebuffer(const framebuffer&) = delete;
         framebuffer() = delete;
+        framebuffer& operator=(const framebuffer&) = delete;
+        ~framebuffer() = default;
 
         //may throw construction_exception
         framebuffer(framebuffer&& o) : m_tex(std::move(o.m_tex)), m_fbo(std::move(o.m_fbo)) {}

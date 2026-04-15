@@ -37,7 +37,11 @@ namespace gal {
 
     public:
 
-        GAL_API vertex_array(vertex_array&& o);
+        vertex_array(const vertex_array&) = delete;
+        vertex_array operator=(const vertex_array&) = delete;
+        vertex_array operator=(vertex_array&&) = delete;
+
+        GAL_API vertex_array(vertex_array&& o) noexcept;
         GAL_API vertex_array(vertex_buffer vbo, index_buffer ibo, vertex_layout layout = vertex_layout());
         GAL_API vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout = vertex_layout());
 
@@ -78,7 +82,7 @@ namespace gal {
 
         constexpr static size_t vertex_size() { return sizeof(tuple_t); }
 
-        constexpr static_vertex_layout(Ts...) {} // allows syntax like 'using vertex_t = decltype(static_vertex_layout(pos, normal, tex_coord));'
+        constexpr static_vertex_layout(Ts... attribs) {} // allows syntax like 'using vertex_t = decltype(static_vertex_layout(pos, normal, tex_coord));'
 
     private:
         template<typename T>

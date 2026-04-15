@@ -5,25 +5,20 @@
 #include <format>
 
 namespace gal {
-    image::image(const char* filename) {
+    image::image(const char* filename) :  w(0), h(0), channels(0), buffer(nullptr) {
         stbi_set_flip_vertically_on_load(1);
-        buffer = stbi_load(filename, &w, &h, &channels, 4);
+        buffer = stbi_load(filename, &w, &h, &channels, 4); // NOLINT(cppcoreguidelines-prefer-member-initializer)
         if(buffer == nullptr)
             throw std::runtime_error(std::format("failed opening image at path {}", filename));
         stbi_set_flip_vertically_on_load(0);
     }
 
-    image::image(image&& o) {
-        w = o.w;
-        h = o.h;
-        channels = o.channels;
-        buffer = o.buffer;
-
+    image::image(image&& o) noexcept : w(o.w), h(o.h), channels(o.channels), buffer(o.buffer) {
         o.buffer = nullptr;
     }
 
     image::~image() {
-        if(buffer)
+        if(buffer != nullptr)
             stbi_image_free(buffer);
         buffer = nullptr;
     }

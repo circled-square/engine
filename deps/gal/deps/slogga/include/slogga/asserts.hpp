@@ -7,6 +7,7 @@
 
 // Attribute assume allows the compiler to optimize assuming the expression will always evaluate to true.
 // This should always be the case provided the code was properly tested.
+//NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #ifdef __has_cpp_attribute
 	#if __has_cpp_attribute(assume)
 		#define SLOGGA_ASSUME(x) [[assume(x)]]
@@ -48,6 +49,7 @@
 // whereas other assertions are meant to stay indefinitely.
 #define UNIMPLEMENTED(x) (slogga::detail::assertion(x, #x, "this feature is not implemented; assertion"))
 #define UNIMPLEMENTED_WITH_MSG(x, msg) (slogga::detail::assertion(x, #x, "this feature is not implemented; assertion", msg))
+//NOLINTEND(cppcoreguidelines-macro-usage)
 
 
 namespace slogga {
@@ -56,12 +58,12 @@ namespace slogga {
         const char* m_assertion_type;
         std::source_location m_sl;
         std::string m_custom_msg;
-        mutable std::string m_what_string_cache = std::string();
+        mutable std::string m_what_string_cache;
     public:
         assertion_failed_exception(const char* cond_str, const char* assertion_type, std::string msg, std::source_location sl) :
             m_cond_str(cond_str), m_assertion_type(assertion_type), m_custom_msg(std::move(msg)), m_sl(std::move(sl)) {}
 
-        virtual const char* what() const noexcept override {
+        const char* what() const noexcept override {
             if(m_what_string_cache.empty()) {
                 if(m_custom_msg.empty()) {
                     m_what_string_cache = std::format("{} failed at function '{}' at {}:{}:{}: '{}' evaluated to false",

@@ -1,34 +1,41 @@
 #include <GAL/init.hpp>
 #include <glad/glad.h>
-#include <format>
 #include <stdexcept>
 #include <slogga/log.hpp>
-#include <iostream>
 
 namespace gal {
     // defined later in this file
     void handle_errors(GLenum source, GLenum type, GLuint msg_id, GLenum severity, int len, const char *msg, const void *user_param);
 
+    enum class gl_error_codes : GLuint {
+        buffer_will_use_video_memory = 131185, // "Buffer object will use VIDEO memory as the source for buffer object operations"
+        driver_allocated_storage_for_renderbuffer = 131169, // "Framebuffer detailed info: The driver allocated storage for renderbuffer {}."
+    };
+
     static void initialize_error_handling() {
         glDebugMessageCallback(handle_errors, nullptr); // define a debug message (errors, warnings) callback
         glEnable(GL_DEBUG_OUTPUT); // openGL will send debug info to the callback we gave it
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // it will do so synchronously (should make it easier to find the problem with a debugger)
-        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr,true); // it will match any type ({2}) of msg of any severity ({3}) from any ({1}) source. ({6}=false would make those errors be ignored; {4} and {5} can be used to define specific error ids to ignore/listen to)
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE); // it will match any type ({2}) of msg of any severity ({3}) from any ({1}) source. ({6}=false would make those errors be ignored; {4} and {5} can be used to define specific error ids to ignore/listen to)
+        struct ignored_error_t {
+            GLenum src, type;
+            GLuint id;
+        };
 
-        struct ignored_error_t { GLenum src, type; GLuint id; };
-        ignored_error_t ignored_errors[] = {
-                {GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, 131185 },// "Buffer object will use VIDEO memory as the source for buffer object operations"
-                {GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, 131169 }, // "Framebuffer detailed info: The driver allocated storage for renderbuffer {}."
+        std::array<ignored_error_t, 2> ignored_errors {
+            ignored_error_t
+            { GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, (GLuint)gl_error_codes::buffer_will_use_video_memory },
+            { GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, (GLuint)gl_error_codes::driver_allocated_storage_for_renderbuffer },
         };
 
         for(auto& err : ignored_errors)
-            glDebugMessageControl(err.src, err.type, GL_DONT_CARE, 1, &err.id, false);
+            glDebugMessageControl(err.src, err.type, GL_DONT_CARE, 1, &err.id, GL_FALSE);
     }
 
     static_assert(std::same_as<GLADloadproc, opengl_function_loader_t>);
 
     void initialize_opengl(opengl_function_loader_t opengl_function_loader) {
-        if (!gladLoadGLLoader(opengl_function_loader))
+        if (gladLoadGLLoader(opengl_function_loader) != 0)
             throw std::runtime_error("GLAD failed to initialize!");
 
         slogga::stdout_log.info("OpenGL version: {}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));

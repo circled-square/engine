@@ -5,18 +5,17 @@
 #include <random>
 
 namespace gal {
-    static std::size_t compute_number_of_mipmap_levels(const texture::specification& spec);
+    static GLsizei compute_number_of_mipmap_levels(const texture::specification& spec);
 
-    texture::texture(const specification& spec)
-            : m_res(spec.res), m_components(spec.components) {
+    texture::texture(const specification& spec) : m_texture_id(-1), m_res(spec.res), m_components(spec.components) {
 
         EXPECTS(m_components >= 1 && m_components <= 4);
 
         glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);
 
         //obligatory parameters
-        uint mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
-        uint min_filter_method;
+        sint mag_filter_method = spec.filter_method == filter_method::linear ? GL_LINEAR : GL_NEAREST;
+        sint min_filter_method = -1;
 
         if (spec.enable_mipmaps) {
             if(spec.mipmap_filter_method == filter_method::linear) {
@@ -32,7 +31,7 @@ namespace gal {
         glTextureParameteri(m_texture_id, GL_TEXTURE_MIN_FILTER, min_filter_method);
         glTextureParameteri(m_texture_id, GL_TEXTURE_MAG_FILTER, mag_filter_method);
 
-        uint wrap_mode = spec.repeat_wrap ? GL_REPEAT : GL_CLAMP_TO_EDGE;
+        sint wrap_mode = spec.repeat_wrap ? GL_REPEAT : GL_CLAMP_TO_EDGE;
         glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_S, wrap_mode);
         glTextureParameteri(m_texture_id, GL_TEXTURE_WRAP_T, wrap_mode);
 
@@ -46,7 +45,7 @@ namespace gal {
 
 
         //write on the immutable storage
-        if(spec.data) {
+        if(spec.data != nullptr) {
             set_texture_data(spec.data, spec.alignment);
         }
 
@@ -59,14 +58,14 @@ namespace gal {
         }
     }
 
-    static std::size_t compute_number_of_mipmap_levels(const texture::specification& spec) {
+    static GLsizei compute_number_of_mipmap_levels(const texture::specification& spec) {
         if(!spec.enable_mipmaps) {
             return 1;
         } else {
             std::size_t ceiled_pixel_size = std::bit_ceil((std::size_t)std::max(spec.res.x, spec.res.y));
             std::size_t log2_pixel_size = std::countr_zero(ceiled_pixel_size);
 
-            return log2_pixel_size + 1;
+            return (GLsizei)log2_pixel_size + 1;
         }
     }
 
@@ -82,14 +81,11 @@ namespace gal {
 
     texture::texture(const image& image) : texture::texture(specification_from_image(image)) {}
 
-    texture::texture(texture&& o) {
-        m_texture_id = o.m_texture_id;
+    texture::texture(texture&& o) noexcept : m_texture_id(o.m_texture_id), m_res(o.m_res), m_components(o.m_components) {
         o.m_texture_id = 0;
-        m_res = o.m_res;
-        m_components = o.m_components;
     }
 
-    texture& texture::operator=(texture&& o) {
+    texture& texture::operator=(texture&& o) noexcept {
         gal::texture let_this_be_destroyed(std::move(*this));
 
         m_texture_id = o.m_texture_id;

@@ -12,7 +12,11 @@ namespace engine {
     };
 
     glm::mat4 to_rotation_mat(const glm::mat4& m);
-    inline glm::vec3 extract_position(const glm::mat4& m) { return glm::vec3(m[3]); }
+    inline glm::vec3 extract_position(const glm::mat4& m) {
+        //NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        return glm::vec3(m[3]);
+        //NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+    }
 }
 
 #endif // ENGINE_UTILS_LIN_ALGEBRA_HPP

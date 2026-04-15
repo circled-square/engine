@@ -2,10 +2,11 @@
 #include <glad/glad.h>
 #include <slogga/log.hpp>
 #include <slogga/asserts.hpp>
+#include <vector>
 
 namespace gal {
-    vertex_array::vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout) : m_vbos(std::move(vbos)), m_ibos(std::move(ibos))
-          , m_number_of_temporary_vbo_bindings(0)
+    vertex_array::vertex_array(std::vector<vertex_buffer> vbos, std::vector<index_buffer> ibos, vertex_layout layout)
+    : m_vao(-1), m_vbos(std::move(vbos)), m_ibos(std::move(ibos)), m_number_of_temporary_vbo_bindings(0)
 {
         glCreateVertexArrays(1, &m_vao);
 
@@ -35,7 +36,7 @@ namespace gal {
     vertex_array::vertex_array(vertex_buffer vbo, index_buffer ibo, vertex_layout layout)
         : vertex_array(vbo_to_vbos_vec(std::move(vbo)), ibo_to_ibos_vec(std::move(ibo)), std::move(layout)) {}
 
-    vertex_array::vertex_array(vertex_array&& o) : m_vao(o.m_vao), m_vbos(std::move(o.m_vbos)), m_ibos(std::move(o.m_ibos))
+    vertex_array::vertex_array(vertex_array&& o) noexcept : m_vao(o.m_vao), m_vbos(std::move(o.m_vbos)), m_ibos(std::move(o.m_ibos))
           , m_number_of_temporary_vbo_bindings(o.m_number_of_temporary_vbo_bindings)
     {
         o.m_vao = 0;

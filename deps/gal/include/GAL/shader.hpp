@@ -7,30 +7,34 @@
 #include <array>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <GAL/api_macro.hpp>
 
 namespace gal {
     namespace internal {
-        using uniform_func_t = void(*)(uint, sint, sint, void*);
-        using uniform_mat_func_t = void(*)(uint, sint, sint, ubyte, void*); // the ubyte param is actually a boolean, but to be able to cast the function pointer we use ubyte since that is how OpenGL defines booleans
+        template<AnyOf<float, double, sint, bool, uint> T>
+        struct uniform_func__struct { using type = void(*)(uint, sint, sint, const T*); };
+        template<> struct uniform_func__struct<bool> { using type = uniform_func__struct<sint>::type; };
 
-        //given a list of gl uniform functions return an array of uniform_func_t
-        template<typename... Ts>
-        static constexpr std::array<uniform_func_t, sizeof...(Ts)> make_array(Ts... args){
-            return { (uniform_func_t)args... };
-        };
+        template<GlmVector V> using map_bvec_to_ivec = std::conditional_t<std::same_as<typename V::value_type, bool>, glm::vec<V::length(), sint>, V>;
+
+        template<AnyOf<float, double, sint, bool, uint> T>
+        using uniform_func_t = uniform_func__struct<T>::type;
+        using uniform_mat_func_t = void(*)(uint, sint, sint, ubyte, const float*); // the ubyte param is actually a boolean, but to be able to cast the function pointer we use ubyte since that is how OpenGL defines booleans
 
         //specialization for scalars and vectors
-        GAL_API uniform_func_t gl_type_id_to_uniform_func(uint id, std::size_t vec_size);
+        template<typename T>
+        GAL_API std::array<uniform_func_t<T>, 4> type_to_uniform_funcs();
 
         template<typename T>
-        uniform_func_t type_to_uniform_func() {
+        constexpr uniform_func_t<typename scalar_to_vector<T>::value_type> type_to_uniform_func() {
             using vec_t = scalar_to_vector<T>;
             using val_t = vec_t::value_type;
-            static constexpr uint id = gl_type_id<val_t>;
-            static constexpr std::size_t vec_size = vec_t::length();
+            constexpr uint id = gl_type_id<val_t>;
+            constexpr std::size_t vec_size = vec_t::length();
 
-            return gl_type_id_to_uniform_func(id, vec_size);
+            // use std::get so the bound is checked at compile time
+            return std::get<vec_size-1>(type_to_uniform_funcs<val_t>());
         }
 
 
@@ -59,8 +63,12 @@ namespace gal {
         mutable std::unordered_map<std::string, sint> m_uniform_location_cache;
         static uint compile_shader(uint type, const std::string& source);
     public:
-        GAL_API shader_program(const std::string& vert_shader, const std::string& frag_shader);
-        GAL_API shader_program(shader_program&& o);
+        shader_program(const shader_program&) = delete;
+        shader_program& operator=(shader_program&&) = delete;
+        shader_program& operator=(const shader_program&) = delete;
+
+        GAL_API explicit shader_program(const std::string& vert_shader, const std::string& frag_shader);
+        GAL_API shader_program(shader_program&& o) noexcept;
         GAL_API ~shader_program();
 
         GAL_API void bind() const; //sets the program as active
@@ -70,21 +78,22 @@ namespace gal {
             set_uniform(get_uniform_location(name), v);
         }
 
-        uint get_id() { return m_program_id; }
+        uint get_id() { return m_program_id; } //NOLINT(readability-make-member-function-const)
 
         /// TODO: add support for array uniforms
         template<typename T>
         void set_uniform(sint uniform_location, T v) const {
+            internal::map_bvec_to_ivec<scalar_to_vector<T>> vec(v); // ensure we can just call value_ptr to obtain a ptr to the value
             using namespace internal;
-            uniform_func_t uniform_func = type_to_uniform_func<T>();
+            auto uniform_func = type_to_uniform_func<T>();
             //void glProgramUniform4fv(GLunsigned program, GLint location, GLsizei count, const GLfloat *value); (example signature; note that count should always be 1 if the targeted uniform is not an array)
-            uniform_func(m_program_id, uniform_location, 1, &v);
+            uniform_func(m_program_id, uniform_location, 1, glm::value_ptr(vec));
         }
         template<GlmMatrix T>
         void set_uniform(sint uniform_location, T v) const {
             using namespace internal;
             uniform_mat_func_t uniform_func = type_to_uniform_mat_func<T>();
-            uniform_func(m_program_id, uniform_location, 1, false, &v);
+            uniform_func(m_program_id, uniform_location, 1, false, glm::value_ptr(v));
         }
     };
 }

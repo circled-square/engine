@@ -7,7 +7,7 @@
 // these classes don't use OpenGL Direct State Access simply because it doesn't seem to work the way you'd expect with FBOs and renderbuffers
 namespace gal {
     namespace internal {
-        framebuffer::framebuffer(texture* tex) : m_fbo((unsigned)-1), m_depth_renderbuf_id((unsigned)-1), m_resolution(-1,-1) {
+        framebuffer::framebuffer(texture* tex) : m_fbo(-1), m_depth_renderbuf_id(-1), m_resolution(-1,-1) {
             glGenFramebuffers(1, &m_fbo);
             bind();
 
@@ -18,15 +18,15 @@ namespace gal {
             // attach depth buffer
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depth_renderbuf_id);
 
-            if(tex) {
+            if(tex != nullptr) {
                 link_texture(*tex);
             }
 
             unbind(); // limit side effects to a minimum
         }
 
-        framebuffer::framebuffer(framebuffer&& o): m_fbo(o.m_fbo), m_depth_renderbuf_id(o.m_depth_renderbuf_id), m_resolution(o.m_resolution) {
-            o.m_fbo = o.m_depth_renderbuf_id = -1;
+        framebuffer::framebuffer(framebuffer&& o) noexcept : m_fbo(o.m_fbo), m_depth_renderbuf_id(o.m_depth_renderbuf_id), m_resolution(o.m_resolution) {
+            o.m_fbo = o.m_depth_renderbuf_id = (unsigned)-1;
         }
 
         framebuffer::~framebuffer() {
@@ -55,31 +55,35 @@ namespace gal {
             }
 
             // Set the list of draw buffers.
-            uint draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
-            glDrawBuffers(1, draw_buffers);
+            uint draw_buffers = GL_COLOR_ATTACHMENT0;
+            glDrawBuffers(1, &draw_buffers);
 
             unbind(); // limit side effects to a minimum
         }
 
+        //NOLINTBEGIN(readability-make-member-function-const)
         void framebuffer::bind_draw() {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
         }
+        //NOLINTEND(readability-make-member-function-const)
 
         void framebuffer::bind_read() const {
             glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo);
         }
 
+        //NOLINTBEGIN(readability-make-member-function-const)
         void framebuffer::bind() {
             glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
         }
+        //NOLINTEND(readability-make-member-function-const)
 
         void framebuffer::unbind() {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
 
-        const glm::ivec2 framebuffer::resolution() const { return m_resolution; }
+        glm::ivec2 framebuffer::resolution() const { return m_resolution; }
 
-        framebuffer& framebuffer::operator=(framebuffer&& o) {
+        framebuffer& framebuffer::operator=(framebuffer&& o) noexcept {
             this->~framebuffer();
             m_fbo = o.m_fbo;
             o.m_fbo = -1;

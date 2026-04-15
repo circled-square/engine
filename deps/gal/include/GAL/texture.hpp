@@ -22,7 +22,7 @@ namespace gal {
       public:
         enum class filter_method : bool { nearest, linear };
         struct specification {
-            glm::ivec2 res;
+            glm::ivec2 res = {0, 0};
             int components = 4;
 
             // TODO: substitute void* for std::span<std::byte>
@@ -40,10 +40,13 @@ namespace gal {
             float max_anisotropy = 16.f; // ignored unless anisotropic_filtering == true
         };
 
-        GAL_API texture(const specification& spec);
-        GAL_API texture(const image& image);
-        GAL_API texture(texture&& o);
-        GAL_API texture& operator=(texture&& o);
+        GAL_API explicit texture(const specification& spec);
+        GAL_API explicit texture(const image& image);
+        GAL_API texture(texture&& o) noexcept;
+        GAL_API texture& operator=(texture&& o) noexcept;
+        texture(const texture& o) = delete;
+        texture& operator=(const texture& o) = delete;
+
         GAL_API ~texture();
 
         GAL_API static texture null();

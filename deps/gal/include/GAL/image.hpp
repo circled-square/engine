@@ -5,11 +5,14 @@
 
 namespace gal {
     struct image {
-        int w, h, channels;
-        void* buffer;
+        int w, h, channels; //NOLINT(cppcoreguidelines-use-default-member-init)
+        void* buffer; //NOLINT(cppcoreguidelines-use-default-member-init)
 
-        GAL_API image(const char* filename);
-        GAL_API image(image&& o);
+        GAL_API explicit image(const char* filename);
+        GAL_API image(image&& o) noexcept;
+        image(const image&) = delete;
+        image& operator=(image&&) = delete;
+        image& operator=(const image&) = delete;
 
         GAL_API ~image();
     };

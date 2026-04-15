@@ -1,4 +1,5 @@
 #include "../include/slogga/log.hpp"
+#include "../include/slogga/asserts.hpp"
 #include <iostream>
 
 
@@ -8,25 +9,37 @@ namespace slogga {
     static std::string get_timestamp_string() {
         std::time_t t = std::time(nullptr);
         std::tm& p = *std::localtime(&t);
+        // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
         return std::format(" {}/{}/{} {}:{}:{}", p.tm_mday, p.tm_mon+1, p.tm_year%100, p.tm_hour, p.tm_min, p.tm_sec);
+        // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
     }
 
-    static const char* log_level_names[] = {
-        "FATAL", "ERROR", "WARNING", "INFO", "DEBUG", "TRACE"
-    };
+    static constexpr const char* log_level_name(log_level l) {
+        switch(l) {
+            case log_level::OFF: return "OFF";
+            case log_level::FATAL: return "FATAL";
+            case log_level::ERROR: return "ERROR";
+            case log_level::WARN: return "WARNING";
+            case log_level::INFO: return "INFO";
+            case log_level::DEBUG: return "DEBUG";
+            case log_level::TRACE: return "TRACE";
+        }
+        return "(NO SUCH LOG LEVEL)";
+    }
 
     log::log(std::ostream& stream, log_level l, bool timestamp)
         : m_stream(stream),
           m_timestamp(timestamp ? get_timestamp_string() : std::string()),
           m_last_line_hash(0),
-          m_repeated_line_count(0)
+          m_repeated_line_count(0),
+          m_log_level(l)
     {
-        set_log_level(l);
+        set_log_level(l); // redundantly doing this so the log level being set gets logged
     }
 
     void log::set_log_level(log_level l) {
         m_log_level = l;
-        info("log level set to {}", log_level_names[int(l)]);
+        info("log level set to {}", log_level_name(l));
     }
 
     void log::operator()(log_level l, std::string_view fmt, std::format_args args) {
@@ -49,7 +62,7 @@ namespace slogga {
                 m_stream << std::endl;
 
                 //print the new line without the \n
-                m_stream << "[" << log_level_names[int(l)] << m_timestamp << "] " << line << std::flush;
+                m_stream << "[" << log_level_name(l) << m_timestamp << "] " << line << std::flush;
                 m_repeated_line_count = 1;
                 m_last_line_hash = line_hash;
             }
