@@ -91,6 +91,10 @@ namespace engine {
         node() = delete;
         node(const node&) = delete;
         node(node&&) = delete;
+        node& operator=(const node&) = delete;
+        node& operator=(node&&) = delete;
+        ~node() = default;
+
         // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
         ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script>, const std::any& params);
 
@@ -117,7 +121,7 @@ namespace engine {
         // get this node's name
         const std::string& name() const { return m_name; }
         // get this node's absolute path in the node hierarchy
-        std::string absolute_path() const { return m_father ? m_father->absolute_path() + "/" + m_name : m_name; }
+        std::string absolute_path() const { return m_father != nullptr ? m_father->absolute_path() + "/" + m_name : m_name; }
 
         // get this node's local transform
         const glm::mat4& transform() const { return m_transform; }
@@ -181,7 +185,7 @@ namespace engine {
 
         type get_type() { return m_type; }
 
-        ENGINE_API virtual const char* what() const noexcept;
+        ENGINE_API const char* what() const noexcept override;
     };
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated

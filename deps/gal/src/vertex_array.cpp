@@ -12,8 +12,9 @@ namespace gal {
 
         for(size_t i = 0; i < m_vbos.size(); i++) {
             const uint vao_vbo_bind_index = i;
+            const auto& vbo = m_vbos.at(i);
             // bind {3} as the {2}th vbo to the vao {1}, starting from {4} within the buffer. the stride between vertices is {5}
-            glVertexArrayVertexBuffer(m_vao, vao_vbo_bind_index, m_vbos[i].get_gl_id(), 0, (int)m_vbos[i].get_stride());
+            glVertexArrayVertexBuffer(m_vao, vao_vbo_bind_index, vbo.get_gl_id(), 0, (int)vbo.get_stride());
         }
 
         this->specify_attribs(layout);
@@ -47,6 +48,7 @@ namespace gal {
         m_vao = 0;
     }
 
+    // NOLINTBEGIN(readability-make-member-function-const)
     void vertex_array::specify_attrib(uint attrib_index, uint offset, uint type_id, sint size, uint vao_vbo_bind_index, bool normalized_bool, bool per_instance) {
         GLboolean normalized = normalized_bool ? GL_TRUE : GL_FALSE;
 
@@ -78,20 +80,25 @@ namespace gal {
             specify_attrib(attrib.index, attrib.offset, attrib.type_id, attrib.size, attrib.vao_vbo_bind_index, attrib.normalized, attrib.per_instance);
         }
     }
+    // NOLINTEND(readability-make-member-function-const)
 
     void vertex_array::bind(uint ibo_index) const {
+        EXPECTS(ibo_index < m_ibos.size());
+
         // bind the ibo {2} to the vao {1}
-        glVertexArrayElementBuffer(m_vao, m_ibos[ibo_index].get_gl_id());
+        glVertexArrayElementBuffer(m_vao, m_ibos[ibo_index].get_gl_id()); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
         glBindVertexArray(m_vao);
     }
 
     size_t vertex_array::get_triangle_count(uint ibo_index) const {
-        return m_ibos[ibo_index].get_triangle_count(); 
+        EXPECTS(ibo_index < m_ibos.size());
+        return m_ibos[ibo_index].get_triangle_count(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     }
     
     uint vertex_array::get_ibo_element_typeid(uint ibo_index) const {
-        return m_ibos[ibo_index].get_element_typeid();
+        EXPECTS(ibo_index < m_ibos.size());
+        return m_ibos[ibo_index].get_element_typeid(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     }
 
     size_t vertex_array::get_ibo_count() const {
@@ -123,7 +130,9 @@ namespace gal {
         specify_attrib(attrib_index, offset, type, size, vao_vbo_bind_index, normalized, per_instance);
     }
 
+    // NOLINTBEGIN(readability-make-member-function-const)
     void vertex_array::delete_temporary_attrib(uint attrib_index) {
         glDisableVertexArrayAttrib(m_vao, attrib_index); //disable the attrib {2} for the vao {1}
     }
+    // NOLINTEND(readability-make-member-function-const)
 }

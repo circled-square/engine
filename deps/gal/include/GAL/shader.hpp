@@ -59,28 +59,31 @@ namespace gal {
 
     //wrapper for a shader program. none of the functions need the shader to be bound
     class shader_program {
-        uint m_program_id;
+        uint m_program_id = -1;
         mutable std::unordered_map<std::string, sint> m_uniform_location_cache;
-        static uint compile_shader(uint type, const std::string& source);
+        static uint compile_shader(uint type, std::string_view source);
     public:
         shader_program(const shader_program&) = delete;
-        shader_program& operator=(shader_program&&) = delete;
+        shader_program& operator=(shader_program&& o) noexcept {
+            std::swap(m_program_id, o.m_program_id);
+            std::swap(m_uniform_location_cache, o.m_uniform_location_cache);
+            return *this;
+        }
         shader_program& operator=(const shader_program&) = delete;
 
-        GAL_API explicit shader_program(const std::string& vert_shader, const std::string& frag_shader);
+        GAL_API explicit shader_program(std::string_view vert_shader, std::string_view frag_shader);
         GAL_API shader_program(shader_program&& o) noexcept;
         GAL_API ~shader_program();
 
         GAL_API void bind() const; //sets the program as active
-        GAL_API sint get_uniform_location(const std::string& name) const;
-        //overload this as needed
+        GAL_API sint get_uniform_location(const char* name) const;
         void set_uniform(const char* name, auto v) const {
             set_uniform(get_uniform_location(name), v);
         }
 
         uint get_id() { return m_program_id; } //NOLINT(readability-make-member-function-const)
 
-        /// TODO: add support for array uniforms
+        /// TODO: add support for array uniforms and UBOs
         template<typename T>
         void set_uniform(sint uniform_location, T v) const {
             internal::map_bvec_to_ivec<scalar_to_vector<T>> vec(v); // ensure we can just call value_ptr to obtain a ptr to the value

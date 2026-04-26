@@ -15,6 +15,10 @@ namespace engine {
     class broad_phase_collision_detector {
     public:
         broad_phase_collision_detector() = default;
+        broad_phase_collision_detector(const broad_phase_collision_detector&) = default;
+        broad_phase_collision_detector(broad_phase_collision_detector&&) = default;
+        broad_phase_collision_detector& operator=(const broad_phase_collision_detector&) = default;
+        broad_phase_collision_detector& operator=(broad_phase_collision_detector&&) = default;
         virtual ~broad_phase_collision_detector() = default;
 
         virtual void check_collisions_and_trigger_reactions() = 0;
@@ -29,12 +33,9 @@ namespace engine {
     class pass_all_broad_phase_collision_detector : public broad_phase_collision_detector {
         std::vector<node*> m_subscribers;
     public:
-        pass_all_broad_phase_collision_detector() = default;
-        virtual ~pass_all_broad_phase_collision_detector() = default;
-
-        virtual void check_collisions_and_trigger_reactions();
-        virtual void subscribe(node* n);
-        virtual void reset_subscriptions();
+        void check_collisions_and_trigger_reactions() override;
+        void subscribe(node* n) override;
+        void reset_subscriptions() override;
     };
 }
 

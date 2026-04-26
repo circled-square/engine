@@ -29,15 +29,16 @@ namespace engine {
         using element_type = T;
         using mut_element_type = T;
 
-        weak();
-
         ENGINE_API weak(std::nullptr_t);
-        ENGINE_API weak(const weak& o);
-        ENGINE_API weak(weak&& o);
         ENGINE_API weak(const rc<T>& o);
+
+        ENGINE_API weak();
+        ENGINE_API weak(const weak& o);
+        ENGINE_API weak(weak&& o) noexcept;
         ENGINE_API ~weak();
 
         ENGINE_API weak& operator=(const weak& o);
+        weak& operator=(weak&&) = delete;
 
         // if the weak<T> points to an allocation with a resource that is alive, locks it
         // if it points to null or to an allocation with a destroyed resource, returns null
@@ -59,15 +60,18 @@ namespace engine {
         using element_type = const T;
         using mut_element_type = T;
 
-        ENGINE_API weak();
         ENGINE_API weak(std::nullptr_t);
-        ENGINE_API weak(const weak& o);
-        ENGINE_API weak(weak&& o);
-        ENGINE_API weak(weak<T> o);
         ENGINE_API weak(const rc<const T>& o);
         ENGINE_API weak(const rc<T>& o);
+        ENGINE_API weak(weak<T> o);
 
+
+        ENGINE_API weak();
+        ENGINE_API weak(const weak& o);
+        ENGINE_API weak(weak&& o) noexcept;
         ENGINE_API weak& operator=(const weak& o);
+        weak& operator=(weak&&) = delete;
+        ~weak() = default;
 
         ENGINE_API nullable_rc<const T> lock() const;
 

@@ -17,7 +17,7 @@ namespace engine {
         bool projection = false;
         bool dither_texture = false;
 
-        std::vector<std::string> sampler_names = std::vector<std::string>();
+        std::vector<std::string> sampler_names;
     };
 
 
@@ -28,7 +28,7 @@ namespace engine {
         shader(gal::shader_program program, uniforms_info uniforms);
 
         static shader from_file(const std::string& path);
-        static shader from_source(const std::string& source);
+        static shader from_source(std::string_view source);
 
         gal::shader_program& get_program();
         const gal::shader_program& get_program() const;
@@ -37,14 +37,14 @@ namespace engine {
     };
 
     namespace uniform_names {
-        extern const char output_resolution[]; // = "u_output_resolution";
-        extern const char time[]; // = "u_time";
-        extern const char mvp[]; // = "u_mvp";
-        extern const char model[]; // = "u_model";
-        extern const char view[]; // = "u_view";
-        extern const char projection[]; // = "u_projection";
+        extern const char* const output_resolution; // = "u_output_resolution";
+        extern const char* const time; // = "u_time";
+        extern const char* const mvp; // = "u_mvp";
+        extern const char* const model; // = "u_model";
+        extern const char* const view; // = "u_view";
+        extern const char* const projection; // = "u_projection";
 
-        extern const char dither_texture[];// = "u_dither_texture";
+        extern const char* const dither_texture;// = "u_dither_texture";
     }
 }
 

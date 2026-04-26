@@ -25,7 +25,7 @@ namespace gal {
             glm::ivec2 res = {0, 0};
             int components = 4;
 
-            // TODO: substitute void* for std::span<std::byte>
+            // TODO: substitute void* for std::span<ubyte>, which can be checked to make sure its size is correct
             const void* data = nullptr;
             sint alignment = 4;
             bool enable_mipmaps = false;
@@ -37,7 +37,8 @@ namespace gal {
             texture::filter_method filter_method = texture::filter_method::nearest;
             texture::filter_method mipmap_filter_method = texture::filter_method::linear;
             bool enable_anisotropic_filtering = true; // ignored if mipmap_filter_method == nullopt
-            float max_anisotropy = 16.f; // ignored unless anisotropic_filtering == true
+            static constexpr float default_max_anisotropy = 16.f;
+            float max_anisotropy = default_max_anisotropy; // ignored unless anisotropic_filtering == true
         };
 
         GAL_API explicit texture(const specification& spec);
@@ -50,7 +51,7 @@ namespace gal {
         GAL_API ~texture();
 
         GAL_API static texture null();
-        GAL_API bool is_null();
+        GAL_API bool is_null() const;
 
         GAL_API void set_texture_data(const void* buffer, sint alignment = 4);
 

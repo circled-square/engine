@@ -50,10 +50,4 @@ namespace engine {
             }
         }
     }
-
-    void viewport::operator=(viewport &&o) {
-        m_fbo = std::move(o.m_fbo);
-        m_dynamic_size_relative_to_output = std::move(o.m_dynamic_size_relative_to_output);
-        m_active_camera = std::move(o.m_active_camera);
-    }
 }

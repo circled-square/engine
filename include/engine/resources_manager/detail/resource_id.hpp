@@ -10,13 +10,13 @@ namespace engine::detail {
     // however a resource_id is not meant to be derefed or used in ptr arithmetic, so this was deemed inappropriate
     template<Resource T>
     class resource_id {
-        std::uintptr_t m_id; // if m_id is 0 the id is null
+        static constexpr std::uintptr_t null_id = 0;
+        std::uintptr_t m_id = null_id;
         friend class std::hash<resource_id>;
     public:
-        resource_id() : m_id(0) {}
+        resource_id() = default;
         resource_id(const rc_resource<T>* resource) : m_id((std::uintptr_t)resource) {}
         resource_id(const rc_resource<T>& resource) : resource_id(&resource) {}
-        resource_id(const resource_id& o) : m_id(o.m_id) {}
         bool operator==(const resource_id& o) const { return m_id == o.m_id; }
     };
 }

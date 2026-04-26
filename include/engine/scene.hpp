@@ -24,7 +24,6 @@ namespace engine {
         scene() = delete;
         //TODO: these should not be ENGINE_API
         ENGINE_API scene(std::string s, std::unique_ptr<node> root, application_channel_t::to_app_t to_app_chan = {});
-        ENGINE_API scene(scene&& o);
 
         // prepare() is called when the scene is inited and when the application switches from a different scene
         // (requires OpenGL to be inited)
@@ -51,7 +50,7 @@ namespace engine {
         std::string m_what;
     public:
         invalid_path_exception(std::string_view path) : m_what(std::format("the first character of a path passed to scene::get_node must be '/'; instead path = \"{}\"", path)) {}
-        virtual const char* what() const noexcept { return m_what.c_str(); }
+        const char* what() const noexcept override { return m_what.c_str(); }
     };
 }
 

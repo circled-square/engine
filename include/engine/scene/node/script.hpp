@@ -24,8 +24,8 @@ namespace engine {
     };
 
     struct stateless_script {
-        script_vtable vtable = script_vtable{};
-        std::string name = std::string();
+        script_vtable vtable;
+        std::string name;
         // this pointer is necessary to make sure the dynamic library is not unloaded while the object's fn ptrs still point to it
         nullable_rc<const dylib::library> dynlib_ref = nullptr;
 
@@ -40,9 +40,12 @@ namespace engine {
         script() = delete;
         script(const script& o) = default;
         script(script&& o) = default;
+        script& operator=(const script& o) = delete;
+        script& operator=(script&& o) = default;
+        ~script() = default;
+
         ENGINE_API script(stateless_script sl_script, node& n, const std::any& params);
 
-        script& operator=(script&& o) = default;
 
         ENGINE_API const std::any& get_state() const;
         ENGINE_API const stateless_script& get_underlying_stateless_script() const;

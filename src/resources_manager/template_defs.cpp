@@ -11,20 +11,20 @@ namespace engine {
 
     // this function cannot become a member function of resources_manager, because it must be used by rc_resource which only has access to rm as an incomplete type.
     template<Resource T>
-    void flag_for_deletion(resources_manager& rm, detail::resource_id<T> id) {
-        rm.m_hashmaps.marked_for_deletion<T>().insert(id);
+    void flag_for_deletion(resources_manager& rm, detail::resource_id<T> resource) {
+        rm.m_hashmaps.marked_for_deletion<T>().insert(resource);
     }
 
 
     template<Resource T>
-    T construct_from_name(std::string_view p) { throw std::runtime_error("unimplemented!"); }
-    template<> shader construct_from_name<shader>(std::string_view p) { return shader::from_file(std::format("assets/{}", p)); }
-    template<> nodetree_blueprint construct_from_name<nodetree_blueprint>(std::string_view p) {
-        std::string path = std::format("assets/{}", p);
+    T construct_from_name(std::string_view name) { throw std::runtime_error("unimplemented!"); }
+    template<> shader construct_from_name<shader>(std::string_view name) { return shader::from_file(std::format("assets/{}", name)); }
+    template<> nodetree_blueprint construct_from_name<nodetree_blueprint>(std::string_view name) {
+        std::string path = std::format("assets/{}", name);
         return load_nodetree_from_gltf(path.c_str(), get_rm().get_default_3d_shader());
     }
-    template<> gal::texture construct_from_name<gal::texture>(std::string_view p) {
-        std::string path = std::format("assets/{}", p);
+    template<> gal::texture construct_from_name<gal::texture>(std::string_view name) {
+        std::string path = std::format("assets/{}", name);
         return gal::texture(gal::image(path.c_str()));
     }
     //temporary debug implementation, since we currently do not support loading scenes from file
@@ -208,6 +208,7 @@ namespace engine {
     template rc<gal::texture> resources_manager::load_mut<gal::texture>(std::string_view p);
     template rc<scene> resources_manager::load_mut<scene>(std::string_view p);
 
+    // NOLINTBEGIN(cppcoreguidelines-macro-usage)
     #define INSTANTIATE_RM_TEMPLATES(TYPE) \
         template void flag_for_deletion<TYPE>(resources_manager&, detail::resource_id<TYPE>); \
 
@@ -218,7 +219,7 @@ namespace engine {
     #define INSTANTIATE_RM_TEMPLATES_MOVEABLE(TYPE) \
         template rc<TYPE> resources_manager::new_from(TYPE&& res); \
         template rc<TYPE> resources_manager::load_impl<TYPE>(const detail::resource_name_t&); \
-
+    // NOLINTEND(cppcoreguidelines-macro-usage)
 
     CALL_MACRO_FOR_EACH(INSTANTIATE_RM_TEMPLATES_MOVEABLE, MOVEABLE_RESOURCES)
 

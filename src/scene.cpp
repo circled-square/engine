@@ -215,15 +215,6 @@ namespace engine {
         EXPECTS(m_root->name().empty());
     }
 
-    scene::scene(scene &&o)
-        :  m_root(std::move(o.m_root)),
-          m_name(std::move(o.m_name)),
-          m_renderer(std::move(o.m_renderer)),
-          m_whole_screen_vao(std::move(o.m_whole_screen_vao)),
-          m_render_flags(std::move(o.m_render_flags)),
-          m_application_channel(std::move(o.m_application_channel)) {}
-
-
     void scene::render() {
         glm::ivec2 resolution = m_application_channel.from_app().framebuffer_size;
         float frame_time = m_application_channel.from_app().frame_time;

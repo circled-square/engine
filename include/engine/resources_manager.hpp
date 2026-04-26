@@ -3,7 +3,6 @@
 
 #include "engine/utils/meta.hpp"
 #include "resources_manager/rc.hpp"
-#include "resources_manager/weak.hpp"
 #include "resources_manager/detail/resource_id.hpp"
 #include "resources_manager/detail/typedefs.hpp"
 #include <engine/utils/api_macro.hpp>
@@ -36,6 +35,10 @@ namespace engine {
         std::optional<rc<const shader>> m_default_3d_shader;
 
         resources_manager() = default;
+        resources_manager(const resources_manager&) = delete;
+        resources_manager(resources_manager&&) = delete;
+        resources_manager& operator=(const resources_manager&) = delete;
+        resources_manager& operator=(resources_manager&&) = delete;
         ~resources_manager();
 
         template<Resource T> [[nodiscard]] ENGINE_API

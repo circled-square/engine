@@ -11,12 +11,12 @@ namespace engine {
         std::string m_filepath, m_err;
         mutable std::string m_what;
     public:
-        enum type { PARSE_ERROR, FILE_EXTENSION_ERROR };
+        enum class type { PARSE_ERROR, FILE_EXTENSION_ERROR };
     private:
         type m_type;
     public:
         gltf_load_error(type t, std::string path, std::string err = "") : m_type(t), m_filepath(std::move(path)), m_err(std::move(err)) {}
-        virtual const char* what() const noexcept;
+        const char* what() const noexcept override;
     };
 }
 

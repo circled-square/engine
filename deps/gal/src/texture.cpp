@@ -3,6 +3,7 @@
 #include <glad/glad.h>
 #include <slogga/asserts.hpp>
 #include <random>
+#include <memory>
 
 namespace gal {
     static GLsizei compute_number_of_mipmap_levels(const texture::specification& spec);
@@ -99,7 +100,7 @@ namespace gal {
         glDeleteTextures(1, &m_texture_id);
     }
 
-    void texture::set_texture_data(const void *buffer, sint alignment) {
+    void texture::set_texture_data(const void *buffer, sint alignment) { // NOLINT(readability-make-member-function-const)
         glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
 
         uint format =
@@ -119,23 +120,19 @@ namespace gal {
     int texture::height() const { return m_res.y; }
     glm::ivec2 texture::resolution() const { return m_res; }
 
-    uint texture::get_gl_id() { return m_texture_id; }
+    uint texture::get_gl_id() { return m_texture_id; } // NOLINT(readability-make-member-function-const)
 
     texture texture::noise(glm::ivec2 res, char components) {
         std::random_device rand_dev;
-        std::subtract_with_carry_engine<unsigned char, 8, 5, 12> rng(rand_dev());
+        std::subtract_with_carry_engine<unsigned char, 8, 5, 12> rng(rand_dev()); // NOLINT(cppcoreguidelines-avoid-magic-numbers) idc about why
 
-        unsigned char* data = new unsigned char[res.x*res.y*components];
-
-        for (int y = 0; y < res.y; y++) {
-            for (int x = 0; x < res.x; x++) {
-                for (char c = 0; c < components; c++) {
-                    data[c + x*components + y*res.x*components] = rng();
-                }
-            }
+        std::vector<unsigned char> data(res.x*res.y*components);
+        for(unsigned char& byte : data) { // fill all components of the texture with pseudo-random data
+            byte = rng();
         }
+
         specification spec = {
-            .res=res, .components=components, .data=data, .alignment=1, .repeat_wrap=true,
+            .res=res, .components=components, .data=data.data(), .alignment=1, .repeat_wrap=true,
         };
 
         return texture(spec);
@@ -153,5 +150,5 @@ namespace gal {
 
     texture texture::null() { return texture(nullptr); }
 
-    bool texture::is_null() { return m_texture_id == 0; }
+    bool texture::is_null() const { return m_texture_id == 0; }
 }

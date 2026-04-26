@@ -22,7 +22,7 @@ namespace engine {
     weak<T>::weak(const rc<T>& o) : weak(o.get_resource_ptr()) {}
 
     template<Resource T>
-    weak<T>::weak(weak<T>&& o) : m_resource(o.m_resource) {
+    weak<T>::weak(weak<T>&& o) noexcept : m_resource(o.m_resource) {
         o.m_resource = nullptr;
     }
 
@@ -80,7 +80,7 @@ namespace engine {
     weak<const T>::weak(const weak<const T>& o) : weak<T>(o) {}
 
     template<Resource T>
-    weak<const T>::weak(weak<const T>&& o) : weak<T>(std::forward<weak&&>(o)) {}
+    weak<const T>::weak(weak<const T>&& o) noexcept : weak<T>(std::forward<weak&&>(o)) {}
 
     template<Resource T>
     weak<const T>::weak(weak<T> o) : weak<T>(std::move(o)) {}
@@ -109,6 +109,7 @@ namespace engine {
     bool weak<const T>::operator!=(const weak<const T>& o) const { return this->weak<T>::operator!=(o); }
 
 
+    //NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
     #define INSTANTIATE_WEAK_TEMPLATE(TYPE) \
         template class weak<TYPE>; \
         template class weak<const TYPE>;

@@ -5,25 +5,24 @@
 #include <string_view>
 #include <cstring>
 #include <cctype>
-#include <fstream>
 
 namespace engine {
     namespace uniform_names {
-        const char output_resolution[] = "u_output_resolution";
-        const char time[] = "u_time";
+        const char* const output_resolution = "u_output_resolution";
+        const char* const time = "u_time";
 
-        const char mvp[] = "u_mvp";
-        const char model[] = "u_model";
-        const char view[] = "u_view";
-        const char projection[] = "u_projection";
+        const char* const mvp = "u_mvp";
+        const char* const model = "u_model";
+        const char* const view = "u_view";
+        const char* const projection = "u_projection";
 
-        const char dither_texture[] = "u_dither_texture";
+        const char* const dither_texture = "u_dither_texture";
     }
 
     class shader_parse_exception : public std::exception {
         std::string m_what;
     public:
-        enum type { UNIFORMS_BLOCK };
+        enum class type { UNIFORMS_BLOCK };
     private:
         type m_type;
         static std::string preamble_from_type(type t) {
@@ -35,19 +34,19 @@ namespace engine {
     public:
 
         shader_parse_exception(type t, const std::string& s) : m_type(t), m_what(preamble_from_type(t) + s) {}
-        virtual const char* what() const noexcept { return m_what.c_str(); }
+        const char* what() const noexcept override { return m_what.c_str(); }
     };
 
     static std::string_view eat_whitespace(std::string_view sv) {
-        while(!sv.empty() && std::isspace(sv[0]))
+        while(!sv.empty() && std::isspace(sv.at(0)) != 0)
             sv = sv.substr(1);
         return sv;
     }
     static bool is_alnum_or_underscore(char c) {
-        return c == '_' || std::isalnum(c);
+        return c == '_' || std::isalnum(c) != 0;
     }
 
-    static uniforms_info parse_uniforms(const std::string& s) {
+    static uniforms_info parse_uniforms(std::string_view s) {
         std::string_view sv = eat_whitespace(s);
         std::vector<std::pair<std::string_view, std::string_view>> uniforms_strings;
 
@@ -62,30 +61,30 @@ namespace engine {
             }
             sv = sv.substr(uniform_str.length());
 
-            if(!std::isspace(sv[0])) {
+            if(std::isspace(sv.at(0)) != 0) {
                 throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
-                    std::format("expected whitespace after 'uniforms', got '{}'", sv[0]));
+                    std::format("expected whitespace after 'uniforms', got '{}'", sv.at(0)));
             }
 
             sv = eat_whitespace(sv);
 
             //consume type
             size_t end_of_type = 0;
-            while(is_alnum_or_underscore(sv[end_of_type]))
+            while(is_alnum_or_underscore(sv.at(end_of_type)))
                 end_of_type++;
             std::string_view type_str = sv.substr(0, end_of_type);
             sv = sv.substr(type_str.length());
 
-            if(!std::isspace(sv[0])) {
+            if(std::isspace(sv.at(0)) != 0) {
                 throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
-                    std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv[0]));
+                    std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv.at(0)));
             }
 
             sv = eat_whitespace(sv);
 
             //consume uniform name
             size_t end_of_name = 0;
-            while(is_alnum_or_underscore(sv[end_of_name]))
+            while(is_alnum_or_underscore(sv.at(end_of_name)))
                 end_of_name++;
             std::string_view name_str = sv.substr(0, end_of_name);
             sv = sv.substr(name_str.length());
@@ -95,7 +94,7 @@ namespace engine {
             //consume ";" token
             if(!sv.starts_with(';')) {
                 throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
-                    std::format("parsing '#uniforms' block: expected ';' after uniform name '{}' got '{}'", name_str, sv[0]));
+                    std::format("parsing '#uniforms' block: expected ';' after uniform name '{}' got '{}'", name_str, sv.at(0)));
             }
             sv = sv.substr(1);
 
@@ -119,7 +118,7 @@ namespace engine {
                 uniforms_info.output_resolution = true;
             } else if(name_str == engine::uniform_names::time) {
                 uniforms_info.time = true;
-            } else if(name_str == engine::uniform_names::dither_texture){
+            } else if(name_str == engine::uniform_names::dither_texture) {
                 uniforms_info.dither_texture = true;
             } else {
                 if(type_str == "sampler2D") {
@@ -143,18 +142,17 @@ namespace engine {
 
     shader shader::from_file(const std::string& path) {
         std::string content = read_file(path);
-        return shader::from_source(content.c_str());
+        return shader::from_source(content);
     }
 
-    shader shader::from_source(const std::string& source) {
-        std::string_view content = source;
+    shader shader::from_source(std::string_view source) {
         std::string_view uniforms_str = "#uniforms";
         std::string_view vert_str = "#vertex";
         std::string_view frag_str = "#fragment";
 
-        size_t uniforms_str_pos = content.find(uniforms_str);
-        size_t vert_str_pos = content.find(vert_str);
-        size_t frag_str_pos = content.find(frag_str);
+        size_t uniforms_str_pos = source.find(uniforms_str);
+        size_t vert_str_pos = source.find(vert_str);
+        size_t frag_str_pos = source.find(frag_str);
 
         // TODO: throw custom exception instead of using ASSERTS
         ASSERTS(uniforms_str_pos != std::string::npos);
@@ -168,11 +166,11 @@ namespace engine {
         size_t vert_start = vert_str_pos + vert_str.length();
         size_t vert_end = frag_str_pos;
         size_t frag_start = frag_str_pos + frag_str.length();
-        size_t frag_end = content.size();
+        size_t frag_end = source.size();
 
-        std::string uniforms = std::string(content.substr(uniforms_start, uniforms_end - uniforms_start));
-        std::string vert = std::string(content.substr(vert_start, vert_end - vert_start));
-        std::string frag = std::string(content.substr(frag_start, frag_end - frag_start));
+        std::string_view uniforms = source.substr(uniforms_start, uniforms_end - uniforms_start);
+        std::string_view vert = source.substr(vert_start, vert_end - vert_start);
+        std::string_view frag = source.substr(frag_start, frag_end - frag_start);
 
         return shader(
             gal::shader_program(vert, frag),

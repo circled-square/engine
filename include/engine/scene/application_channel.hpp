@@ -41,9 +41,12 @@ namespace engine {
         const from_app_t& from_app() const { return m_from_app; }
         to_app_t& to_app() { return m_to_app; }
 
+        application_channel_t() = default;
         application_channel_t(const application_channel_t&) = delete;
         application_channel_t(application_channel_t&&) = default;
-        application_channel_t() = default;
+        application_channel_t& operator=(const application_channel_t&) = delete;
+        application_channel_t& operator=(application_channel_t&&) = delete;
+        ~application_channel_t() = default;
         ENGINE_API application_channel_t(to_app_t to_app, from_app_t from_app);
     };
 

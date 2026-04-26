@@ -22,9 +22,12 @@ namespace engine {
         //note: the postfx material at this stage contains a null pointer to a texture.
         ENGINE_API viewport(framebuffer fbo, std::optional<glm::vec2> dynamic_size_relative_to_output = std::nullopt);
         ENGINE_API viewport(glm::vec2 dynamic_size_relative_to_output);
-        viewport(viewport&& o) = default;
 
+        viewport(viewport&& o) = default;
         ENGINE_API explicit viewport(const viewport& o);
+        viewport& operator=(const viewport&) = delete;
+        viewport& operator=(viewport&& o) = default;
+        ~viewport() = default;
 
         ENGINE_API framebuffer& fbo();
         ENGINE_API const framebuffer& fbo() const;
@@ -42,9 +45,8 @@ namespace engine {
          * note: it is recommended to resize viewports sparingly, since it requires allocating a new texture and destroying the previous;
          * even downsizing the viewport poses the same problem
          */
-        void output_resolution_changed(glm::ivec2 native_resolution) const;
+        void output_resolution_changed(glm::ivec2 output_resolution) const;
 
-        ENGINE_API void operator=(viewport&& o);
     };
 }
 

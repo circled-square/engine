@@ -23,7 +23,7 @@ namespace engine {
 
     std::vector<std::pair<const char*, stateless_script> > stateless_script::from(rc<const dylib::library> dynlib) {
         const std::size_t imported_plugins_size = dynlib->get_variable<std::size_t>("exported_plugins_size");
-        const std::pair<const char*, script_vtable>* imported_plugins = dynlib->get_variable<const std::pair<const char*, script_vtable>[]>("exported_plugins");
+        const std::pair<const char*, script_vtable> (&imported_plugins)[] = dynlib->get_variable<const std::pair<const char*, script_vtable>[]>("exported_plugins"); // NOLINT(cppcoreguidelines-avoid-c-arrays)
 
         std::vector<std::pair<const char*, stateless_script>> ret;
         ret.reserve(imported_plugins_size);
@@ -41,7 +41,7 @@ namespace engine {
 
     stateless_script stateless_script::from(rc<const dylib::library> dynlib, const char *name) {
         const std::size_t imported_plugins_size = dynlib->get_variable<std::size_t>("exported_plugins_size");
-        const std::pair<const char*, script_vtable>* imported_plugins = dynlib->get_variable<const std::pair<const char*, script_vtable>[]>("exported_plugins");
+        const std::pair<const char*, script_vtable> (&imported_plugins)[] = dynlib->get_variable<const std::pair<const char*, script_vtable>[]>("exported_plugins"); // NOLINT(cppcoreguidelines-avoid-c-arrays)
 
         for(int i = 0; i < imported_plugins_size; i++) {
             if(std::strcmp(imported_plugins[i].first, name) == 0) {

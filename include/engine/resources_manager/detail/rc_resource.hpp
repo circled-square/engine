@@ -2,6 +2,7 @@
 #define ENGINE_RESOURCES_MANAGER_DETAIL_RC_RESOURCE_HPP
 
 #include "../resource_concept.hpp"
+#include "../../utils/api_macro.hpp"
 #include <cstdint>
 #include <optional>
 
@@ -10,7 +11,7 @@
 
 namespace engine {
     class resources_manager;
-    resources_manager& get_rm();
+    [[nodiscard]] ENGINE_API resources_manager& get_rm();
 
     namespace detail {
         template<Resource T> class resource_id;
@@ -29,7 +30,7 @@ namespace engine {
 
         public:
             // construct with an empty resource
-            explicit rc_resource(std::nullopt_t) : m_resource(), m_refcount(0), m_weak_refcount(0) {}
+            explicit rc_resource(std::nullopt_t p) : m_resource(), m_refcount(0), m_weak_refcount(0) {}
 
             // construct and emplace the resource with the given args
             template<typename...Args>
@@ -47,6 +48,7 @@ namespace engine {
             rc_resource(const rc_resource&) = delete;
             rc_resource& operator=(rc_resource&&) = delete;
             rc_resource& operator=(const rc_resource&) = delete;
+            ~rc_resource() = default;
 
             std::int64_t refcount() const;
             void inc_refcount();

@@ -27,7 +27,6 @@ namespace engine {
     void resources_manager::collect_garbage() {
         slogga::stdout_log("called resources_manager::collect_garbage");
 
-        bool deleted_any;
 
         std::ostringstream log_ss;
 
@@ -65,8 +64,6 @@ namespace engine {
                         //there are still weak refs to this resource; destroy the contained value
                         rc_ref.resource().reset();
                     }
-
-                    deleted_any = true;
                 }
             }
 
@@ -78,7 +75,8 @@ namespace engine {
 
 
         //actually only scenes can depend on each other, and no resource can depend on one that would get deleted before it. still leaving this behaviour for testing (and because who knows, maybe in the future this won't be the case)
-        do {
+        bool deleted_any = true; // initialized to true to make sure the first iteration runs
+        while (deleted_any) {
             deleted_any = false;
 
             std::apply([&](auto&... args) {
@@ -88,7 +86,7 @@ namespace engine {
             if(deleted_any) {
                 slogga::stdout_log.trace("gc pass cleared {}", log_ss.str());
             }
-        } while(deleted_any == true);
+        }
     }
 
 
@@ -107,17 +105,19 @@ namespace engine {
      * to be actually closed or saved before program termination.
      */
 
-    alignas(resources_manager) static char global_rm_instance[sizeof(resources_manager)];
+    alignas(resources_manager) static std::array<std::byte, sizeof(resources_manager)> global_rm_instance;
     static bool global_rm_instance_is_inited = false;
 
     resources_manager &resources_manager::get_instance() {
         EXPECTS(global_rm_instance_is_inited);
-        return *reinterpret_cast<resources_manager*>(&global_rm_instance);
+        std::optional<int> s;
+        s.operator*();
+        return *reinterpret_cast<resources_manager*>(global_rm_instance.data());
     }
 
     void resources_manager::init_instance() {
         EXPECTS(!global_rm_instance_is_inited);
-        resources_manager* rm_p = reinterpret_cast<resources_manager*>(&global_rm_instance);
+        resources_manager* rm_p = reinterpret_cast<resources_manager*>(global_rm_instance.data());
         new(rm_p) resources_manager();
         global_rm_instance_is_inited = true;
     }

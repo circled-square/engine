@@ -19,7 +19,7 @@ namespace engine {
     rc<T>::rc(const rc<T>& o) : rc(o.m_resource) {}
 
     template<Resource T> ENGINE_API
-    rc<T>::rc(rc<T>&& o) : m_resource(o.m_resource) {
+    rc<T>::rc(rc<T>&& o) noexcept : m_resource(o.m_resource) {
         o.m_resource = nullptr;
     }
 
@@ -74,10 +74,10 @@ namespace engine {
     rc<const T>::rc(const rc<T>& o) : rc<T>(o) {}
 
     template<Resource T> ENGINE_API
-    rc<const T>::rc(rc<T>&& o) : rc<T>(std::forward<rc<T>&&>(o)) {}
+    rc<const T>::rc(rc<T>&& o) noexcept : rc<T>(std::move(o)) {}
 
     template<Resource T> ENGINE_API
-    rc<const T>::rc(rc<const T>&& o) : rc<T>(std::move(o)) {}
+    rc<const T>::rc(rc<const T>&& o) noexcept : rc<T>(std::move(o)) {}
 
     template<Resource T> ENGINE_API
     rc<const T>::rc(const rc<const T>& o) : rc<T>(o) {}
@@ -103,6 +103,7 @@ namespace engine {
     bool rc<const T>::operator==(const rc<const T> &o) const { return rc<T>::operator==(o); }
 
 
+    //NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
     #define INSTANTIATE_RC_TEMPLATE(TYPE) \
         template class rc<TYPE>; \
         template class rc<const TYPE>;

@@ -64,12 +64,4 @@ namespace engine {
             });
         }
     }
-
-    material& material::operator=(material&& o) {
-        m_shader = std::move(o.m_shader);
-        m_textures = std::move(o.m_textures);
-        m_custom_uniforms = std::move(o.m_custom_uniforms);
-
-        return *this;
-    }
 }

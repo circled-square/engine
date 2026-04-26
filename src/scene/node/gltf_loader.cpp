@@ -12,6 +12,7 @@
 #include <tiny_gltf.h>
 
 
+//NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) //TODO: add assertions for every usage of operator[]
 using namespace std;
 
 namespace engine {
@@ -31,7 +32,7 @@ namespace engine {
             slogga::stdout_log.error("{}", err);
 
         if(!success)
-            throw gltf_load_error(gltf_load_error::PARSE_ERROR, path, err);
+            throw gltf_load_error(gltf_load_error::type::PARSE_ERROR, path, err);
 
         return model;
     }
@@ -42,7 +43,7 @@ namespace engine {
                                                                  const hashset<size_t>& bufviews) {
         using bufview_to_stride_t = hashmap<size_t, size_t>;
         bufview_to_stride_t bufview_to_stride;
-        for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+        for (const auto& [attrib_name, accessor_idx] : primitive.attributes) {
             const tinygltf::Accessor& accessor = model.accessors[accessor_idx];
             int bufview_idx = accessor.bufferView;
             if(bufviews.contains(bufview_idx)) {
@@ -84,27 +85,27 @@ namespace engine {
         hashmap<size_t, size_t> strides = deduce_bufview_strides(model, primitive, bufviews_to_deduce_strides_of);
 
         for(auto[bufview_idx, stride] : strides) {
-            size_t vbo_idx = bufview_to_vbo.find(bufview_idx)->second;
+            size_t vbo_idx = bufview_to_vbo.find((int)bufview_idx)->second;
             vbos[vbo_idx].set_stride(stride);
         }
     }
 
     static gal::vertex_buffer make_vbo_from_bufview(const tinygltf::Model& model, int bufview_idx) {
-        auto& bufview = model.bufferViews[bufview_idx];
-        auto& buf = model.buffers[bufview.buffer];
+        const auto& bufview = model.bufferViews[bufview_idx];
+        const auto& buf = model.buffers[bufview.buffer];
         EXPECTS(bufview.target == TINYGLTF_TARGET_ARRAY_BUFFER);
 
         return gal::vertex_buffer(&buf.data[bufview.byteOffset], bufview.byteLength, bufview.byteStride);
     }
 
     static gal::index_buffer make_ibo_from_bufview(const tinygltf::Model& model, int bufview_idx, int element_typeid) {
-        auto& bufview = model.bufferViews[bufview_idx];
-        auto& buf = model.buffers[bufview.buffer];
+        const auto& bufview = model.bufferViews[bufview_idx];
+        const auto& buf = model.buffers[bufview.buffer];
         EXPECTS(bufview.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER);
 
         gal::buffer raw_data(&buf.data[bufview.byteOffset], bufview.byteLength);
-        int triangle_size = gal::typeid_to_size(element_typeid) * 3;
-        int triangle_count = bufview.byteLength / triangle_size;
+        int triangle_size = (int)gal::typeid_to_size(element_typeid) * 3;
+        int triangle_count = (int)bufview.byteLength / triangle_size;
 
         return gal::index_buffer(std::move(raw_data), triangle_count, element_typeid);
     }
@@ -129,7 +130,7 @@ namespace engine {
         gal::vertex_layout layout;
 
         //populate vbos and layout.attribs
-        for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+        for (const auto& [attrib_name, accessor_idx] : primitive.attributes) {
             //vertex array attribute
             gal::uint vaa =
                 attrib_name == "POSITION" ? 0 :
@@ -191,7 +192,7 @@ namespace engine {
             .repeat_wrap = true,
             .mipmap_filter_method = gal::texture::filter_method::linear,
             .enable_anisotropic_filtering = true,
-            .max_anisotropy = 16.f,
+            .max_anisotropy = 16.f, //NOLINT(cppcoreguidelines-avoid-magic-numbers)
         };
         return gal::texture(spec);
 
@@ -199,7 +200,7 @@ namespace engine {
 
     static engine::mesh load_mesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh, const rc<const shader>& shader) {
         vector<engine::primitive> primitives;
-        for(size_t primitive_idx = 0; primitive_idx < mesh.primitives.size(); primitive_idx++) {
+        for(int primitive_idx = 0; primitive_idx < (int)mesh.primitives.size(); primitive_idx++) {
             gal::vertex_array vao = get_vao_from_mesh_primitive(model, mesh, primitive_idx);
             gal::texture texture = get_texture_from_mesh_primitive(model, mesh, primitive_idx);
 
@@ -219,20 +220,17 @@ namespace engine {
                 return 0;
             }
             std::string string = attrib.Get<std::string>();
-            uint64_t ret;
             try {
-                ret = std::stoull(string, nullptr, 16);
+                const int base = 16;
+                return std::stoull(string, nullptr, base);
                 // Exceptions from cppreference:
                 // std::invalid_argument if no conversion could be performed.
                 // std::out_of_range if the converted value would fall out of the range of the result type or if the underlying function
             } catch(std::invalid_argument& e) {
                 slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': the string '{}' could not be parsed as a hex number", attrib_name, string);
-                return 0;
             } catch(std::out_of_range& e) {
                 slogga::stdout_log.warn("invalid usage of gltf extra attribute '{}': '{}' as an integer is out of range for an unsigned 64 bits integer", attrib_name, string);
-                return 0;
             }
-            return ret;
         }
         return 0;
     }
@@ -271,7 +269,7 @@ namespace engine {
         collision_layers_bitmask sees_layers = load_u64_from_hex_string_from_gltf_extras(extras, "sees_layers");
 
         int position_accessor_idx = -1;
-        for (auto& [attrib_name, accessor_idx] : primitive.attributes) {
+        for (const auto& [attrib_name, accessor_idx] : primitive.attributes) {
             // the only relevant attribute for collision_shape is the position
             if(attrib_name != "POSITION") continue;
             position_accessor_idx = accessor_idx;
@@ -302,15 +300,16 @@ namespace engine {
         size_t number_of_verts = position_bufview.byteLength / verts_stride;
         stride_span<const glm::vec3> verts_span(verts_ptr, 0, verts_stride, number_of_verts);
 
-        auto& indices_bufview = model.bufferViews[indices_accessor.bufferView];
+        const auto& indices_bufview = model.bufferViews[indices_accessor.bufferView];
         EXPECTS(indices_bufview.target == TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER);
-        auto& indices_buf = model.buffers[indices_bufview.buffer];
+        const auto& indices_buf = model.buffers[indices_bufview.buffer];
 
+        const unsigned char* base = &indices_buf.data[indices_bufview.byteOffset];
         if(indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-            std::span<const glm::uvec3> indices_span((glm::uvec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::uvec3));
+            std::span<const glm::uvec3> indices_span(reinterpret_cast<const glm::uvec3*>(base), indices_bufview.byteLength / sizeof(glm::uvec3));
             return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
         } else if (indices_accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT){
-            std::span<const glm::u16vec3> indices_span((glm::u16vec3*)&indices_buf.data[indices_bufview.byteOffset], indices_bufview.byteLength / sizeof(glm::u16vec3));
+            std::span<const glm::u16vec3> indices_span(reinterpret_cast<const glm::u16vec3*>(base), indices_bufview.byteLength / sizeof(glm::u16vec3));
             return engine::collision_shape::from_mesh(verts_span, indices_span, is_layers, sees_layers);
         }
         throw std::runtime_error("given prior assertions this should be unreachable");
@@ -382,7 +381,7 @@ namespace engine {
         bool binary = string_view(filepath).ends_with(".glb");
 
         if(!binary && !string_view(filepath).ends_with(".gltf"))
-            throw gltf_load_error(gltf_load_error::FILE_EXTENSION_ERROR, filepath);
+            throw gltf_load_error(gltf_load_error::type::FILE_EXTENSION_ERROR, filepath);
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
@@ -399,10 +398,10 @@ namespace engine {
     const char* gltf_load_error::what() const noexcept {
         if(m_what.empty()) {
             switch(m_type) {
-            case PARSE_ERROR:
+            case type::PARSE_ERROR:
                 m_what = std::format("Failed to parse glTF file at path {};\nerror: {}", m_filepath, m_err);
                 break;
-            case FILE_EXTENSION_ERROR:
+            case type::FILE_EXTENSION_ERROR:
                 m_what = std::format("File {} is not a gltf file: extension is not .glb or .gltf", m_filepath);
                 break;
             default:
@@ -414,3 +413,5 @@ namespace engine {
     }
 
 }
+
+//NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) //TODO: add assertions for every usage of operator[]

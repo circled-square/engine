@@ -1,7 +1,13 @@
 #ifndef ENGINE_SCENE_NODE_SPAN_HPP
 #define ENGINE_SCENE_NODE_SPAN_HPP
 
+#include <span>
+#include <memory>
+#include <slogga/asserts.hpp>
+
 namespace engine {
+    class node;
+
     // const_node_span is used for iterating on the children of a node in an immutable manner.
     // we don't want to use std::span<std::unique_ptr<const node>> because the user would have to see (and could possibly create problems with) the std::unique_ptr
     // even if we wanted we cannot construct a span<ptr<const>> over a vector<ptr<mut>>
@@ -23,7 +29,7 @@ namespace engine {
         iterator end() { return iterator(m_span.end()); }
         size_t size() const { return m_span.size(); }
         bool empty() const { return m_span.empty(); }
-        const node& operator[](size_t i) const { return *m_span[i]; }
+        const node& operator[](size_t i) const { EXPECTS(i < m_span.size()); return *m_span[i]; } // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     };
 
 
@@ -47,7 +53,8 @@ namespace engine {
         iterator end() { return iterator(m_span.end()); }
         size_t size() const { return m_span.size(); }
         bool empty() const { return m_span.empty(); }
-        node& operator[](size_t i) { return *m_span[i]; }
+        node& operator[](size_t i) { EXPECTS(i < m_span.size()); return *m_span[i]; } // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        const node& operator[](size_t i) const { EXPECTS(i < m_span.size()); return *m_span[i]; } // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     };
 }
 

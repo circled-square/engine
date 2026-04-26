@@ -35,7 +35,7 @@ namespace gal {
     static_assert(std::same_as<GLADloadproc, opengl_function_loader_t>);
 
     void initialize_opengl(opengl_function_loader_t opengl_function_loader) {
-        if (gladLoadGLLoader(opengl_function_loader) != 0)
+        if (gladLoadGLLoader(opengl_function_loader) == 0)
             throw std::runtime_error("GLAD failed to initialize!");
 
         slogga::stdout_log.info("OpenGL version: {}", reinterpret_cast<const char*>(glGetString(GL_VERSION)));

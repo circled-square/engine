@@ -58,8 +58,10 @@ namespace engine {
         }
     }
 
+    template<bool cond, typename T>
+    using const_if = std::conditional_t<cond, const T, T>;
 
     // CALL_MACRO_FOR_EACH: a for each implemented in the preprocessor
-    #define CALL_MACRO_FOR_EACH(MACRO, ...) DETAIL__CALL_MACRO_FOR_EACH(MACRO, __VA_ARGS__)
+    #define CALL_MACRO_FOR_EACH(MACRO, ...) DETAIL__CALL_MACRO_FOR_EACH(MACRO, __VA_ARGS__) //NOLINT(cppcoreguidelines-macro-usage)
 }
 #endif // ENGINE_UTILS_META_HPP

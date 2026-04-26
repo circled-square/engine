@@ -37,11 +37,11 @@ namespace engine {
         rc(std::nullptr_t) = delete;
 
         ENGINE_API rc(const rc& o);
-
-        ENGINE_API rc(rc&& o);
+        ENGINE_API rc(rc&& o) noexcept;
         ENGINE_API ~rc();
 
         ENGINE_API rc& operator=(const rc& o);
+        ENGINE_API rc& operator=(rc&& o) noexcept { std::swap(m_resource, o.m_resource); return *this; }
 
         //note: dereferencing a const rc yields a mutable object!
         ENGINE_API T& operator*() const;
@@ -74,11 +74,13 @@ namespace engine {
         rc(std::nullptr_t) = delete;
 
         ENGINE_API rc(const rc& o);
-        ENGINE_API rc(rc&& o);
+        ENGINE_API rc(rc&& o) noexcept;
         ENGINE_API rc(const rc<T>& o);
-        ENGINE_API rc(rc<T>&& o);
+        ENGINE_API rc(rc<T>&& o) noexcept;
 
         ENGINE_API rc& operator=(const rc& o);
+        rc& operator=(rc&& o) = default;
+        ~rc() = default;
 
         ENGINE_API const T& operator*() const;
         ENGINE_API const T* operator->() const;
@@ -108,13 +110,15 @@ namespace engine {
 
         nullable_rc() = default;
         nullable_rc(std::nullptr_t) : nullable_rc() {}
-        nullable_rc(rc<element_type>&& o) : m_ptr(std::move(o)) {}
+        nullable_rc(rc<element_type>&& o) noexcept : m_ptr(std::move(o)) {}
         nullable_rc(const rc<element_type>& o) : m_ptr(o) {}
 
         nullable_rc(const nullable_rc& o) = default;
         nullable_rc(nullable_rc&& o) = default;
 
         nullable_rc& operator=(const nullable_rc& o) = default;
+        nullable_rc& operator=(nullable_rc&& o) = default;
+        ~nullable_rc() = default;
 
         element_type& operator*() const {
             //TODO: add exception throw on null
@@ -147,16 +151,18 @@ namespace engine {
 
         nullable_rc() = default;
         nullable_rc(std::nullptr_t) : nullable_rc() {}
-        nullable_rc(rc<element_type>&& o) : m_ptr(std::move(o)) {}
+        nullable_rc(rc<element_type>&& o) noexcept : m_ptr(std::move(o)) {}
         nullable_rc(const rc<element_type>& o) : m_ptr(o) {}
 
         nullable_rc(const nullable_rc& o) = default;
         nullable_rc(nullable_rc&& o) = default;
 
         nullable_rc& operator=(const nullable_rc& o) = default;
+        nullable_rc& operator=(nullable_rc&& o) = default;
+        ~nullable_rc() = default;
 
         nullable_rc(const nullable_rc<mut_element_type>& o) : m_ptr(o.m_ptr) {}
-        nullable_rc(nullable_rc<mut_element_type>&& o) : m_ptr(o.m_ptr) {}
+        nullable_rc(nullable_rc<mut_element_type>&& o) noexcept : m_ptr(std::move(o.m_ptr)) {} // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
 
         element_type& operator*() const {
             //TODO: add exception throw on null

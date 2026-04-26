@@ -7,7 +7,11 @@
 // these classes don't use OpenGL Direct State Access simply because it doesn't seem to work the way you'd expect with FBOs and renderbuffers
 namespace gal {
     namespace internal {
-        framebuffer::framebuffer(texture* tex) : m_fbo(-1), m_depth_renderbuf_id(-1), m_resolution(-1,-1) {
+        framebuffer::framebuffer(framebuffer&& o) noexcept : m_fbo(o.m_fbo), m_depth_renderbuf_id(o.m_depth_renderbuf_id), m_resolution(o.m_resolution) {
+            o.m_fbo = o.m_depth_renderbuf_id = (unsigned)-1;
+        }
+
+        framebuffer::framebuffer(texture* tex) {
             glGenFramebuffers(1, &m_fbo);
             bind();
 
@@ -24,11 +28,6 @@ namespace gal {
 
             unbind(); // limit side effects to a minimum
         }
-
-        framebuffer::framebuffer(framebuffer&& o) noexcept : m_fbo(o.m_fbo), m_depth_renderbuf_id(o.m_depth_renderbuf_id), m_resolution(o.m_resolution) {
-            o.m_fbo = o.m_depth_renderbuf_id = (unsigned)-1;
-        }
-
         framebuffer::~framebuffer() {
             if(m_fbo != -1)
                 glDeleteFramebuffers(1, &m_fbo);
