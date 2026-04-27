@@ -10,7 +10,7 @@ namespace engine {
         template<typename T>
         inline T* ptr_from_base_offset_stride_and_index(const_if<std::is_const_v<T>, void>* base, std::size_t offset, std::size_t stride, std::size_t index) {
             auto* base_cptr = reinterpret_cast<const_if<std::is_const_v<T>, char>*>(base);
-            return reinterpret_cast<T*>(base_cptr + offset + (stride * index));
+            return reinterpret_cast<T*>(base_cptr + offset + (stride * index)); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) // good luck implementing this without pointer arithmetic
         }
     }
 
@@ -39,14 +39,30 @@ namespace engine {
 
         stride_span() = delete;
 
-        T& operator[](std::size_t i) {
-            EXPECTS(i < m_size);
-            return *internal::ptr_from_base_offset_stride_and_index<T>(m_base, m_offset, m_stride, i);
+        T& operator[](std::size_t pos) {
+            EXPECTS(pos < m_size);
+            return *internal::ptr_from_base_offset_stride_and_index<T>(m_base, m_offset, m_stride, pos);
         }
-        const T& operator[](std::size_t i) const {
-            EXPECTS(i < m_size);
-            return *internal::ptr_from_base_offset_stride_and_index<const T>(m_base, m_offset, m_stride, i);
+        const T& operator[](std::size_t pos) const {
+            EXPECTS(pos < m_size);
+            return *internal::ptr_from_base_offset_stride_and_index<const T>(m_base, m_offset, m_stride, pos);
         }
+
+        T& at(std::size_t pos) {
+            if(pos >= size()) {
+                throw std::out_of_range(std::format("pos (which is {} >= size() (which is {})", pos, size()));
+            } else {
+                return *internal::ptr_from_base_offset_stride_and_index<const T>(m_base, m_offset, m_stride, pos);
+            }
+        }
+        const T& at(std::size_t pos) const {
+            if(pos >= size()) {
+                throw std::out_of_range(std::format("pos (which is {} >= size() (which is {})", pos, size()));
+            } else {
+                return *internal::ptr_from_base_offset_stride_and_index<const T>(m_base, m_offset, m_stride, pos);
+            }
+        }
+
 
         std::size_t size() const { return m_size; }
 

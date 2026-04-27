@@ -66,7 +66,8 @@ namespace engine {
     template<> gal::texture construct_from_name(internal_resource_name_t n) {
         if (n == internal_resource_name_t::dither_texture) {
             // obtained procedurally
-            const std::array<std::array<std::uint8_t, 16>, 16> dither_pattern = {
+            constexpr std::size_t res = 16;
+            const std::array<std::array<std::uint8_t, res>, res> dither_pattern = {
                 0,      128,    32,     160,    8,      136,    40,     168,    2,      130,    34,     162,    10,     138,    42,     170,
                 192,    64,     224,    96,     200,    72,     232,    104,    194,    66,     226,    98,     202,    74,     234,    106,
                 48,     176,    16,     144,    56,     184,    24,     152,    50,     178,    18,     146,    58,     186,    26,     154,
@@ -84,7 +85,6 @@ namespace engine {
                 63,     191,    31,     159,    55,     183,    23,     151,    61,     189,    29,     157,    53,     181,    21,     149,
                 255,    127,    223,    95,     247,    119,    215,    87,     253,    125,    221,    93,     245,    117,    213,    85,
             };
-            static_assert(dither_pattern.size() == dither_pattern[0].size());
 
             gal::texture::specification spec {
                 .res = {dither_pattern.size(), dither_pattern.size()},

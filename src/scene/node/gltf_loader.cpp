@@ -145,7 +145,7 @@ namespace engine {
                 // TODO: every vbo contains the contents of a bufview, but this may cause the transfer of unused data to VRAM (because unused attribs might be stored in the same bufview as used ones)
                 if (!bufview_to_vbo_map.contains(bufview_idx)) {
                     vbo_bind = vbos.size();
-                    bufview_to_vbo_map[bufview_idx] = vbo_bind;
+                    bufview_to_vbo_map[bufview_idx] = (int)vbo_bind;
                     vbos.push_back(make_vbo_from_bufview(model, bufview_idx));
                 }
 
@@ -376,8 +376,8 @@ namespace engine {
         return root;
     }
 
-    engine::nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, rc<const shader> shader, const std::string& nodetree_name) {
-        const std::string& nonempty_nodetree_name = !nodetree_name.empty() ? nodetree_name : filepath;
+    engine::nodetree_blueprint load_nodetree_from_gltf(const std::string& filepath, rc<const shader> shader, const std::string& node_name) {
+        const std::string& nonempty_node_name = !node_name.empty() ? node_name : filepath;
         bool binary = string_view(filepath).ends_with(".glb");
 
         if(!binary && !string_view(filepath).ends_with(".gltf"))
@@ -392,7 +392,7 @@ namespace engine {
         for (int node_idx : scene.nodes)
             root->add_child(load_node_subtree(model, node_idx, shader));
 
-        return engine::nodetree_blueprint(std::move(root), nonempty_nodetree_name);
+        return engine::nodetree_blueprint(std::move(root), nonempty_node_name);
     }
 
     const char* gltf_load_error::what() const noexcept {

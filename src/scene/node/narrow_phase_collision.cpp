@@ -21,8 +21,8 @@ namespace engine {
 
     inline glm::vec3 fractional_round(glm::vec3 v, float precision) {
         glm::vec3 ret;
-        for(int i = 0; i < ret.length(); i++)
-            ret[i] = std::roundf(v[i] * precision) / precision;
+        for(int i = 0; i < decltype(ret)::length(); i++)
+            ret[i] = std::roundf(v[i] * precision) / precision; //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         return ret;
     }
 
@@ -31,8 +31,9 @@ namespace engine {
         float max_a_proj = std::numeric_limits<float>::lowest();
         for(const vec3& v : a_verts) {
             float proj = glm::dot(axis, v);
-            if(proj < min_a_proj) min_a_proj = proj;
-            if(proj > max_a_proj) max_a_proj = proj;
+
+            min_a_proj = std::min(min_a_proj, proj);
+            max_a_proj = std::max(max_a_proj, proj);
         }
 
         float min_b_proj = std::numeric_limits<float>::max();
@@ -41,8 +42,8 @@ namespace engine {
             vec3 v = b_to_a_space_trans * vec4(v_b_space, 1);
 
             float proj = glm::dot(axis, v);
-            if(proj < min_b_proj) min_b_proj = proj;
-            if(proj > max_b_proj) max_b_proj = proj;
+            min_b_proj = std::min(min_b_proj, proj);
+            max_b_proj = std::max(max_b_proj, proj);
         }
 
         if (min_a_proj <= max_b_proj && min_b_proj <= max_a_proj) {
@@ -140,7 +141,8 @@ namespace engine {
             // Note: although the output will have len=~1.0, it is NOT normalized, since fractional_round does not
             // preserve normalization. glm::normalize should be reapplied to the output if normalization is necessary,
             // but it was not deemed to be.
-            return fractional_round(normalize_without_verse(v), 128);
+            constexpr float round_precision = 128; // this precision is deemed sufficient
+            return fractional_round(normalize_without_verse(v), round_precision);
         };
 
         hashset<vec3> verts;
@@ -148,13 +150,13 @@ namespace engine {
         hashset<vec3> edges;
 
         for(T indices : mesh_indices) {
-            for(int i = 0; i < 3; i++) {
-                verts.insert(mesh_verts[indices[i]]);
-            }
+            vec3 v_x = mesh_verts.at(indices.x), v_y = mesh_verts.at(indices.y), v_z = mesh_verts.at(indices.z);
 
-            vec3 edge_1 = mesh_verts[indices.y] - mesh_verts[indices.x];
-            vec3 edge_2 = mesh_verts[indices.z] - mesh_verts[indices.x];
-            vec3 edge_3 = mesh_verts[indices.z] - mesh_verts[indices.y];
+            verts.insert({v_x, v_y, v_z});
+
+            vec3 edge_1 = v_y - v_x;
+            vec3 edge_2 = v_z - v_x;
+            vec3 edge_3 = v_z - v_y;
 
             vec3 normal = glm::cross(edge_1, edge_2);
 
@@ -197,7 +199,7 @@ namespace engine {
     collision_result::operator bool() const { return versor != vec3(0); }
 
     collision_layers_bitmask collision_layer(int n) {
-        static_assert(sizeof(collision_layers_bitmask) * CHAR_BIT == 64);
+        static_assert(sizeof(collision_layers_bitmask) == sizeof(std::uint64_t));
         EXPECTS(0 <= n && n < 64);
 
         return collision_layers_bitmask(1) << n;

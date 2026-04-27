@@ -29,14 +29,14 @@ namespace engine {
 
     inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
         EXPECTS_WITH_MSG(n.has_child(child_name), std::format("({}).has_child('{}')", n.id(), child_name));
-        return get_child(n[child_name], child_names...);
+        return get_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     }
 
     inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n) { return n; }
 
     inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
         if(n.has_child(child_name))
-            return get_optional_child(n[child_name], child_names...);
+            return get_optional_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         else
             return std::nullopt;
     }
@@ -81,10 +81,10 @@ namespace engine {
     inline std::array<T, N> children_as_array(ryml::ConstNodeRef n) {
         EXPECTS(n.num_children() == N);
 
-        std::array<T, N> ret;
+        std::array<T, N> ret{};
         auto iter = n.cchildren().begin();
         for(size_t i = 0; i < N; i++) {
-            ret[i] = as_num<T>(get_val(*iter));
+            ret[i] = as_num<T>(get_val(*iter)); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
             ++iter;
         }
 
@@ -93,8 +93,8 @@ namespace engine {
 
     template<typename T, size_t N>
     inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
-        auto arr(children_as_array<float, 3>(n));
-        return glm::vec3(arr[0], arr[1], arr[2]);
+        auto[x,y,z] = children_as_array<float, 3>(n);
+        return glm::vec3(x,y,z);
     }
 
     template<typename payload_t>
@@ -188,7 +188,7 @@ namespace engine {
             if(father) {
                 father->add_child(std::move(owning));
             } else {
-                EXPECTS(name.length() == 0);
+                EXPECTS(name.empty());
                 owning.release();
             }
 

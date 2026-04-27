@@ -12,13 +12,15 @@ namespace engine {
     class application {
         window::window m_window;
 
-        nullable_rc<scene> m_active_scene;
+        nullable_rc<scene> m_active_scene = nullptr;
+        bool m_ignore_mouse_move_on_next_event = true;
         glm::vec2 m_prev_mouse_cursor_pos;
-        bool m_ignore_mouse_move_on_next_event;
         std::vector<event_variant_t> m_events_this_frame;
     public:
-
         application(application&&) = delete; // application cannot be moved: m_window's window handle points to it in its user pointer and scene::m_application points to it
+        application(const application&) = delete;
+        application& operator=(application&&) = delete;
+        application& operator=(const application&) = delete;
 
         //pass negative values in the resolution for fullscreen
         application(glm::ivec2 res, const std::string& title, window::hints window_hints);
@@ -26,7 +28,7 @@ namespace engine {
         ~application();
 
         //needs to be separate from the constructor because a scene can only be constructed after gl (gal) and resources_manager are initialized, which happens in application's constructor
-        void set_start_scene(rc<scene> new_scene);
+        void set_start_scene(rc<scene> start_scene);
 
         void run();
     };

@@ -19,7 +19,7 @@ struct ankerl::unordered_dense::hash<glm::vec<N, T, Q>> {
     std::size_t operator()(const glm::vec<N, T, Q>& v) const noexcept {
         std::array<T,N> arr{};
         for(int i = 0; i < N; i++)
-            arr[i] = v[i];
+            arr[i] = v[i]; //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // both are compile time size N, i<N
         auto tuple = std::tuple_cat(arr);
         return ankerl::unordered_dense::hash<decltype(tuple)>{}(tuple);
     }

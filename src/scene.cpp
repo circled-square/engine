@@ -12,6 +12,8 @@ namespace engine {
     template<typename T, typename underlying_type>
     concept MaybeConst = std::same_as<std::remove_const_t<T>, std::remove_const_t<underlying_type>>;
 
+    constexpr float fovy = glm::pi<float>() / 4, znear = .1f, zfar = 1000.f;
+
     //pre-order dfs, without recursion
     template<MaybeConst<node> node_t, Callable<void(node_t&)> callable_t>
     inline void depth_first_traversal(node_t& root, const callable_t& callable) {
@@ -23,26 +25,25 @@ namespace engine {
             //iterate in reverse, so the first child is added last, which means it is visited first
             auto children = n->children();
             for(std::int64_t i = children.size()-1; i >= 0; i--)
-                stack.push_back(&children[i]);
+                stack.push_back(&children[i]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
             callable(*n);
         }
     }
 
     //pre+post-order dfs, without recursion
-    template<MaybeConst<node> node_t, typename traversal_payload_t, Callable<traversal_payload_t(node_t&, const traversal_payload_t&)> preorder_t, Callable<void(node_t&, const traversal_payload_t&)> postorder_t>
-    inline void depth_first_traversal(node_t& root, const traversal_payload_t& root_params, const preorder_t& preorder, const postorder_t& postorder)
-    {
+    template<MaybeConst<node> node_t, typename dfs_payload_t, Callable<dfs_payload_t(node_t&, const dfs_payload_t&)> preorder_t, Callable<void(node_t&, const dfs_payload_t&)> postorder_t>
+    inline void depth_first_traversal(node_t& root, const dfs_payload_t& root_params, const preorder_t& preorder, const postorder_t& postorder) {
         struct stack_entry_t {
             node_t* n;
             // payload to be passed to children when they are visited, both pre- and post-order
-            traversal_payload_t p;
+            dfs_payload_t p;
             // index of next child to be visited
             size_t i;
         };
         std::vector<stack_entry_t> stack;
 
-        traversal_payload_t root_payload = preorder(root, root_params); // must be done before root is moved out of
+        dfs_payload_t root_payload = preorder(root, root_params); // must be done before root is moved out of
 
         stack.push_back({ &root, std::move(root_payload), 0 });
 
@@ -51,8 +52,8 @@ namespace engine {
             auto n_children = n->children();
 
             if(i < n_children.size()) {
-                node_t& c = n_children[i];
-                traversal_payload_t c_payload = preorder(c, p); // must be done before c is moved out of
+                node_t& c = n_children[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < n_children.size()
+                dfs_payload_t c_payload = preorder(c, p); // must be done before c is moved out of
                 i++; //do NOT update i after having pushed, as pushing can possibly invalidate the reference
                 stack.push_back({ &c, std::move(c_payload), 0 });
             } else {
@@ -81,9 +82,7 @@ namespace engine {
         depth_first_traversal(root, payload_t {out_res, viewproj, default_framebuffer},
             //preorder: construction of payload
             [frame_time, &r](const node& n, const payload_t& father_payload) {
-                payload_t children_payload;
-
-                // EXPECTS(n.operator rc<const node>());
+                payload_t children_payload{};
 
                 // if n is a viewport first setup rendering of children,
                 // otherwise render them to the same viewport as n
@@ -95,7 +94,8 @@ namespace engine {
 
                     n.get<viewport>().bind_draw();
 
-                    mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)children_payload.out_res.x / children_payload.out_res.y, .1f, 1000.f); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
+                    float aspect_ratio = float(children_payload.out_res.x) / float(children_payload.out_res.y);
+                    mat4 proj_mat = glm::perspective(fovy, aspect_ratio, znear, zfar); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
                     mat4 view_mat = n.get<viewport>().get_active_camera().value_or(mat4(1)).get_view_mat();
                     children_payload.viewproj = mvp_matrices { .m=glm::mat4(1.), .v=view_mat, .p=proj_mat };
                     r.clear();
@@ -122,8 +122,9 @@ namespace engine {
                     if(father_payload.vp_node) {
                         EXPECTS(father_payload.vp_node->has<viewport>());
                         father_payload.vp_node->get<viewport>().bind_draw();
-                    } else
+                    } else {
                         framebuffer::unbind();
+                    }
 
                     r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
                 }
@@ -141,7 +142,7 @@ namespace engine {
         if(n.has<camera>()) {
             n.get<camera>().set_view_mat(glm::inverse(n.get_global_transform()));
 
-            if(forefather_vp_node) {
+            if(forefather_vp_node != nullptr) {
                 EXPECTS(forefather_vp_node->has<viewport>());
                 forefather_vp_node->get<viewport>().set_active_camera(n.get<camera>());
             } else {
@@ -224,7 +225,9 @@ namespace engine {
         // std::optional<camera> default_fb_camera = std::nullopt;
 
         m_renderer.clear(m_application_channel.to_app().clear_color);
-        mat4 proj_mat = glm::perspective(glm::pi<float>() / 4, (float)resolution.x / resolution.y, .1f, 1000.f); // TODO: fovy and znear/zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
+
+        float aspect_ratio = float(resolution.x) / float(resolution.y);
+        mat4 proj_mat = glm::perspective(fovy, aspect_ratio, znear, zfar); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
         mvp_matrices viewproj { .m=mat4(1.), .v=view_mat, .p=proj_mat };
         render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj, resolution, frame_time);
@@ -256,10 +259,10 @@ namespace engine {
     node& scene::get_root() { return *m_root; }
 
     node& scene::get_node(std::string_view path) {
-        if(path[0] != '/')
+        if(path.at(0) != '/')
             throw invalid_path_exception(path);
 
-        std::string_view subpath(path.begin()+1, path.end());
+        std::string_view subpath = path.substr(1);
         return m_root->get_descendant_from_path(subpath);
     }
 

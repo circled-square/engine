@@ -12,7 +12,7 @@ namespace engine::window {
 
     std::int64_t window::window_count = 0;
 
-    window::window(glm::ivec2 res, const std::string& title, hints win_hints) {
+    window::window(glm::ivec2 res, const std::string& title, hints window_hints) {
         //Initialize the library
         if(window_count == 0)
             throw_on_error(glfwInit(), window_exception::code::BACKEND_INIT);
@@ -32,7 +32,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_BLUE_BITS,    mode->blueBits);
         glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
 
-        if(win_hints.maximised)
+        if(window_hints.maximised)
             glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
         /*
@@ -42,7 +42,7 @@ namespace engine::window {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         */
 
-        if(win_hints.fullscreen)
+        if(window_hints.fullscreen)
             m_window_ptr = glfwCreateWindow(mode->width, mode->height, title.c_str(), monitor, nullptr);
         else
             m_window_ptr = glfwCreateWindow(res.x, res.y, title.c_str(), nullptr, nullptr);
@@ -53,7 +53,7 @@ namespace engine::window {
 
         // Unfortunately multiple windows will not respect this feature correctly, but since GLFW is not
         // thread-safe I'm not sure this would be useful in any way.
-        glfwSwapInterval(win_hints.vsync ? 1 : 0);
+        glfwSwapInterval(window_hints.vsync ? 1 : 0);
 
         window::window_count++;
     }
@@ -81,7 +81,7 @@ namespace engine::window {
 
     bool window::is_mouse_cursor_captured() { return glfwGetInputMode(m_window_ptr, GLFW_CURSOR) == GLFW_CURSOR_DISABLED; }
 
-    bool window::should_close() { return glfwWindowShouldClose(m_window_ptr); }
+    bool window::should_close() { return glfwWindowShouldClose(m_window_ptr) != 0; }
 
     void window::swap_buffers() { glfwSwapBuffers(m_window_ptr); }
 
@@ -99,9 +99,9 @@ namespace engine::window {
 
     static_assert(std::same_as<window::mouse_position_cb_t, GLFWcursorposfun>);
     static_assert(std::same_as<window::mouse_button_cb_t, GLFWmousebuttonfun>);
-    void window::set_mouse_cb(mouse_position_cb_t pf, mouse_button_cb_t bf) {
-        glfwSetCursorPosCallback(m_window_ptr, pf);
-        glfwSetMouseButtonCallback(m_window_ptr, bf);
+    void window::set_mouse_cb(mouse_position_cb_t pos_cb, mouse_button_cb_t btn_cb) {
+        glfwSetCursorPosCallback(m_window_ptr, pos_cb);
+        glfwSetMouseButtonCallback(m_window_ptr, btn_cb);
     }
 
     void window::set_user_ptr(void *p) { glfwSetWindowUserPointer(m_window_ptr, p); }

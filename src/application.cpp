@@ -12,12 +12,11 @@
 
 namespace engine {
     application::application(glm::ivec2 res, const std::string &title, window::hints window_hints)
-            : m_window(res, title, window_hints), m_active_scene(),
-              m_prev_mouse_cursor_pos(0.f, 0.f),
-              m_ignore_mouse_move_on_next_event(true)
+            : m_window(res, title, window_hints),
+              m_prev_mouse_cursor_pos(0.f, 0.f)
     {
         // init opengl (after glfw)
-        gal::initialize_opengl((gal::opengl_function_loader_t)m_window.get_opengl_function_loader());
+        gal::initialize_opengl(reinterpret_cast<gal::opengl_function_loader_t>(m_window.get_opengl_function_loader()));
         // init resources_manager (after opengl)
         resources_manager::init_instance();
 
@@ -129,7 +128,7 @@ namespace engine {
             m_active_scene->app_channel().from_app_mut().delta = delta;
             m_active_scene->app_channel().from_app_mut().frame_time = frame_time;
             m_events_this_frame.clear();
-            m_window.poll_events(); // populates m_events_this_frame
+            window::window::poll_events(); // populates m_events_this_frame
             m_active_scene->app_channel().from_app_mut().events = m_events_this_frame;
 
             ImGui_ImplOpenGL3_NewFrame();

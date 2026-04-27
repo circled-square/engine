@@ -7,25 +7,21 @@ namespace engine {
     using glm::mat4;
     static std::string fix_name(std::string s) {
         for(char& c : s) {
-            if(!std::isalnum(c) && node::special_chars_allowed_in_node_name.find(c) == std::string_view::npos)
+            if(std::isalnum(c) != 0 && node::special_chars_allowed_in_node_name.contains(c)) {
                 c = '_';
+            }
         }
         return s;
     }
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> s, const std::any& params)
-        : m_children(),
-          m_children_is_sorted(true),
-          m_father(),
+    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params)
+        : m_children_is_sorted(true),
+          m_father(nullptr),
           m_name(fix_name(std::move(name))),
           m_transform(std::move(transform)),
-          m_global_transform_cache(),
-          m_payload(std::move(payload)),
-          m_nodetree_bp_reference(),
-          m_script()
+          m_payload(std::move(payload))
     {
-        if(s.has_value())
-            attach_script(*s, params);
+        visit_optional(script, [&](auto& s){ attach_script(s, params); });
     }
 
 
@@ -41,7 +37,7 @@ namespace engine {
         n->m_col_behaviour = o.m_col_behaviour;
         n->set_children_sorting_preference(o.m_children_is_sorted);
         for(int i = 0; i < o.m_children.size(); i++) {
-            n->m_children.push_back(node::deep_copy(*o.m_children[i]));
+            n->m_children.push_back(node::deep_copy(*o.m_children[i])); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < o.m_children.size()
         }
 
         // fix the children's father pointers
@@ -86,7 +82,7 @@ namespace engine {
     }
 
     node& node::get_father_checked() {
-        if(m_father)
+        if(m_father != nullptr)
             return *m_father;
         else
             throw node_exception(node_exception::type::NO_FATHER, m_name);
@@ -94,7 +90,7 @@ namespace engine {
 
 
     const node& node::get_father_checked() const {
-        if(m_father)
+        if(m_father != nullptr)
             return *m_father;
         else
             throw node_exception(node_exception::type::NO_FATHER, m_name);
@@ -116,7 +112,7 @@ namespace engine {
     const mat4& node::get_global_transform() const {
         if(!m_global_transform_cache.has_value()) {
             const node* f = get_father();
-            if(f) {
+            if(f != nullptr) {
                 m_global_transform_cache = f->get_global_transform() * transform();
             } else {
                 m_global_transform_cache = transform();
@@ -130,11 +126,11 @@ namespace engine {
     void node::react_to_collision(collision_result res, node& other) {
         node* node_cursor = this;
         while(true) {
-            auto& col_behaviour = node_cursor->get_collision_behaviour();
+            const auto& col_behaviour = node_cursor->get_collision_behaviour();
 
             if(col_behaviour.moves_away_on_collision) {
-                node* father_p = node_cursor->get_father();
-                mat4 father_inverse_globtrans = father_p ? glm::inverse(father_p->get_global_transform()) : mat4(1);
+                const node* father_p = node_cursor->get_father();
+                mat4 father_inverse_globtrans = father_p != nullptr ? glm::inverse(father_p->get_global_transform()) : mat4(1);
 
                 glm::vec3 local_space_min_translation = father_inverse_globtrans * glm::vec4(-res.get_min_translation(), 0);
 

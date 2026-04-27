@@ -26,6 +26,8 @@ namespace engine::window {
         window() = delete;
         window(window&&) = delete;
         window(const window&) = delete;
+        window& operator=(window&&) = delete;
+        window& operator=(const window&) = delete;
 
         window(glm::ivec2 res, const std::string& title, hints window_hints = {});
         ~window();
@@ -49,15 +51,15 @@ namespace engine::window {
 
 
         // set callbacks
-        using resize_cb_t = void (*)(GLFWwindow*, int, int);
+        using resize_cb_t = void (*)(GLFWwindow* window, int width, int height);
         void set_resize_cb(resize_cb_t f);
 
-        using key_cb_t = void (*)(GLFWwindow*, int, int, int, int);
+        using key_cb_t = void (*)(GLFWwindow* window, int key, int scancode, int action, int mods);
         void set_key_cb(key_cb_t f);
 
-        using mouse_position_cb_t = void (*)(GLFWwindow*, double, double);
-        using mouse_button_cb_t = void (*)(GLFWwindow*, int, int, int);
-        void set_mouse_cb(mouse_position_cb_t, mouse_button_cb_t);
+        using mouse_position_cb_t = void (*)(GLFWwindow* window, double xpos, double ypos);
+        using mouse_button_cb_t = void (*)(GLFWwindow* window, int button, int action, int mods);
+        void set_mouse_cb(mouse_position_cb_t pos_cb, mouse_button_cb_t btn_cb);
 
 
         void set_user_ptr(void* p);
@@ -66,8 +68,8 @@ namespace engine::window {
 
         //access and conversion of the internal GLFWwindow*
         operator GLFWwindow* () { return  m_window_ptr; }
-        operator bool     () { return  m_window_ptr; }
-        bool operator!    () { return !m_window_ptr; }
+        operator bool     () { return m_window_ptr != nullptr; }
+        bool operator!    () { return m_window_ptr == nullptr; }
 
         using generic_fn_ptr_t = void(*)();
         using opengl_function_loader_t = generic_fn_ptr_t(*)(const char*);
@@ -86,7 +88,7 @@ namespace engine::window {
 
         explicit window_exception(window_exception::code err);
 
-        virtual const char* what() const noexcept;
+        const char* what() const noexcept override;
     };
 
     namespace key_codes {

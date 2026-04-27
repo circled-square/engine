@@ -96,7 +96,7 @@ namespace engine {
         ~node() = default;
 
         // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
-        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script>, const std::any& params);
+        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params);
 
         // get child from name
         ENGINE_API node& get_child(std::string_view name);
