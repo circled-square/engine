@@ -17,7 +17,7 @@ template<typename T, int N, glm::qualifier Q>
 struct ankerl::unordered_dense::hash<glm::vec<N, T, Q>> {
     hash() = default;
     std::size_t operator()(const glm::vec<N, T, Q>& v) const noexcept {
-        std::array<T,N> arr;
+        std::array<T,N> arr{};
         for(int i = 0; i < N; i++)
             arr[i] = v[i];
         auto tuple = std::tuple_cat(arr);

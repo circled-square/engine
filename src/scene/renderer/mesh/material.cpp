@@ -42,16 +42,17 @@ namespace engine {
             size_t next_tex_slot = 0;
 
             for(; next_tex_slot < m_textures.size(); next_tex_slot++) {
-                const std::string& name = m_shader->get_uniforms().sampler_names[next_tex_slot].c_str();
-                const gal::texture& texture = *m_textures[next_tex_slot];
+                ASSERTS(next_tex_slot < m_textures.size() && next_tex_slot < m_shader->get_uniforms().sampler_names.size());
+                const std::string& name = m_shader->get_uniforms().sampler_names[next_tex_slot]; //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+                const gal::texture& texture = *m_textures[next_tex_slot]; //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
                 texture.bind(next_tex_slot);
-                m_shader->get_program().set_uniform<int>(name.c_str(), next_tex_slot);
+                m_shader->get_program().set_uniform<int>(name.c_str(), (int)next_tex_slot);
             }
 
             if(m_shader->get_uniforms().dither_texture) {
                 get_rm().load<gal::texture>(internal_resource_name_t::dither_texture)->bind(next_tex_slot);
-                m_shader->get_program().set_uniform<int>(uniform_names::dither_texture, next_tex_slot);
+                m_shader->get_program().set_uniform<int>(uniform_names::dither_texture, (int)next_tex_slot);
                 next_tex_slot++;
             }
         }

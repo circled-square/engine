@@ -43,6 +43,7 @@ namespace engine::detail {
     template<Resource T>
     std::optional<T>& rc_resource<T>::resource() { return m_resource; }
 
+    //NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
     #define INSTANTIATE_RC_RESOURCE_TEMPLATE(TYPE) \
         template class rc_resource<TYPE>;
 

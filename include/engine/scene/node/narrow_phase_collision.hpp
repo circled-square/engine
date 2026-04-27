@@ -15,14 +15,14 @@ namespace engine {
     // layers go from 0 to 63
     ENGINE_API collision_layers_bitmask collision_layer(int n);
 
-    //TODO: make collision_shape an abstract class from which others inherit: (mesh|ray|sphere)_collision_shape
+    //TODO: make collision_shape an abstract class from which others inherit: (mesh|ray|sphere)_collision_shape; we probably want GJK for this
     struct collision_shape {
         std::vector<glm::vec3> verts;
         std::vector<glm::vec3> face_normals;
         std::vector<glm::vec3> edges;
         //the correctness of layers in a collision is NOT checked by collision_shape;
-        collision_layers_bitmask is_layers;
-        collision_layers_bitmask sees_layers;
+        collision_layers_bitmask is_layers = 0;
+        collision_layers_bitmask sees_layers = 0;
 
         ENGINE_API static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::uvec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);
         ENGINE_API static collision_shape from_mesh(stride_span<const glm::vec3> mesh_verts, std::span<const glm::u16vec3> mesh_indices, collision_layers_bitmask is_layer, collision_layers_bitmask sees_layers);

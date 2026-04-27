@@ -21,7 +21,7 @@ namespace engine {
     template<> shader construct_from_name<shader>(std::string_view name) { return shader::from_file(std::format("assets/{}", name)); }
     template<> nodetree_blueprint construct_from_name<nodetree_blueprint>(std::string_view name) {
         std::string path = std::format("assets/{}", name);
-        return load_nodetree_from_gltf(path.c_str(), get_rm().get_default_3d_shader());
+        return load_nodetree_from_gltf(path, get_rm().get_default_3d_shader());
     }
     template<> gal::texture construct_from_name<gal::texture>(std::string_view name) {
         std::string path = std::format("assets/{}", name);
@@ -126,7 +126,7 @@ namespace engine {
     template<Resource T>
     rc<T> resources_manager::load_impl(const detail::resource_name_t& name) {
         //first retrieve the memory location
-        detail::rc_resource<T>* ret;
+        detail::rc_resource<T>* ret = nullptr;
         if (auto search = m_hashmaps.name_to_id<T>().find(name); search != m_hashmaps.name_to_id<T>().end()) {
             // we already have the memory
             detail::resource_id<T> id = search->second;
@@ -134,7 +134,7 @@ namespace engine {
             //remove from marked from deletion status
             m_hashmaps.marked_for_deletion<T>().erase(id);
 
-            detail::rc_ptr<T>& p = std::get<detail::rc_ptr<T>>(m_hashmaps.id_to_resource<T>()[id]);
+            detail::rc_ptr<T>& p = std::get<detail::rc_ptr<T>>(m_hashmaps.id_to_resource<T>()[id]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap [] does not fail
 
             ret = p.get();
         } else {
@@ -148,7 +148,8 @@ namespace engine {
             //create the resource id (for which we use the address)
             detail::resource_id<T> id = *p;
             //associate the name to the id
-            m_hashmaps.name_to_id<T>()[name] = id;
+
+            m_hashmaps.name_to_id<T>()[name] = id; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap [] does not fail
             //associate the id to the name and owning pointer
             m_hashmaps.id_to_resource<T>().insert({id, std::tuple(name, std::move(p))});
         }
@@ -184,7 +185,7 @@ namespace engine {
             //remove from marked from deletion status
             m_hashmaps.marked_for_deletion<T>().erase(id);
 
-            detail::rc_ptr<T>& p = std::get<detail::rc_ptr<T>>(m_hashmaps.id_to_resource<T>()[id]);
+            detail::rc_ptr<T>& p = std::get<detail::rc_ptr<T>>(m_hashmaps.id_to_resource<T>()[id]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap [] does not fail
 
             detail::rc_resource<T>* mem_location = p.get();
 
