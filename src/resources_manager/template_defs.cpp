@@ -157,7 +157,7 @@ namespace engine {
         // then, if it is not already loaded, load the resource
         if(!ret->resource().has_value()) {
             match_variant(name,
-                [&](std::string_view n) { ret->emplace(construct_from_name<T>(n)); },
+                [&](const std::string& n) { ret->emplace(construct_from_name<T>(n)); },
                 [&](std::uint8_t n) { ret->emplace(construct_from_name<T>(internal_resource_name_t(n))); },
                 [](std::monostate) {}
             );
@@ -172,11 +172,11 @@ namespace engine {
 
 
     template<AnyOneOf<shader, nodetree_blueprint, gal::texture, scene> T>
-    rc<T> resources_manager::load_mut(std::string_view p) {
+    rc<T> resources_manager::load_mut(const std::string& p) {
         return new_from(construct_from_name<T>(p));
     }
 
-    template<AnyOneOf<shader, nodetree_blueprint> T> void resources_manager::hot_reload(std::string_view identifier) {
+    template<AnyOneOf<shader, nodetree_blueprint> T> void resources_manager::hot_reload(const std::string& identifier) {
         //first retrieve the memory location
         if (auto search = m_hashmaps.name_to_id<T>().find(identifier); search != m_hashmaps.name_to_id<T>().end()) {
             // we already have the memory
@@ -201,13 +201,13 @@ namespace engine {
 
 
     // not implementable for all resource types
-    template void resources_manager::hot_reload<shader>(std::string_view);
-    template void resources_manager::hot_reload<nodetree_blueprint>(std::string_view);
+    template void resources_manager::hot_reload<shader>(const std::string&);
+    template void resources_manager::hot_reload<nodetree_blueprint>(const std::string&);
 
-    template rc<shader> resources_manager::load_mut<shader>(std::string_view p);
-    template rc<nodetree_blueprint> resources_manager::load_mut<nodetree_blueprint>(std::string_view p);
-    template rc<gal::texture> resources_manager::load_mut<gal::texture>(std::string_view p);
-    template rc<scene> resources_manager::load_mut<scene>(std::string_view p);
+    template rc<shader> resources_manager::load_mut<shader>(const std::string& p);
+    template rc<nodetree_blueprint> resources_manager::load_mut<nodetree_blueprint>(const std::string& p);
+    template rc<gal::texture> resources_manager::load_mut<gal::texture>(const std::string& p);
+    template rc<scene> resources_manager::load_mut<scene>(const std::string& p);
 
     // NOLINTBEGIN(cppcoreguidelines-macro-usage)
     #define INSTANTIATE_RM_TEMPLATES(TYPE) \

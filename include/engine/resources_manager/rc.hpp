@@ -41,7 +41,7 @@ namespace engine {
         ENGINE_API ~rc();
 
         ENGINE_API rc& operator=(const rc& o);
-        ENGINE_API rc& operator=(rc&& o) noexcept { std::swap(m_resource, o.m_resource); return *this; }
+        rc& operator=(rc&& o) noexcept { std::swap(m_resource, o.m_resource); return *this; }
 
         //note: dereferencing a const rc yields a mutable object!
         ENGINE_API T& operator*() const;

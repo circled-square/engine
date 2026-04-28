@@ -124,7 +124,7 @@ namespace engine {
                     auto script_path = s.substr(0, s.find(":"));
                     auto script_name = std::string(s.substr(s.find(":") + 1));
 
-                    stateless_script script = stateless_script::from(get_rm().load<dylib::library>(script_path), script_name.c_str());
+                    stateless_script script = stateless_script::from(get_rm().load<dylib::library>(std::string(script_path)), script_name.c_str());
                     return std::optional(script);
                 });
             auto script_construction_args = std::any(std::monostate()); //TODO
@@ -166,7 +166,7 @@ namespace engine {
 
             std::optional<rc<const nodetree_blueprint>> blueprint = get_optional_child_val(n, "load")
                 .transform([](std::string_view bp_path) {
-                    return get_rm().load<nodetree_blueprint>(bp_path);
+                    return get_rm().load<nodetree_blueprint>(std::string(bp_path));
             });
 
             // HANDLE SCRIPT PARAMS

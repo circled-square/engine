@@ -53,7 +53,17 @@ namespace engine {
                         resource_name_t name = std::get<resource_name_t>(itrh_iterator->second);
 
                         if(!std::holds_alternative<std::monostate>(name)) {
-                            EXPECTS(m_hashmaps.name_to_id<T>().contains(name));
+                            // std::string std::format("//// {} name not found in name_to_id_hashmap ////", name)
+                            if (!m_hashmaps.name_to_id<T>().contains(name)) {
+                                std::string name_string;
+                                match_variant(name,
+                                    [&](std::monostate){ name_string = std::format("std::monostate()");},
+                                    [&](std::uint8_t v){ name_string = std::format("std::uint8_t({})", v);},
+                                    [&](std::string_view v){ name_string = std::format("std::string_view(\"{}\")", v);}
+                                );
+
+                                slogga::stdout_log.warn("in resources_manager::collect_garbage(): key '{}' not found in name_to_id hashmap", name_string);
+                            }
                             m_hashmaps.name_to_id<T>().erase(name);
                         }
 
@@ -110,8 +120,6 @@ namespace engine {
 
     resources_manager &resources_manager::get_instance() {
         EXPECTS(global_rm_instance_is_inited);
-        std::optional<int> s;
-        s.operator*();
         return *reinterpret_cast<resources_manager*>(global_rm_instance.data());
     }
 

@@ -61,7 +61,7 @@ namespace engine {
             }
             sv = sv.substr(uniform_str.length());
 
-            if(std::isspace(sv.at(0)) != 0) {
+            if(std::isspace(sv.at(0)) == 0) {
                 throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
                     std::format("expected whitespace after 'uniforms', got '{}'", sv.at(0)));
             }
@@ -75,7 +75,7 @@ namespace engine {
             std::string_view type_str = sv.substr(0, end_of_type);
             sv = sv.substr(type_str.length());
 
-            if(std::isspace(sv.at(0)) != 0) {
+            if(std::isspace(sv.at(0)) == 0) {
                 throw shader_parse_exception(shader_parse_exception::type::UNIFORMS_BLOCK,
                     std::format("parsing '#uniforms' block: expected whitespace after typename '{}', got '{}'", type_str, sv.at(0)));
             }

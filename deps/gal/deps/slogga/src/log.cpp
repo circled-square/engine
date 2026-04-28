@@ -1,10 +1,21 @@
 #include "../include/slogga/log.hpp"
-#include "../include/slogga/asserts.hpp"
-#include <iostream>
-
+#include <sstream>
+#include <cstring>
 
 namespace slogga {
-    log stdout_log(std::cout, log_level::WARN); //match the extern declaration in the header
+    //match the extern declaration in the header
+    log stdout_log(stdout, default_log_level);
+
+    static void write_to_stream(std::variant<std::ofstream, std::FILE*>& stream, const char* str) {
+        if(std::holds_alternative<std::ofstream>(stream)) {
+            std::ofstream& s = std::get<std::ofstream>(stream);
+            s << str << std::flush;
+        } else if (std::holds_alternative<std::FILE*>(stream)){
+            FILE* f = std::get<std::FILE*>(stream);
+            std::fwrite(str, sizeof(char), std::strlen(str), f);
+            std::fflush(f);
+        }
+    }
 
     static std::string get_timestamp_string() {
         std::time_t t = std::time(nullptr);
@@ -27,14 +38,14 @@ namespace slogga {
         return "(NO SUCH LOG LEVEL)";
     }
 
-    log::log(std::ostream& stream, log_level l, bool timestamp)
-        : m_stream(stream),
+
+    log::log(std::variant<std::ofstream, std::FILE*> stream, log_level l, bool timestamp)
+        : m_stream(std::move(stream)),
           m_timestamp(timestamp ? get_timestamp_string() : std::string()),
-          m_last_line_hash(0),
           m_repeated_line_count(0),
           m_log_level(l)
     {
-        set_log_level(l); // redundantly doing this so the log level being set gets logged
+        info("log level set to {}", log_level_name(l));
     }
 
     void log::set_log_level(log_level l) {
@@ -42,42 +53,50 @@ namespace slogga {
         info("log level set to {}", log_level_name(l));
     }
 
+    void log::end_current_line() {
+        std::stringstream ss;
+
+        //print the count of how many times the last line was printed and terminate it
+        if (m_repeated_line_count > 1) {
+            ss << " (repeated x" << m_repeated_line_count << ")" << std::endl;
+        } else if (m_repeated_line_count > 0) {
+            ss << std::endl;
+        }
+        m_repeated_line_count = 0;
+
+        write_to_stream(m_stream, ss.str().c_str());
+    }
+
     void log::operator()(log_level l, std::string_view fmt, std::format_args args) {
         if (would_print(l)) {
             //only perform formatting if necessary
             std::string line = std::vformat(fmt, args);
 
-            //simply ignore the possibility of hash collision
-            std::size_t line_hash = std::hash<std::string>{}(line) + (std::size_t)l;
-
-            if (line_hash == m_last_line_hash && m_repeated_line_count != 0) {
+            if (line == m_last_line && m_repeated_line_count != 0) {
                 //repeated the last line
                 m_repeated_line_count++;
             } else {
                 //a new, different line is being printed
+                end_current_line();
 
-                //print the count of how many times the last line was printed and terminate it
-                if (m_repeated_line_count > 1)
-                    m_stream << " (repeated x" << m_repeated_line_count << ")";
-                m_stream << std::endl;
-
+                std::stringstream ss;
                 //print the new line without the \n
-                m_stream << "[" << log_level_name(l) << m_timestamp << "] " << line << std::flush;
+                ss << "[" << log_level_name(l) << m_timestamp << "] " << line;
+
+                write_to_stream(m_stream, ss.str().c_str());
+
                 m_repeated_line_count = 1;
-                m_last_line_hash = line_hash;
+                m_last_line = std::move(line);
             }
         }
     }
 
-    bool log::would_print(log_level l) {
+    bool log::would_print(log_level l) const {
         return l <= m_log_level;
     }
 
     // TODO: this is not called for stdout_log since it is a global
     log::~log() {
-        //print the count of how many times it was printed and terminate the last line
-        if(m_repeated_line_count > 1)
-            m_stream << "(repeated x" << m_repeated_line_count << ")";
-        m_stream << std::endl;
+        end_current_line();
     }
 }
