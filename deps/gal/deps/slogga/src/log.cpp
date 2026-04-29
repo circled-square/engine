@@ -4,7 +4,7 @@
 
 namespace slogga {
     //match the extern declaration in the header
-    log stdout_log(stdout, default_log_level);
+    log stdout_log(stdout, default_log_level); //NOLINT(cppcoreguidelines-avoid-non-const-global-variables) // the guideline is to avoid the use of non-const globals but explicitly does not forbid them, using std::cout as an example of a valid usage. This object is essentially the same thing.
 
     static void write_to_stream(std::variant<std::ofstream, std::FILE*>& stream, const char* str) {
         if(std::holds_alternative<std::ofstream>(stream)) {
