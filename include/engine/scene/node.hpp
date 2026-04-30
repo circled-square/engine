@@ -34,7 +34,7 @@ namespace engine {
         node* m_father;
 
         std::string m_name;
-        glm::mat4 m_transform;
+        ecs_id_t m_ecs_id;
 
         /* Global transform cache:
          * - set_transform calls invalidate_global_transform_cache
@@ -47,7 +47,6 @@ namespace engine {
          *      invalidate the cache of itself and its DESCENDANTS
          *
          */
-        mutable std::optional<glm::mat4> m_global_transform_cache;
         void invalidate_global_transform_cache() const;
 
         node_payload_t m_payload;
@@ -55,7 +54,6 @@ namespace engine {
         node_collision_behaviour m_col_behaviour;
 
         std::optional<script> m_script;
-
 
     public:
         ENGINE_API void add_child(std::unique_ptr<node> c);
@@ -93,7 +91,7 @@ namespace engine {
         node(node&&) = delete;
         node& operator=(const node&) = delete;
         node& operator=(node&&) = delete;
-        ~node() = default;
+        ENGINE_API ~node();
 
         // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
         ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params);
@@ -124,7 +122,7 @@ namespace engine {
         std::string absolute_path() const { return m_father != nullptr ? m_father->absolute_path() + "/" + m_name : m_name; }
 
         // get this node's local transform
-        const glm::mat4& transform() const { return m_transform; }
+        const glm::mat4& transform() const { return get_rm().get_ecs().get_component<glm::mat4>("transform").get(m_ecs_id); }
         // set this node's local transform
         ENGINE_API void set_transform(const glm::mat4& m);
         /* get this node's global transform.
@@ -170,6 +168,7 @@ namespace engine {
             m_payload = std::move(p);
         }
 
+        ecs_id_t get_ecs_id() { return m_ecs_id; }
     };
 
     class node_exception : public std::exception {

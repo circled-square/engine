@@ -7,6 +7,7 @@
 #include "resources_manager/detail/typedefs.hpp"
 #include <engine/utils/api_macro.hpp>
 #include <engine/utils/hash.hpp>
+#include "entity_component_system.hpp"
 
 // resources_manager: implements shared ownership of resources and garbage collection of unused ones
 // frequently abbreviated as rm to save keystrokes/screenspace since it is used everywhere
@@ -28,6 +29,8 @@ namespace engine {
 
         hashmap<std::string, std::function<scene()>> m_dbg_scene_ctors;
 
+        entity_component_system m_ecs;
+
         // NOTE: necessary because of the debug implementation of scene_construction
         template<Resource T>
         friend T construct_from_name(std::string_view name);
@@ -44,6 +47,8 @@ namespace engine {
         template<Resource T> [[nodiscard]] ENGINE_API
         rc<T> load_impl(const detail::resource_name_t& name);
     public:
+        entity_component_system& get_ecs() { return m_ecs; }
+
         // hand over ownership of resource to resources_manager
         template<MoveableResource T> [[nodiscard]] ENGINE_API
         rc<T> new_from(T&& res);

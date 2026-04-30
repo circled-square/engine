@@ -5,6 +5,7 @@
 #include <engine/scene.hpp>
 #include <sstream>
 #include <dylib.hpp>
+#include <engine/entity_component_system.hpp>
 
 #include <engine/resources_manager.hpp>
 
