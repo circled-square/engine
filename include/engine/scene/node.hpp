@@ -30,10 +30,9 @@ namespace engine {
      */
     class node {
         std::vector<std::unique_ptr<node>> m_children;
-        bool m_children_is_sorted;
+        // bool m_children_is_sorted;
         node* m_father;
 
-        std::string m_name;
         ecs_id_t m_ecs_id;
 
         /* Global transform cache:
@@ -104,6 +103,7 @@ namespace engine {
         node_span children() { return node_span(std::span(m_children.begin(), m_children.end())); }
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
         ENGINE_API void set_children_sorting_preference(bool v);
+        ENGINE_API bool get_children_sorting_preference() const;
         // get node with relative path
         ENGINE_API node& get_descendant_from_path(std::string_view path);
 
@@ -117,12 +117,15 @@ namespace engine {
         ENGINE_API const node& get_father_checked() const;
 
         // get this node's name
-        const std::string& name() const { return m_name; }
+        std::string_view name() const { return get_rm().ecs().get_component<std::string>("name").get_or(m_ecs_id, std::string()); }
         // get this node's absolute path in the node hierarchy
-        std::string absolute_path() const { return m_father != nullptr ? m_father->absolute_path() + "/" + m_name : m_name; }
+        std::string absolute_path() const { return m_father != nullptr ? std::format("{}/{}", m_father->absolute_path(), name()) : std::string(name()); }
 
         // get this node's local transform
-        const glm::mat4& transform() const { return get_rm().get_ecs().get_component<glm::mat4>("transform").get(m_ecs_id); }
+        const glm::mat4& transform() const {
+            // slogga::stdout_log("[{}].transform()", m_ecs_id);
+            return get_rm().ecs().get_component<glm::mat4>("transform").get(m_ecs_id);
+        }
         // set this node's local transform
         ENGINE_API void set_transform(const glm::mat4& m);
         /* get this node's global transform.
@@ -168,7 +171,7 @@ namespace engine {
             m_payload = std::move(p);
         }
 
-        ecs_id_t get_ecs_id() { return m_ecs_id; }
+        ecs_id_t ecs_id() { return m_ecs_id; }
     };
 
     class node_exception : public std::exception {
@@ -181,6 +184,8 @@ namespace engine {
 
     public:
         node_exception(type t, std::string name, std::string child_name = "") : m_type(t), m_name(std::move(name)), m_child_name(std::move(child_name)) {}
+        //allow construction from string_views since this is the prevalent use case
+        node_exception(type t, std::string_view name, std::string_view child_name = "") : node_exception(t, std::string(name), std::string(child_name)) {}
 
         type get_type() { return m_type; }
 

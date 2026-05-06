@@ -1,10 +1,9 @@
 #ifndef ENGINE_UTILS_INTERVAL_SET_HPP
 #define ENGINE_UTILS_INTERVAL_SET_HPP
 
-#include "slogga/log.hpp"
+#include "slogga/asserts.hpp"
 #include <set>
 #include <concepts>
-#include <sstream>
 
 namespace engine {
     namespace detail {
@@ -54,12 +53,7 @@ namespace engine {
             }
 
             // last interval [a,_] s.t. a < v (or end())
-            auto last_smaller_it = [&](){
-                if(lower_bound_it == m_intervals.begin()) {
-                    return m_intervals.end();
-                }
-                return get_predecessor(lower_bound_it);
-            }();
+            auto last_smaller_it = lower_bound_it == m_intervals.begin() ? m_intervals.end() : get_predecessor(lower_bound_it);
 
             // check if the last interval w/ a < b contains v
             if(last_smaller_it != m_intervals.end() && last_smaller_it->b >= v) {
@@ -98,10 +92,10 @@ namespace engine {
         bool empty() const {
             // slogga::stdout_log("m_size = {}; m_intervals.empty() = {}; m_intervals.size() = {}", m_size, m_intervals.empty(), m_intervals.size());
             ASSERTS((m_size == 0) == m_intervals.empty());
-            return m_intervals.empty();
+            return m_size == 0;
         }
 
-        T extract_first_element() {
+        [[nodiscard]] T extract_first_element() {
             EXPECTS(!empty());
             m_size--;
             interval_t first_interval = *m_intervals.begin();
@@ -112,7 +106,10 @@ namespace engine {
 
             return first_interval.a;
         }
-        interval_t peek_last_interval() const { EXPECTS(!empty()); return *detail::get_predecessor(m_intervals.end()); }
+        interval_t peek_last_interval() const {
+            EXPECTS(!empty());
+            return *detail::get_predecessor(m_intervals.end());
+        }
         void erase_last_interval() {
             EXPECTS(!empty());
             auto last_interval_iter = detail::get_predecessor(m_intervals.end());

@@ -3,9 +3,12 @@
 
 #include <cstdint>
 #include <string_view>
+#include <limits>
+#include <engine/utils/optional_ref.hpp>
 
 namespace engine {
     using ecs_id_t = uint32_t;
+    constexpr ecs_id_t null_ecs_id = std::numeric_limits<ecs_id_t>::max();
     /*
      * TODO:
      * 		make it a variant<str, u64>, with u64 used for built-in components so that they can be stored in an array
@@ -35,12 +38,19 @@ namespace engine {
     public:
         virtual ~ecs_component_typed_interface() = default;
 
+        virtual T& get(ecs_id_t id) = 0;
         virtual const T& get(ecs_id_t id) const = 0;
-        virtual const T* try_get(ecs_id_t id) const = 0;
-        virtual const T& set(ecs_id_t id, T value) = 0;
-        // virtual void for_each(void(*)(ecs_id_t id, const T& value))
-    };
 
+        virtual optional_ref<T> try_get(ecs_id_t id) = 0;
+        virtual optional_ref<const T> try_get(ecs_id_t id) const = 0;
+
+        virtual const T& set(ecs_id_t id, T value) = 0;
+
+        virtual const T& get_or(ecs_id_t id, const T& default_value) const final {
+            optional_ref<const T> o = try_get(id);
+            return o ? *o : default_value;
+        }
+    };
 }
 
 #endif // ENGINE_ENTITY_COMPONENT_SYSTEM_COMPONENT_INTERFACES_HPP
