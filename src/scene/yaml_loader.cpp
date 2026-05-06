@@ -119,69 +119,76 @@ namespace engine {
 
         node* root_raw_ptr = simple_dfs(root_payload, root, [](node* father, ryml::ConstNodeRef n) {
             auto name = get_optional_child_val(n, "name").value_or("");
-            auto script = get_optional_child_val(n, "script")
-                .and_then([](std::string_view s){
-                    auto script_path = s.substr(0, s.find(":"));
-                    auto script_name = std::string(s.substr(s.find(":") + 1));
+            std::optional<stateless_script> script {};
+            if(auto script_str = get_optional_child_val(n, "script")) {
+                auto s = *script_str;
+                auto script_path = s.substr(0, s.find(":"));
+                auto script_name = std::string(s.substr(s.find(":") + 1));
 
-                    stateless_script script = stateless_script::from(get_rm().load<dylib::library>(std::string(script_path)), script_name.c_str());
-                    return std::optional(script);
-                });
+                script = stateless_script::from(get_rm().load<dylib::library>(std::string(script_path)), script_name.c_str());
+            }
             auto script_construction_args = std::any(std::monostate()); //TODO
 
-            glm::mat4 transform = get_optional_child(n, "transform")
-                .and_then([](ryml::ConstNodeRef trans_node) -> std::optional<glm::mat4> {
-                    glm::vec3 pos = get_optional_child(trans_node, "position")
+            glm::mat4 transform = glm::mat4(1);
+            if(auto transform_node = get_optional_child(n, "transform")) {
+                glm::vec3 pos = get_optional_child(*transform_node, "position")
                         .transform(children_as_glm_vec<float, 3>)
                         .value_or({0, 0, 0});
+                std::optional<glm::mat4> look_at {};
+                if(auto look_at_node = get_optional_child(*transform_node, "look_at")) {
+                    glm::vec3 center = get_optional_child(*look_at_node, "center")
+                        .transform(children_as_glm_vec<float, 3>)
+                        .value_or({0, 0, 0});
+                    glm::vec3 up = get_optional_child(*look_at_node, "up")
+                        .transform(children_as_glm_vec<float, 3>)
+                        .value_or({0, 1, 0});
 
-                    return (std::optional<glm::mat4>)get_optional_child(trans_node, "look_at")
-                        .transform([&](ryml::ConstNodeRef look_at_node) {
-                            glm::vec3 center = get_optional_child(look_at_node, "center")
-                                .transform(children_as_glm_vec<float, 3>)
-                                .value_or({0, 0, 0});
-                            glm::vec3 up = get_optional_child(look_at_node, "up")
-                                .transform(children_as_glm_vec<float, 3>)
-                                .value_or({0, 1, 0});
-
-                            return glm::inverse(glm::lookAt(pos, center, up));
-                        })
-                        .or_else([&]() { return std::optional{ glm::translate(glm::mat4(1), pos) }; })
-                        .value();
-                })
-                .value_or(glm::mat4(1));
+                    transform = glm::inverse(glm::lookAt(pos, center, up));
+                } else {
+                    transform = glm::translate(glm::mat4(1), pos);
+                }
+            }
 
             // TODO: handle viewport payload as well
-            node_payload_t payload = get_optional_child(n, "payload")
-                .and_then([](ryml::ConstNodeRef pl_node) {
-                    return get_optional_child_val(pl_node, "type")
-                        .and_then([](std::string_view type_str){
-                            if(type_str == "camera")
-                                return std::optional(node_payload_t(camera()));
-                            else
-                                return std::optional<node_payload_t>{};
-                        });
-                })
-                .value_or(std::monostate());
-
-            std::optional<rc<const nodetree_blueprint>> blueprint = get_optional_child_val(n, "load")
-                .transform([](std::string_view bp_path) {
-                    return get_rm().load<nodetree_blueprint>(std::string(bp_path));
-            });
-
-            // HANDLE SCRIPT PARAMS
-            // HANDLE WHATNOT
-
+            node_payload_t payload = std::monostate();
+            if(auto pl_node = get_optional_child(n, "payload")) {
+                if(auto type_str = get_optional_child_val(*pl_node, "type")) {
+                    if(*type_str == "camera") {
+                        payload = node_payload_t(camera());
+                    } else {
+                        UNIMPLEMENTED(false);
+                    }
+                }
+            }
 
             std::unique_ptr<node> owning;
-            if(blueprint.has_value()) {
-                owning = node::deep_copy(*blueprint, std::string(name));
+
+            if(auto path = get_optional_child_val(n, "load_uncached")) {
+                auto bp = get_rm().load_mut<nodetree_blueprint>(std::string(*path));
+                owning = bp->into_node();
                 owning->set_transform(transform * owning->transform());
-                if(script.has_value())
+
+                if(script.has_value()) {
+                    // overwrites the script from the loaded file
                     owning->attach_script(std::move(*script), script_construction_args);
+                }
+
+            } else if (auto path = get_optional_child_val(n, "load")) {
+                auto bp = get_rm().load<nodetree_blueprint>(std::string(*path));
+                owning = node::deep_copy(bp, std::string(name));
+                owning->set_transform(transform * owning->transform());
+
+                if(script.has_value()) {
+                    // overwrites the script from the loaded file
+                    owning->attach_script(std::move(*script), script_construction_args);
+                }
             } else {
                 owning = node::make(std::string(name), std::move(script), script_construction_args, std::move(payload), transform);
             }
+
+
+            // HANDLE SCRIPT PARAMS
+            // HANDLE MORE TYPES OF PAYLOAD
 
             node* ret = owning.get();
 

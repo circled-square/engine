@@ -124,7 +124,7 @@ namespace gal {
 
     texture texture::noise(glm::ivec2 res, char components) {
         std::random_device rand_dev;
-        std::subtract_with_carry_engine<unsigned char, 8, 5, 12> rng(rand_dev()); // NOLINT(cppcoreguidelines-avoid-magic-numbers) idc about why
+        std::subtract_with_carry_engine<unsigned char, 8, 5, 12> rng(rand_dev()); // NOLINT(cppcoreguidelines-avoid-magic-numbers) // these are just some numbers I've seen recommended, i don't think there's a way to choose pseudo-random number generator parameters without them being magic numbers for mortals such as me
 
         std::vector<unsigned char> data(res.x*res.y*components);
         for(unsigned char& byte : data) { // fill all components of the texture with pseudo-random data

@@ -15,24 +15,24 @@ namespace engine {
     }
 
     node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params)
-        : m_children_is_sorted(true),
-          m_father(nullptr),
-          m_name(fix_name(std::move(name))),
+        : m_father(nullptr),
           m_payload(std::move(payload)),
-          m_ecs_id(get_rm().get_ecs().make_new_id({"transform"})) // TODO: unideal interface, make it better
+          m_ecs_id(get_rm().ecs().make_new_id({"name", "father", "children", "transform", "transform_edits", "global_transform_cache"})) // TODO: unideal interface, make it better
     {
         set_transform(transform);
+        get_rm().ecs().get_component<std::string>("name").set(m_ecs_id, std::move(name));
         visit_optional(script, [&](auto& s){ attach_script(s, params); });
     }
 
     node::~node() {
-        get_rm().get_ecs().release_id(m_ecs_id);
+        get_rm().ecs().release_id(m_ecs_id);
     }
 
 
 
     std::unique_ptr<node> node::deep_copy(const node& o, std::optional<std::string> name) {
-        std::unique_ptr<node> n = node::make(name.value_or(o.m_name), std::nullopt, std::monostate(), o.m_payload, o.transform());
+
+        std::unique_ptr<node> n = node::make(name.value_or(std::string(o.name())), std::nullopt, std::monostate(), o.m_payload, o.transform());
         if(o.get_script().has_value()) {
             // clone the script AND its state
             n->attach_script(*o.get_script());
@@ -40,8 +40,9 @@ namespace engine {
 
         n->m_nodetree_bp_reference = o.m_nodetree_bp_reference;
         n->m_col_behaviour = o.m_col_behaviour;
-        n->set_children_sorting_preference(o.m_children_is_sorted);
+        n->set_children_sorting_preference(o.get_children_sorting_preference());
         for(int i = 0; i < o.m_children.size(); i++) {
+
             n->m_children.push_back(node::deep_copy(*o.m_children[i])); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < o.m_children.size()
         }
 
@@ -63,7 +64,25 @@ namespace engine {
     void node::add_child(std::unique_ptr<node> c) {
         c->m_father = this;
 
-        if(m_children_is_sorted) {
+        // do the same but for ecs components...
+
+        auto& ecs = get_rm().ecs();
+        //set child's father
+        ecs.get_component<ecs_id_t>("father").set(c->m_ecs_id, m_ecs_id);
+
+        auto& children = ecs.get_component<children_vector>("children").get(m_ecs_id);
+
+        if(children.is_sorted) {
+            const auto& name_component = ecs.get_component<std::string>("name");
+            auto compare = [&](ecs_id_t a, ecs_id_t b) { return name_component.get_or(a, {}) < name_component.get_or(b, {}); };
+            auto upper_bound = std::upper_bound(children.vector.begin(), children.vector.end(), c->m_ecs_id, compare);
+            children.vector.emplace(upper_bound, c->m_ecs_id);
+        } else {
+            children.vector.emplace_back(c->m_ecs_id);
+        }
+
+        // do the legacy procedure
+        if(children.is_sorted) {
             auto compare = [](auto& a, auto& b) { return a->name() < b->name(); };
             auto upper_bound = std::upper_bound(m_children.begin(), m_children.end(), c, compare);
             m_children.emplace(upper_bound, std::move(c));
@@ -73,7 +92,7 @@ namespace engine {
     }
 
     node& node::get_child(std::string_view name) {
-        if(m_children_is_sorted) {
+        if(get_children_sorting_preference()) {
             auto less_than = [](const std::unique_ptr<node>& n, const std::string_view& s) { return n->name() < s; };
             if(auto it = std::lower_bound(m_children.begin(), m_children.end(), name, less_than); it != m_children.end() && (*it)->name() == name) {
                 return **it;
@@ -83,14 +102,14 @@ namespace engine {
                 return **it;
             }
         }
-        throw node_exception(node_exception::type::NO_SUCH_CHILD, m_name, (std::string)name);
+        throw node_exception(node_exception::type::NO_SUCH_CHILD, this->name(), name);
     }
 
     node& node::get_father_checked() {
         if(m_father != nullptr)
             return *m_father;
         else
-            throw node_exception(node_exception::type::NO_FATHER, m_name);
+            throw node_exception(node_exception::type::NO_FATHER, name());
     }
 
 
@@ -98,36 +117,43 @@ namespace engine {
         if(m_father != nullptr)
             return *m_father;
         else
-            throw node_exception(node_exception::type::NO_FATHER, m_name);
+            throw node_exception(node_exception::type::NO_FATHER, name());
     }
 
     void node::set_children_sorting_preference(bool v) {
-        if(v && !m_children_is_sorted) {
+        auto& children = get_rm().ecs().get_component<children_vector>("children").get(m_ecs_id);
+
+        if(v && !children.is_sorted) {
             std::sort(m_children.begin(), m_children.end(),
                 [](const std::unique_ptr<node>& a, const std::unique_ptr<node>& b) { return a->name() < b->name(); }
             );
         }
-        m_children_is_sorted = v;
+        children.is_sorted = v;
+    }
+
+    bool node::get_children_sorting_preference() const {
+        auto& children = get_rm().ecs().get_component<children_vector>("children").get(m_ecs_id);
+        return children.is_sorted;
     }
 
     void node::set_transform(const glm::mat4& m) {
         invalidate_global_transform_cache();
 
-        get_rm().get_ecs().get_component<glm::mat4>("transform").set(m_ecs_id, m);
-        // m_transform = m;
+        get_rm().ecs().get_component<glm::mat4>("transform").set(m_ecs_id, m);
     }
 
     const mat4& node::get_global_transform() const {
-        const glm::mat4* cache = get_rm().get_ecs().get_component<glm::mat4>("global_transform_cache").try_get(m_ecs_id);
-
-        if(cache == nullptr) {
+        optional_ref<glm::mat4> cache = get_rm().ecs().get_component<glm::mat4>("global_transform_cache").try_get(m_ecs_id);
+        if(cache) {
+            return *cache;
+        } else {
             const node* f = get_father();
             glm::mat4 value = f != nullptr ? f->get_global_transform() * transform() : transform();
 
-            cache = &get_rm().get_ecs().get_component<glm::mat4>("global_transform_cache").set(m_ecs_id, value);
-        }
+            cache = optional_ref<glm::mat4>(value);
 
-        return *cache;
+            return get_rm().ecs().get_component<glm::mat4>("global_transform_cache").set(m_ecs_id, value);
+        }
     }
 
     void node::react_to_collision(collision_result res, node& other) {
@@ -172,7 +198,7 @@ namespace engine {
 
 
     void node::invalidate_global_transform_cache() const {
-        if(get_rm().get_ecs().get_component<glm::mat4>("global_transform_cache").uninit_for_entity(m_ecs_id)) {
+        if(get_rm().ecs().get_component<glm::mat4>("global_transform_cache").uninit_for_entity(m_ecs_id)) {
             for(const node& c : children()) {
                 c.invalidate_global_transform_cache();
             }

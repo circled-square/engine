@@ -47,7 +47,7 @@ namespace engine {
         template<Resource T> [[nodiscard]] ENGINE_API
         rc<T> load_impl(const detail::resource_name_t& name);
     public:
-        entity_component_system& get_ecs() { return m_ecs; }
+        entity_component_system& ecs() { return m_ecs; }
 
         // hand over ownership of resource to resources_manager
         template<MoveableResource T> [[nodiscard]] ENGINE_API
