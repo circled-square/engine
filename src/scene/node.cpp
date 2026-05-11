@@ -20,6 +20,7 @@ namespace engine {
           m_ecs_id(get_rm().ecs().make_new_id({"name", "father", "children", "transform", "transform_edits", "global_transform_cache"})) // TODO: unideal interface, make it better
     {
         set_transform(transform);
+        EXPECTS(name != ".."); // special name for father node in paths
         get_rm().ecs().get_component<std::string>("name").set(m_ecs_id, std::move(name));
         visit_optional(script, [&](auto& s){ attach_script(s, params); });
     }
@@ -215,7 +216,11 @@ namespace engine {
                 return current_node->get_child(std::string(subpath));
             } else {
                 std::string_view next_step = subpath.substr(0, separator_position);
-                current_node = &current_node->get_child(std::string(next_step));
+                if(next_step == "..") {
+                    current_node = &current_node->get_father_checked();
+                } else {
+                    current_node = &current_node->get_child(std::string(next_step));
+                }
                 subpath.remove_prefix(separator_position + 1);
             }
         }
