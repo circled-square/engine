@@ -21,6 +21,12 @@ namespace gal {
         glDrawArrays(GL_TRIANGLES, (sint)first, (GLsizei)count);
     }
 
+    void renderer::draw_instanced(const vertex_array &vao, const shader_program &shader, size_t first, size_t count, size_t instance_count) {
+        shader.bind();
+        vao.bind();
+
+        glDrawArraysInstanced(GL_TRIANGLES, (sint)first, (GLsizei)count, (GLsizei)instance_count);
+    }
 
     void renderer::clear(glm::vec4 c) {
         glClearColor(c.x, c.y, c.z, c.w);
@@ -54,5 +60,7 @@ namespace gal {
             glCullFace(GL_FRONT);
         }
     }
+
 }
+
 

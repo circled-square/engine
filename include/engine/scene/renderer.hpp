@@ -12,6 +12,8 @@ namespace engine {
     public:
         void clear(glm::vec4 c = {0,0,0,1});
         void draw(const mesh& mesh, glm::ivec2 output_resolution, const mvp_matrices& mvp, float frame_time = 0.f);
+        void finalize_frame();
+
         gal::renderer& get_low_level_renderer();
     };
 }

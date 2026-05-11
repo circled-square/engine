@@ -20,6 +20,7 @@ namespace gal {
         GAL_API void draw(const vertex_array& vao, const shader_program& shader, unsigned ibo_index = 0);
         GAL_API void draw(const vertex_array& vao, const shader_program& shader, size_t ibo_start, size_t ibo_count, unsigned ibo_index = 0);
         GAL_API void draw_without_indices(const vertex_array& vao, const shader_program& shader, size_t first, size_t count);
+        GAL_API void draw_instanced(const vertex_array& vao, const shader_program& shader, size_t first, size_t count, size_t instance_count);
 
         GAL_API void clear(glm::vec4 c = {0,0,0,0});
         GAL_API void change_viewport_size(glm::ivec2 s);

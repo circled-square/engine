@@ -15,4 +15,12 @@ namespace engine {
     }
 
     gal::renderer &renderer::get_low_level_renderer() { return m_low_level_renderer; }
+
+    void renderer::finalize_frame() {
+        /* TODO: Do the following
+         *   0. stop using uniforms for the mvp matrix; use per instance vertex attribs instead.
+         *   1. inside draw instead of directly calling gal::renderer::draw cache draws.
+         *   2. in this function do the actual drawing, calling gal::renderer::draw_instanced instead of ...::draw when possible, or maybe always.
+         */
+    }
 }
