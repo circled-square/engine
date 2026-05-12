@@ -35,10 +35,11 @@ namespace engine {
     inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n) { return n; }
 
     inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
-        if(n.has_child(child_name))
+        if(n.is_map() && n.has_child(child_name)) {
             return get_optional_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-        else
+        } else {
             return std::nullopt;
+        }
     }
 
     inline std::string_view ryml_substr_to_std_string_view(ryml::csubstr s) { return std::string_view(s.begin(), s.end()); }
@@ -52,7 +53,6 @@ namespace engine {
 
     inline std::string_view get_val(ryml::ConstNodeRef n) {
         EXPECTS_WITH_MSG(n.has_val(), std::format("({}).has_val()", n.id()));
-        n.is_val_literal();
         return ryml_substr_to_std_string_view(n.val());
     }
 
@@ -90,6 +90,29 @@ namespace engine {
 
         return ret;
     }
+    template<typename T>
+    inline std::vector<T> children_as_vector(ryml::ConstNodeRef n) {
+        std::vector<T> ret;
+        ret.reserve(n.num_children());
+
+        for(const auto& elem : n.cchildren()) {
+            ret.push_back(as_num<T>(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+        }
+
+        return ret;
+    }
+    template<>
+    inline std::vector<std::string> children_as_vector<std::string>(ryml::ConstNodeRef n) {
+        std::vector<std::string> ret;
+        ret.reserve(n.num_children());
+
+        for(const auto& elem : n.cchildren()) {
+            ret.push_back(std::string(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+        }
+
+        return ret;
+    }
+
 
     template<typename T, size_t N>
     inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
@@ -119,15 +142,20 @@ namespace engine {
 
         node* root_raw_ptr = simple_dfs(root_payload, root, [](node* father, ryml::ConstNodeRef n) {
             auto name = get_optional_child_val(n, "name").value_or("");
-            std::optional<stateless_script> script {};
-            if(auto script_str = get_optional_child_val(n, "script")) {
-                auto s = *script_str;
-                auto script_path = s.substr(0, s.find(":"));
-                auto script_name = std::string(s.substr(s.find(":") + 1));
 
-                script = stateless_script::from(get_rm().load<dylib::library>(std::string(script_path)), script_name.c_str());
+            std::optional<stateless_script> script {};
+            std::any script_construction_params = std::monostate();
+            if(auto script_node = get_optional_child(n, "script")) {
+                auto path = get_child_val(*script_node, "path");
+                auto name = std::string(get_child_val(*script_node, "name"));
+
+                script = stateless_script::from(get_rm().load<dylib::library>(std::string(path)), name.c_str());
+
+                if(auto params_node = get_optional_child(*script_node, "params")) {
+                    std::vector<std::string> params = children_as_vector<std::string>(*params_node);
+                    script_construction_params = std::move(params);
+                }
             }
-            auto script_construction_args = std::any(std::monostate()); //TODO
 
             glm::mat4 transform = glm::mat4(1);
             if(auto transform_node = get_optional_child(n, "transform")) {
@@ -163,31 +191,25 @@ namespace engine {
 
             std::unique_ptr<node> owning;
 
-            if(auto path = get_optional_child_val(n, "load_uncached")) {
-                auto bp = get_rm().load_mut<nodetree_blueprint>(std::string(*path));
-                owning = bp->into_node();
-                owning->set_transform(transform * owning->transform());
-
-                if(script.has_value()) {
-                    // overwrites the script from the loaded file
-                    owning->attach_script(std::move(*script), script_construction_args);
+            if (auto path = get_optional_child_val(n, "load")) {
+                if (path->ends_with(".yml")) {
+                    //TODO: allow loading yaml files as nodetrees as well
+                    auto s = get_rm().load_mut<scene>(std::string(*path));
+                    owning = s->into_node_tree();
+                } else {
+                    auto bp = get_rm().load<nodetree_blueprint>(std::string(*path));
+                    owning = node::deep_copy(bp, std::string(name));
                 }
-
-            } else if (auto path = get_optional_child_val(n, "load")) {
-                auto bp = get_rm().load<nodetree_blueprint>(std::string(*path));
-                owning = node::deep_copy(bp, std::string(name));
                 owning->set_transform(transform * owning->transform());
 
                 if(script.has_value()) {
                     // overwrites the script from the loaded file
-                    owning->attach_script(std::move(*script), script_construction_args);
+                    owning->attach_script(std::move(*script), std::move(script_construction_params));
                 }
             } else {
-                owning = node::make(std::string(name), std::move(script), script_construction_args, std::move(payload), transform);
+                owning = node::make(std::string(name), std::move(script), std::move(script_construction_params), std::move(payload), transform);
             }
 
-
-            // HANDLE SCRIPT PARAMS
             // HANDLE MORE TYPES OF PAYLOAD
 
             node* ret = owning.get();

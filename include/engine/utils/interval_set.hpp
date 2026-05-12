@@ -92,7 +92,7 @@ namespace engine {
         bool empty() const {
             // slogga::stdout_log("m_size = {}; m_intervals.empty() = {}; m_intervals.size() = {}", m_size, m_intervals.empty(), m_intervals.size());
             ASSERTS((m_size == 0) == m_intervals.empty());
-            return m_intervals.empty();
+            return m_size == 0;
         }
 
         [[nodiscard]] T extract_first_element() {

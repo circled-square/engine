@@ -40,6 +40,11 @@ namespace engine {
 
         node& get_root();
         node& get_node(std::string_view path);
+        [[nodiscard]] std::unique_ptr<node> into_node_tree() {
+            std::unique_ptr<node> ret = std::move(m_root);
+            m_root = nullptr;
+            return ret;
+        }
 
         //used by engine::application to communicate with the scene
         const application_channel_t& app_channel() const { return m_application_channel; }
