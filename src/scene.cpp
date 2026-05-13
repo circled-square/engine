@@ -231,6 +231,7 @@ namespace engine {
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
         mvp_matrices viewproj { .m=mat4(1.), .v=view_mat, .p=proj_mat };
         render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj, resolution, frame_time);
+        m_renderer.finalize_frame();
     }
 
     void scene::update() {

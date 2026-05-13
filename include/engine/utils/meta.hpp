@@ -12,6 +12,12 @@ namespace engine {
     // T is AnyOneOf<Ts...> if T is contained in Ts 
     using detail::AnyOneOf;
 
+    template<typename...Ts> struct type_list{};
+
+    // T is ContainedInTuple<type_list_t> if type_list_t === type_list<..., T, ...>
+    template<typename T, typename type_list_t>
+    concept ContainedInTypeList = detail::contained_in_pack__struct<T, type_list, type_list_t>::value;
+
     // T is ContainedInTuple<tuple_t> if tuple_t === std::tuple<..., T, ...>
     template<typename T, typename tuple_t>
     concept ContainedInTuple = detail::contained_in_pack__struct<T, std::tuple, tuple_t>::value;
@@ -27,6 +33,10 @@ namespace engine {
     //takes a Tuple=std::tuple<Ts...> type and returns std::tuple<Template<Ts>...>
     template<template<class> class Template, class Tuple>
     using map_tuple = map_pack<Template, std::tuple, std::tuple, Tuple>;
+
+    //takes a TypeList=type_list<Ts...> type and returns std::tuple<Template<Ts>...>
+    template<template<class> class Template, template<class...> class OutTuple, class TypeList>
+    using map_type_list = map_pack<Template, type_list, OutTuple, TypeList>;
 
     //takes Tuples of the form Tuple(i)=TupleTemplate<Args(i)...> and returns TupleTemplate<Args(0)...,Args(1)..., etc>
     template<template<typename...> class TupleTemplate, class...Tuples>
