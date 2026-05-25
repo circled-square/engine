@@ -4,22 +4,22 @@
 
 namespace engine {
     void entity_component_system::register_new_component(std::unique_ptr<ecs_component_interface> component) {
-        if(m_components.contains(component->component_name())) {
-            throw component_name_already_in_use_exception(component->component_name());
+        if(m_components.size() != component->component_name()) {
+            throw invalid_component_name_exception(component->component_name());
         }
 
-        m_components.insert({component->component_name(), std::move(component)});
+        m_components.push_back(std::move(component));
     }
 
-    ecs_id_t entity_component_system::make_new_id(components_used_set_t components_used) {
+    ecs_id_t entity_component_system::make_new_id() {
         // get id
         if(m_freed_ids.empty()) {
             ecs_id_t ids_previously_in_use = m_id_pool_size;
             m_id_pool_size = std::max(m_id_pool_size * 2, m_id_pool_size + 1);
             m_freed_ids.insert_at_end({ids_previously_in_use, m_id_pool_size - 1});
 
-            for(std::pair<component_name_t, std::unique_ptr<ecs_component_interface>>& c : m_components) {
-                c.second->number_of_ids_in_use_changed(m_id_pool_size);
+            for(std::unique_ptr<ecs_component_interface>& c : m_components) {
+                c->number_of_ids_in_use_changed(m_id_pool_size);
             }
         }
         ASSERTS(!m_freed_ids.empty());
@@ -30,17 +30,13 @@ namespace engine {
             throw ran_out_of_ecs_ids_exception();
         }
 
-        // init components
-        for(const auto& component_name : components_used) {
-            m_components[component_name]->init_for_entity(id); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
+        // init components // TODO: only init used components
+        for(auto& component : m_components) {
+            component->init_for_entity(id); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
         }
-
-        m_components_used.insert({id, std::move(components_used)});
 
         return id;
     }
-
-    void entity_component_system::add_new_used_component(ecs_id_t id, component_name_t component_name) { m_components_used[id].insert(component_name); } // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
 
     // well defined for n/0 (just returns numeric_limits::max())
     inline ecs_id_t unsigned_integer_division(ecs_id_t n, ecs_id_t d) {
@@ -48,11 +44,17 @@ namespace engine {
     }
 
     void entity_component_system::release_id(ecs_id_t id) {
-        // delete entities the component uses
-        const auto& components_used = m_components_used[id]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
-        for(const component_name_t& component_name : components_used) {
-            m_components[component_name]->uninit_for_entity(id); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
+        // release children as well
+        auto children = get_component<children_vector>().get(id);
+        for(ecs_id_t c : children.vector) {
+            release_id(c);
         }
+
+        // delete components the entity uses //TODO: currently we delete all components regardless (wasting CPU time)
+        for(auto& component : m_components) {
+            component->uninit_for_entity(id); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // hashmap access is safe
+        }
+
 
         // free the id for future use
         m_freed_ids.insert(id);
@@ -74,25 +76,25 @@ namespace engine {
                     m_freed_ids.insert_at_end({last_freed_interval.a, m_id_pool_size - 1});
                 }
 
-                for(std::pair<component_name_t, std::unique_ptr<ecs_component_interface>>& c : m_components) {
-                    c.second->number_of_ids_in_use_changed(m_id_pool_size);
+                for(std::unique_ptr<ecs_component_interface>& c : m_components) {
+                    c->number_of_ids_in_use_changed(m_id_pool_size);
                 }
 
             }
         }
     }
 
-    const char* component_name_already_in_use_exception::what() const noexcept {
+    const char* invalid_component_name_exception::what() const noexcept {
         if(m_msg_cache.empty()) {
-            m_msg_cache = std::format("component name already in use: \"{}\"", m_component_name);
+            m_msg_cache = std::format("invalid component name: \"{}\"", m_component_name);
         }
         return m_msg_cache.c_str();
     }
 
     void commit_transform_edits(entity_component_system ecs) {
-        auto& transform_edits = dynamic_cast<ecs_component_optional_hashmap<glm::mat4>&>(ecs.get_component<glm::mat4>("transform_edits"));
-        auto& transforms = ecs.get_component<glm::mat4>("transform");
-        auto& cached_global_transforms = ecs.get_component<glm::mat4>("global_transform_cache");
+        auto& transform_edits = dynamic_cast<ecs_component_optional_hashmap<glm::mat4>&>(ecs.get_component<glm::mat4>(component_names::transform_edits));
+        auto& transforms = ecs.get_component<glm::mat4>(component_names::transform);
+        auto& cached_global_transforms = ecs.get_component<glm::mat4>(component_names::global_transform_cache);
 
         for(const auto&[id, v] : transform_edits.underlying_hashmap()) {
             cached_global_transforms.uninit_for_entity(id); // TODO : uninit children?

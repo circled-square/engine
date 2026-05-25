@@ -14,7 +14,7 @@ target_link_libraries(engine__application PRIVATE imgui GAL)
 
 #entity_component_system
 add_library(engine__entity_component_system STATIC entity_component_system.cpp)
-target_link_libraries(engine__entity_component_system PUBLIC engine__global glm)
+target_link_libraries(engine__entity_component_system PUBLIC engine__global glm engine__scene_renderer_mesh_material_shader)
 
 #resources_manager
 add_library(engine__resources_manager STATIC resources_manager.cpp)

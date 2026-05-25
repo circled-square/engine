@@ -25,7 +25,9 @@ namespace engine {
 
         viewport(viewport&& o) = default;
         ENGINE_API explicit viewport(const viewport& o);
-        viewport& operator=(const viewport&) = delete;
+        viewport& operator=(const viewport& o) {
+            return operator=(viewport(o)); // copy-assign by move-assigning from a copy-constructed value
+        }
         viewport& operator=(viewport&& o) = default;
         ~viewport() = default;
 

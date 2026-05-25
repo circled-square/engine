@@ -2,37 +2,27 @@
 #define ENGINE_SCENE_NODE_HPP
 
 #include <string>
-#include <span>
 #include <optional>
 #include "node/script.hpp"
 #include "node/node_payload.hpp"
 #include "node/narrow_phase_collision.hpp"
 #include "node/node_span.hpp"
+#include "node/collision_behaviour.hpp"
 #include <engine/resources_manager/rc.hpp>
 #include <engine/resources_manager/weak.hpp>
 #include <engine/resources_manager.hpp>
 #include <engine/utils/api_macro.hpp>
+#include <slogga/log.hpp>
 
 // TODO: split different classes in this header into separate headers
 
 namespace engine {
-    // specifies how a node reacts to collisions
-    struct node_collision_behaviour {
-        bool moves_away_on_collision : 1 = false;
-        bool passes_events_to_script : 1 = false;
-        bool passes_events_to_father : 1 = false;
-    };
-
     class nodetree_blueprint;
 
     /* A node in the scene graph.
      * TODO: better doc comment
      */
     class node {
-        std::vector<std::unique_ptr<node>> m_children;
-        // bool m_children_is_sorted;
-        node* m_father;
-
         ecs_id_t m_ecs_id;
 
         /* Global transform cache:
@@ -46,16 +36,12 @@ namespace engine {
          *      invalidate the cache of itself and its DESCENDANTS
          *
          */
-        void invalidate_global_transform_cache() const;
+        void invalidate_global_transform_cache();
 
-        node_payload_t m_payload;
-        nullable_rc<const nodetree_blueprint> m_nodetree_bp_reference; // reference to the nodetree blueprint this was built from, if any, to keep its refcount up
-        node_collision_behaviour m_col_behaviour;
-
-        std::optional<script> m_script;
 
     public:
-        ENGINE_API void add_child(std::unique_ptr<node> c);
+
+        ENGINE_API void add_child(node c);
 
         /*
          * Only these chars and alphanumeric chars (std::alnum) are allowed in node names; others are automatically replaced with '_'.
@@ -70,61 +56,56 @@ namespace engine {
          * it makes retrieving that node by name unpredictable; this behaviour for now is kept since it allows the engine to skip this check
          * (relatively expensive, especially for unsorted children), and allows the user to create a lot of nodes whose name is irrelevant
          * without creating useless names for them. Do note that a "useless" name suddenly becomes useful the moment there's debugging to do.
+         *
+         * The only other special case is the string ".." which is reserved for referring to the node's father in paths.
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        static std::unique_ptr<node> make(std::string name, std::optional<stateless_script> s = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1)) {
-            return std::make_unique<node>(std::move(name), std::move(pl), std::move(transform), s, params);
+        static node make(std::string name, std::optional<stateless_script> s = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1)) {
+            return node(std::move(name), std::move(pl), std::move(transform), s, params);
         }
-        static std::unique_ptr<node> make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1)) {
+        static node make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1)) {
             return node::make(std::move(name), std::nullopt, std::monostate(), std::move(pl), transform);
         }
 
         // expensive
-        ENGINE_API static std::unique_ptr<node> deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
+        ENGINE_API static node deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
         // expensive
-        ENGINE_API static std::unique_ptr<node> deep_copy(const node& o, std::optional<std::string> name = std::nullopt);
+        ENGINE_API static node deep_copy(node o, std::optional<std::string> name = std::nullopt);
 
-        node() = delete;
-        node(const node&) = delete;
-        node(node&&) = delete;
-        node& operator=(const node&) = delete;
-        node& operator=(node&&) = delete;
-        ENGINE_API ~node();
+        //construct node object from an already valid id
+        constexpr node(ecs_id_t id = null_ecs_id) : m_ecs_id(id) {}
+
+        using node_span = map_span<ecs_id_t, node>;
 
         // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
         ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params);
 
+
         // get child from name
-        ENGINE_API node& get_child(std::string_view name);
+        ENGINE_API node get_child(std::string_view name);
         // get a span of the node's children
-        const_node_span children() const { return const_node_span(std::span(m_children.begin(), m_children.end())); }
-        // get a span of the node's children
-        node_span children() { return node_span(std::span(m_children.begin(), m_children.end())); }
+        ENGINE_API node_span children();
         // sets whether the children vector is sorted. sorted -> fast O(logn) search, slow O(n) insert; unsorted -> slow O(n) search, fast O(1) insert.
         ENGINE_API void set_children_sorting_preference(bool v);
         ENGINE_API bool get_children_sorting_preference() const;
         // get node with relative path
-        ENGINE_API node& get_descendant_from_path(std::string_view path);
+        ENGINE_API node get_descendant_from_path(std::string_view path);
 
         // get father node, possibly returns null
-        node* get_father() { return m_father; }
-        // get father node, possibly returns null
-        const node* get_father() const { return m_father; }
+        node get_father() const { return node{ get_rm().ecs().get_component<ecs_id_t>(component_names::father).get(m_ecs_id) }; }
         // get father node, throws if father is null
-        ENGINE_API node& get_father_checked();
-        // get father node, throws if father is null
-        ENGINE_API const node& get_father_checked() const;
+        ENGINE_API node get_father_checked() const;
 
         // get this node's name
-        std::string_view name() const { return get_rm().ecs().get_component<std::string>("name").get_or(m_ecs_id, std::string()); }
+        std::string_view name() const { return get_rm().ecs().get_component<std::string>(component_names::name).get_or(m_ecs_id, std::string()); }
         // get this node's absolute path in the node hierarchy
-        std::string absolute_path() const { return m_father != nullptr ? std::format("{}/{}", m_father->absolute_path(), name()) : std::string(name()); }
+        std::string absolute_path() const { return get_father().ecs_id() != null_ecs_id ? std::format("{}/{}", get_father().absolute_path(), name()) : std::string(name()); }
 
         // get this node's local transform
         const glm::mat4& transform() const {
             // slogga::stdout_log("[{}].transform()", m_ecs_id);
-            return get_rm().ecs().get_component<glm::mat4>("transform").get(m_ecs_id);
+            return get_rm().ecs().get_component<glm::mat4>(component_names::transform).get(m_ecs_id);
         }
         // set this node's local transform
         ENGINE_API void set_transform(const glm::mat4& m);
@@ -135,13 +116,13 @@ namespace engine {
         ENGINE_API const glm::mat4& get_global_transform() const;
 
         // get the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        const node_collision_behaviour& get_collision_behaviour() { return m_col_behaviour; }
+        const node_collision_behaviour& get_collision_behaviour() { return get_rm().ecs().get_component<node_collision_behaviour>().get(m_ecs_id); }
         // set the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        void set_collision_behaviour(node_collision_behaviour col_behaviour) { m_col_behaviour = col_behaviour; }
+        void set_collision_behaviour(node_collision_behaviour col_behaviour) { get_rm().ecs().get_component<node_collision_behaviour>().set(m_ecs_id, col_behaviour); }
 
 
         // handle collision event, recursing up the node tree if necessary
-        void react_to_collision(collision_result res, node& other);
+        void react_to_collision(collision_result res, node other);
 
         //script
         // instantiates a script and attaches it to a node; params are for the script's constructor
@@ -149,30 +130,36 @@ namespace engine {
         // attach an already-instantiated script to a node;
         ENGINE_API void attach_script(script s);
 
+        // TODO: treat each payload type as a separate ECS component, and have get/set just fetch it; also have set/get be a generic functions that also works for other components such as script, collision_behaviour,
+
         // get this node's script
-        std::optional<script>& get_script() { return m_script; }
-        // get this node's script
-        const std::optional<script>& get_script() const { return m_script; }
+        optional_ref<script> get_script() const { return get_rm().ecs().get_component<script>().try_get(m_ecs_id); }
 
         // special node data access
-        template<NodePayload T> bool     has() const { return std::holds_alternative<T>(m_payload); }
-        template<NodePayload T> const T& get() const { EXPECTS(has<T>()); return std::get<T>(m_payload); }
-        template<NodePayload T> T&       get()       { EXPECTS(has<T>()); return std::get<T>(m_payload); }
+        // const node_payload_t& get_payload() const { return get_rm().ecs().get_component<node_payload_t>("payload").get_or(m_ecs_id, node_payload_t(std::monostate()));}
+        template<NodePayload T> bool has() const {
+            auto pl = get_rm().ecs().get_component<node_payload_t>().get_or(m_ecs_id, std::monostate());
+            return std::holds_alternative<T>(pl);
+        }
+        template<NodePayload T> T& get() const {
+            EXPECTS(has<T>());
+            return std::get<T>(get_rm().ecs().get_component<node_payload_t>().get(m_ecs_id));
+        }
 
         //allow has<collision_shape> instead of has<rc<collision_shape>>
         template<Resource T> requires NodePayload<rc<const T>> bool     has() const { return has<rc<const collision_shape>>(); }
         template<Resource T> requires NodePayload<rc<const T>> const T& get() const { return *get<rc<const collision_shape>>(); }
 
         void set_payload(node_payload_t p) {
-            m_payload = std::move(p);
+            get_rm().ecs().get_component<node_payload_t>().set(m_ecs_id, std::move(p));
         }
         //separate logic for rc<collision_shape>
-        void set_payload(rc<collision_shape> p) {
-            m_payload = std::move(p);
-        }
+        void set_payload(rc<collision_shape> p) { get_rm().ecs().get_component<node_payload_t>().set(m_ecs_id, std::move(p)); }
 
-        ecs_id_t ecs_id() { return m_ecs_id; }
+        ecs_id_t ecs_id() const { return m_ecs_id; }
+        operator ecs_id_t() const { return ecs_id(); }
     };
+
 
     class node_exception : public std::exception {
         std::string m_name, m_child_name;
@@ -193,15 +180,16 @@ namespace engine {
     };
 
     // "nodetree_blueprint" is what we call a preconstructed, immutable node tree (generally loaded from file) which can be copied repeatedly to be instantiated
+        //TODO: nodetree_blueprint should be immutable unless by a call through into_node(); right now we have no const_node class but we definitely need one
     class nodetree_blueprint {
-        std::unique_ptr<node> m_root;
+        node m_root;
         std::string m_name;
     public:
-        nodetree_blueprint(std::unique_ptr<node> root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) { EXPECTS(m_root.get()); }
+        nodetree_blueprint(node root, std::string name) : m_root(std::move(root)), m_name(std::move(name)) {}
         const std::string& name() const { return m_name; }
-        const node& root() const { EXPECTS(m_root.get()); return *m_root; }
+        /*const_*/node root() const { return m_root; }
 
-        std::unique_ptr<node> into_node() { return std::move(m_root); }
+        node into_node() { return std::move(m_root); }
     };
 }
 

@@ -6,6 +6,7 @@
 #include <variant>
 #include <optional>
 #include "detail/meta.hpp"
+#include <engine/utils/optional_ref.hpp>
 
 // general purpose concepts and metaprogramming utilities
 namespace engine {
@@ -50,9 +51,16 @@ namespace engine {
     concept Callable = detail::impl_callable_s<func_t, signature>::value;
 
 
-    // if option has value, call handler on the value
+    // if optional has value, call handler on the value
     template<typename T, Callable<void (T&)> handler_t>
     void visit_optional(std::optional<T>& o, const handler_t& handler) {
+        if(o.has_value()) {
+            handler(o.value());
+        }
+    }
+    // if optional has value, call handler on the value
+    template<typename T, Callable<void (T&)> handler_t>
+    void visit_optional(optional_ref<T> o, const handler_t& handler) {
         if(o.has_value()) {
             handler(o.value());
         }

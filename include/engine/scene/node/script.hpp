@@ -12,14 +12,17 @@ namespace engine {
     class collision_result;
 
     struct script_vtable {
-        using construct_fn_t = std::any (node&, const std::any&);
-        using process_fn_t = void (node&, std::any&, application_channel_t&);
+        using construct_fn_t = std::any (node, const std::any&);
+        using process_fn_t = void (node, std::any&, application_channel_t&);
         // NOTE: react_to_collision takes "const node"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
-        using react_to_collision_fn_t = void (const node&, std::any&, collision_result, const node& event_src, const node& other);
+        using react_to_collision_fn_t = void (/*const_*/node, std::any&, collision_result, /*const_*/node event_src, /*const_*/node other);
 
-        construct_fn_t* construct = [](node&, const std::any& construction_args) { return std::any(std::monostate()); };
-        process_fn_t* process = [](node&, std::any&, application_channel_t&) {};
-        // NOTE: react_to_collision takes "const node&"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
+        ENGINE_API static construct_fn_t default_constructor;
+        ENGINE_API static process_fn_t default_process;
+
+        construct_fn_t* construct = &default_constructor;
+        process_fn_t* process = &default_process;
+        // NOTE: react_to_collision takes "const_node"s because it should not move or delete any nodes, since it gets called after subscribing "node*"s to the bp collision detector
         std::optional<react_to_collision_fn_t*> react_to_collision = std::nullopt;
     };
 
@@ -44,14 +47,13 @@ namespace engine {
         script& operator=(script&& o) = default;
         ~script() = default;
 
-        ENGINE_API script(stateless_script sl_script, node& n, const std::any& params);
-
+        ENGINE_API script(stateless_script sl_script, node n, const std::any& params);
 
         ENGINE_API const std::any& get_state() const;
         ENGINE_API const stateless_script& get_underlying_stateless_script() const;
 
-        ENGINE_API void process(node& n, application_channel_t& app_chan);
-        ENGINE_API void react_to_collision(const node& self, collision_result res, const node& event_src, const node& other);
+        ENGINE_API void process(node n, application_channel_t& app_chan);
+        ENGINE_API void react_to_collision(/*const_*/node self, collision_result res, /*const_*/node event_src, /*const_*/node other);
     };
 }
 

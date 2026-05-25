@@ -22,7 +22,7 @@ namespace engine {
         virtual ~broad_phase_collision_detector() = default;
 
         virtual void check_collisions_and_trigger_reactions() = 0;
-        virtual void subscribe(node*) = 0;
+        virtual void subscribe(node) = 0;
         virtual void reset_subscriptions() = 0;
     };
 
@@ -31,10 +31,10 @@ namespace engine {
      * for large scenes, but useful for debugging and as a first working implementation.
     `*/
     class pass_all_broad_phase_collision_detector : public broad_phase_collision_detector {
-        std::vector<node*> m_subscribers;
+        std::vector<node> m_subscribers;
     public:
         void check_collisions_and_trigger_reactions() override;
-        void subscribe(node* n) override;
+        void subscribe(node n) override;
         void reset_subscriptions() override;
     };
 }

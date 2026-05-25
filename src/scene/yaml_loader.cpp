@@ -25,99 +25,102 @@ struct std::formatter<ryml::ConstNodeRef, char> {
 };
 
 namespace engine {
-    inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n) { return n; }
+    inline namespace yaml_parsing_functions {
+        inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n) { return n; }
 
-    inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
-        EXPECTS_WITH_MSG(n.has_child(child_name), std::format("({}).has_child('{}')", n.id(), child_name));
-        return get_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-    }
-
-    inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n) { return n; }
-
-    inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
-        if(n.is_map() && n.has_child(child_name)) {
-            return get_optional_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-        } else {
-            return std::nullopt;
-        }
-    }
-
-    inline std::string_view ryml_substr_to_std_string_view(ryml::csubstr s) { return std::string_view(s.begin(), s.end()); }
-
-    inline std::optional<std::string_view> get_optional_val(std::optional<ryml::ConstNodeRef> n) {
-        if(n.has_value() && n->has_val())
-            return ryml_substr_to_std_string_view(n->val());
-        else
-            return std::nullopt;
-    }
-
-    inline std::string_view get_val(ryml::ConstNodeRef n) {
-        EXPECTS_WITH_MSG(n.has_val(), std::format("({}).has_val()", n.id()));
-        return ryml_substr_to_std_string_view(n.val());
-    }
-
-    inline std::string_view get_child_val(ryml::ConstNodeRef n, auto... child_names) {
-        return get_val(get_child(n, child_names...));
-    }
-
-    inline std::optional<std::string_view> get_optional_child_val(ryml::ConstNodeRef n, auto... child_names) {
-        return get_optional_val(get_optional_child(n, child_names...));
-    }
-
-    template <class T>
-    inline T as_num(std::string_view sv) {
-        T ret;
-        std::from_chars_result res = std::from_chars(sv.begin(), sv.end(), ret);
-
-        if (res.ec == std::errc::invalid_argument || res.ptr != sv.end()) {
-            throw std::invalid_argument{"invalid_argument"};
-        } else if (res.ec == std::errc::result_out_of_range) {
-            throw std::out_of_range{"out_of_range"};
+        inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
+            EXPECTS_WITH_MSG(n.has_child(child_name), std::format("({}).has_child('{}')", n.id(), child_name));
+            return get_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
 
-        return ret;
-    }
-    template<typename T, size_t N>
-    inline std::array<T, N> children_as_array(ryml::ConstNodeRef n) {
-        EXPECTS(n.num_children() == N);
+        inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n) { return n; }
 
-        std::array<T, N> ret{};
-        auto iter = n.cchildren().begin();
-        for(size_t i = 0; i < N; i++) {
-            ret[i] = as_num<T>(get_val(*iter)); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
-            ++iter;
+        inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
+            if(n.is_map() && n.has_child(child_name)) {
+                return get_optional_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+            } else {
+                return std::nullopt;
+            }
         }
 
-        return ret;
-    }
-    template<typename T>
-    inline std::vector<T> children_as_vector(ryml::ConstNodeRef n) {
-        std::vector<T> ret;
-        ret.reserve(n.num_children());
+        inline std::string_view ryml_substr_to_std_string_view(ryml::csubstr s) { return std::string_view(s.begin(), s.end()); }
 
-        for(const auto& elem : n.cchildren()) {
-            ret.push_back(as_num<T>(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+        inline std::optional<std::string_view> get_optional_val(std::optional<ryml::ConstNodeRef> n) {
+            if(n.has_value() && n->has_val())
+                return ryml_substr_to_std_string_view(n->val());
+            else
+                return std::nullopt;
         }
 
-        return ret;
-    }
-    template<>
-    inline std::vector<std::string> children_as_vector<std::string>(ryml::ConstNodeRef n) {
-        std::vector<std::string> ret;
-        ret.reserve(n.num_children());
-
-        for(const auto& elem : n.cchildren()) {
-            ret.push_back(std::string(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+        inline std::string_view get_val(ryml::ConstNodeRef n) {
+            EXPECTS_WITH_MSG(n.has_val(), std::format("({}).has_val()", n.id()));
+            return ryml_substr_to_std_string_view(n.val());
         }
 
-        return ret;
-    }
+        inline std::string_view get_child_val(ryml::ConstNodeRef n, auto... child_names) {
+            return get_val(get_child(n, child_names...));
+        }
+
+        inline std::optional<std::string_view> get_optional_child_val(ryml::ConstNodeRef n, auto... child_names) {
+            return get_optional_val(get_optional_child(n, child_names...));
+        }
+
+        template <class T>
+        inline T as_num(std::string_view sv) {
+            T ret;
+            std::from_chars_result res = std::from_chars(sv.begin(), sv.end(), ret);
+
+            if (res.ec == std::errc::invalid_argument || res.ptr != sv.end()) {
+                throw std::invalid_argument{"invalid_argument"};
+            } else if (res.ec == std::errc::result_out_of_range) {
+                throw std::out_of_range{"out_of_range"};
+            }
+
+            return ret;
+        }
+        template<typename T, size_t N>
+        inline std::array<T, N> children_as_array(ryml::ConstNodeRef n) {
+            EXPECTS(n.num_children() == N);
+
+            std::array<T, N> ret{};
+            auto iter = n.cchildren().begin();
+            for(size_t i = 0; i < N; i++) {
+                ret[i] = as_num<T>(get_val(*iter)); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+                ++iter;
+            }
+
+            return ret;
+        }
+        template<typename T>
+        inline std::vector<T> children_as_vector(ryml::ConstNodeRef n) {
+            std::vector<T> ret;
+            ret.reserve(n.num_children());
+
+            for(const auto& elem : n.cchildren()) {
+                ret.push_back(as_num<T>(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+            }
+
+            return ret;
+        }
+        template<>
+        inline std::vector<std::string> children_as_vector<std::string>(ryml::ConstNodeRef n) {
+            std::vector<std::string> ret;
+            ret.reserve(n.num_children());
+
+            for(const auto& elem : n.cchildren()) {
+                ret.push_back(std::string(get_val(elem))); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+            }
+
+            return ret;
+        }
 
 
-    template<typename T, size_t N>
-    inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
-        auto[x,y,z] = children_as_array<float, 3>(n);
-        return glm::vec3(x,y,z);
+        template<typename T, size_t N>
+        inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
+            auto[x,y,z] = children_as_array<float, 3>(n);
+            return glm::vec3(x,y,z);
+        }
+
     }
 
     template<typename payload_t>
@@ -138,9 +141,9 @@ namespace engine {
 
         // read from the tree:
         ryml::ConstNodeRef root = get_child(tree.crootref(), "scene", "root");
-        node* root_payload = nullptr;
+        node root_payload = node();
 
-        node* root_raw_ptr = simple_dfs(root_payload, root, [](node* father, ryml::ConstNodeRef n) {
+        node scene_root = simple_dfs(root_payload, root, [](node father, ryml::ConstNodeRef n) {
             auto name = get_optional_child_val(n, "name").value_or("");
 
             std::optional<stateless_script> script {};
@@ -178,55 +181,62 @@ namespace engine {
             }
 
             // TODO: handle viewport payload as well
+            bool should_have_a_camera = false;
             node_payload_t payload = std::monostate();
             if(auto pl_node = get_optional_child(n, "payload")) {
                 if(auto type_str = get_optional_child_val(*pl_node, "type")) {
                     if(*type_str == "camera") {
                         payload = node_payload_t(camera());
+
+                        should_have_a_camera = true;
                     } else {
                         UNIMPLEMENTED(false);
                     }
                 }
             }
 
-            std::unique_ptr<node> owning;
+            if(should_have_a_camera) {
+                slogga::stdout_log("({}) should have a camera", name);
+                ASSERTS(std::holds_alternative<camera>(payload));
+            }
+
+            node ret;
 
             if (auto path = get_optional_child_val(n, "load")) {
                 if (path->ends_with(".yml")) {
                     //TODO: allow loading yaml files as nodetrees as well
                     auto s = get_rm().load_mut<scene>(std::string(*path));
-                    owning = s->into_node_tree();
+                    ret = s->into_node_tree();
                 } else {
                     auto bp = get_rm().load<nodetree_blueprint>(std::string(*path));
-                    owning = node::deep_copy(bp, std::string(name));
+                    ret = node::deep_copy(bp, std::string(name));
                 }
-                owning->set_transform(transform * owning->transform());
+                ret.set_transform(transform * ret.transform());
+                // ret.set_payload(std::move(payload)); // would overwrite payload of the loaded node. intended behavior
 
                 if(script.has_value()) {
                     // overwrites the script from the loaded file
-                    owning->attach_script(std::move(*script), std::move(script_construction_params));
+                    ret.attach_script(std::move(*script), std::move(script_construction_params));
                 }
             } else {
-                owning = node::make(std::string(name), std::move(script), std::move(script_construction_params), std::move(payload), transform);
+                ret = node::make(std::string(name), std::move(script), std::move(script_construction_params), std::move(payload), transform);
             }
 
             // HANDLE MORE TYPES OF PAYLOAD
 
-            node* ret = owning.get();
-
-            if(father) {
-                father->add_child(std::move(owning));
+            if(father.ecs_id() != null_ecs_id) {
+                father.add_child(ret);
             } else {
+                //this node is the root
                 EXPECTS(name.empty());
-                owning.release();
             }
+
+            if(should_have_a_camera)
+                slogga::stdout_log("({}).has<camera>() = {}", ret.name(), ret.has<camera>());
 
             return ret;
         });
 
-        std::unique_ptr<node> scene_root(root_raw_ptr);
-        scene s(filename, std::move(scene_root));
-
-        return s;
+        return scene(filename, scene_root);
     }
 }

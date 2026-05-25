@@ -6,7 +6,7 @@
 
 
 namespace engine {
-    script::script(stateless_script sl_script, node& n, const std::any& params) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n, params)) {
+    script::script(stateless_script sl_script, node n, const std::any& params) : m_script(std::move(sl_script)), m_state(m_script.vtable.construct(n, params)) {
         EXPECTS(m_state.has_value());
     }
 
@@ -14,9 +14,9 @@ namespace engine {
 
     const stateless_script& script::get_underlying_stateless_script() const { return m_script; }
 
-    void script::process(node& n, application_channel_t& app_chan) { m_script.vtable.process(n, m_state, app_chan); }
+    void script::process(node n, application_channel_t& app_chan) { m_script.vtable.process(n, m_state, app_chan); }
 
-    void script::react_to_collision(const node& self, collision_result res, const node& event_src, const node& other) {
+    void script::react_to_collision(/*const_*/node self, collision_result res, /*const_*/node event_src, /*const_*/node other) {
         EXPECTS(m_script.vtable.react_to_collision != std::nullopt);
         (*m_script.vtable.react_to_collision)(self, this->m_state, res, event_src, other);
     }
@@ -56,5 +56,9 @@ namespace engine {
 
         throw std::runtime_error(std::format("script with name {} not found in dynamic library", name));
     }
+
+    std::any script_vtable::default_constructor(node n, const std::any& params) { return std::any(std::monostate()); }
+
+    void script_vtable::default_process(node n, std::any& state, application_channel_t& app_chan) {}
 
 }

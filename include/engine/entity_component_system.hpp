@@ -10,20 +10,49 @@
 #include <slogga/asserts.hpp>
 #include <engine/entity_component_system/component_implementations.hpp>
 #include <flat_set>
+#include <engine/scene/node/script.hpp>
+#include <engine/scene/node/node_payload.hpp>
+#include <engine/scene/node/collision_behaviour.hpp>
 
 namespace engine {
-
     class ecs_exception;
 
     struct children_vector {
         std::vector<ecs_id_t> vector;
         bool is_sorted;
     };
-    using components_used_set_t = std::flat_set<component_name_t>;
+
+    namespace component_names {
+        enum : component_name_t {
+            children = 0,
+            father,
+            collision_behaviour,
+            transform,
+            payload,
+            name,
+
+            transform_edits,
+            global_transform_cache,
+            script,
+            blueprint,
+
+            number_of_reserved_names,
+            start_of_nonreserved_names = number_of_reserved_names
+        };
+        // gets default component for a certain type, e.g. default_component_name<children_vector>() -> children
+        template<typename T> consteval uint64_t default_component_name() {
+            if constexpr(std::same_as<T, children_vector>) { return children; }
+            else if constexpr(std::same_as<T, node_collision_behaviour>) { return collision_behaviour; }
+            else if constexpr(std::same_as<T, node_payload_t>) { return payload; }
+            else if constexpr(std::same_as<T, engine::script>) { return script; }
+            else if constexpr(std::same_as<T, rc<const nodetree_blueprint>>) { return blueprint; }
+        }
+    }
+
 
     class entity_component_system {
-        hashmap<component_name_t, std::unique_ptr<ecs_component_interface>> m_components; // associates to each component name its implementation
-        hashmap<ecs_id_t, components_used_set_t> m_components_used; // for each entity the components it uses; TODO: should this really be a vector instead of a hashmap?
+        // hashmap<component_name_t, std::unique_ptr<ecs_component_interface>> m_components; // associates to each component name its implementation
+        std::vector<std::unique_ptr<ecs_component_interface>> m_components; // associates to each component name its implementation
 
         ecs_id_t m_id_pool_size = 0;
 
@@ -31,27 +60,39 @@ namespace engine {
     public:
 
         entity_component_system() {
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<children_vector>("children", { .is_sorted = true })));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<ecs_id_t>("father", null_ecs_id)));
+            using namespace component_names;
 
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<glm::mat4>("transform", glm::mat4(1.))));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>("global_transform_cache")));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>("transform_edits")));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<std::string>("name")));
+            m_components.reserve(number_of_reserved_names);
+
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<children_vector>(children, { .is_sorted = true })));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<ecs_id_t>(father, null_ecs_id)));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<node_collision_behaviour>(collision_behaviour, {})));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<glm::mat4>(transform, glm::mat4(1.))));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<node_payload_t>(payload, std::monostate())));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<std::string>(name, "default_node_name")));
+
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>(transform_edits)));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>(global_transform_cache)));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<engine::script>(component_names::script)));
+            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<rc<const nodetree_blueprint>>(blueprint))); // reference to the nodetree blueprint the node was built from, if any, to keep its refcount up
         }
+        entity_component_system(entity_component_system&&) = delete;
+        entity_component_system(const entity_component_system&) = delete;
+        entity_component_system& operator=(entity_component_system&&) = delete;
+        entity_component_system& operator=(const entity_component_system&) = delete;
+        ~entity_component_system() = default;
 
         void register_new_component(std::unique_ptr<ecs_component_interface> component);
 
         template<typename T>
-        ecs_component_typed_interface<T>& get_component(component_name_t name) {
+        ecs_component_typed_interface<T>& get_component(component_name_t name = component_names::default_component_name<T>()) {
             return *dynamic_cast<ecs_component_typed_interface<T>*>(m_components[name].get());
         }
 
-        // the components used are only really ever used for cleaning them up on id deallocation, and aren't automatically updated when a new component is used by an entity
-        ecs_id_t make_new_id(components_used_set_t components_used);
 
-        void add_new_used_component(ecs_id_t id, component_name_t component_name);
+        ecs_id_t make_new_id();
 
+        // TODO: currently we must dealloc components the id doesn't even use!
         void release_id(ecs_id_t id);
 
         // for profiling/debugging
@@ -60,11 +101,11 @@ namespace engine {
         ecs_id_t get_free_id_intervals_count() const { return m_freed_ids.intervals_count(); };
     };
 
-    class component_name_already_in_use_exception : public std::exception {
+    class invalid_component_name_exception : public std::exception {
         component_name_t m_component_name;
         mutable std::string m_msg_cache;
     public:
-        component_name_already_in_use_exception(component_name_t name) : m_component_name(std::move(name)) {}
+        invalid_component_name_exception(component_name_t name) : m_component_name(std::move(name)) {}
 
         const char* what() const noexcept override;
     };

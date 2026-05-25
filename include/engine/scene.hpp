@@ -10,11 +10,10 @@
 
 namespace engine {
     class scene {
-        std::unique_ptr<node> m_root;
+        node m_root;
 
         std::string m_name;
         engine::renderer m_renderer;
-        rc<const gal::vertex_array> m_whole_screen_vao; // for post-processing
         gal::render_flags m_render_flags;
 
         application_channel_t m_application_channel;
@@ -23,7 +22,13 @@ namespace engine {
     public:
         scene() = delete;
         //TODO: these should not be ENGINE_API
-        ENGINE_API scene(std::string s, std::unique_ptr<node> root, application_channel_t::to_app_t to_app_chan = {});
+        ENGINE_API scene(std::string s, node root, application_channel_t::to_app_t to_app_chan = {});
+        scene(scene&& o) : m_root(o.m_root), m_name(std::move(o.m_name)), m_render_flags(std::move(o.m_render_flags)),
+            m_application_channel(std::move(o.m_application_channel)), m_bp_collision_detector(std::move(o.m_bp_collision_detector))
+        {
+            o.m_root = node(); // avoid o.~scene() deallocating the scene tree
+        }
+        ~scene();
 
         // prepare() is called when the scene is inited and when the application switches from a different scene
         // (requires OpenGL to be inited)
@@ -38,11 +43,11 @@ namespace engine {
 
         const std::string& get_name() const { return m_name; }
 
-        node& get_root();
-        node& get_node(std::string_view path);
-        [[nodiscard]] std::unique_ptr<node> into_node_tree() {
-            std::unique_ptr<node> ret = std::move(m_root);
-            m_root = nullptr;
+        node get_root();
+        node get_node(std::string_view path);
+        [[nodiscard]] node into_node_tree() {
+            node ret = std::move(m_root);
+            m_root = node();
             return ret;
         }
 

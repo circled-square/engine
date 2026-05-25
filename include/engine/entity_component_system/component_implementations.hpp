@@ -6,6 +6,9 @@
 #include <engine/utils/hash.hpp>
 #include <engine/utils/optional_ref.hpp>
 #include <slogga/asserts.hpp>
+#include <slogga/log.hpp>
+#include <typeinfo>
+#include <string>
 
 namespace engine {
     template<std::copyable T>
@@ -39,11 +42,12 @@ namespace engine {
         mutable std::string m_msg_cache;
         component_name_t m_component_name;
         ecs_id_t m_id;
+        const char* m_type_name;
     public:
-        unfilled_component_exception(component_name_t component, ecs_id_t id) : m_component_name(component), m_id(id) {}
+        unfilled_component_exception(component_name_t component, ecs_id_t id, const char* type_name) : m_component_name(component), m_id(id), m_type_name(std::move(type_name)) {}
         const char* what() const noexcept override {
             if(m_msg_cache.empty())
-                m_msg_cache = std::format("unable to fetch component through ecs_component_interface::get/get_mut(): component=\"{}\", ecs_id=\"{}\"", m_component_name, m_id);
+                m_msg_cache = std::format("unable to fetch component through ecs_component_interface::get/get_mut(): component=\"{}\", ecs_id=\"{}\", type_info=\"{}\"", m_component_name, m_id, m_type_name);
             return m_msg_cache.c_str();
         }
     };
@@ -81,14 +85,14 @@ namespace engine {
         T& get(ecs_id_t id) final {
             auto opt = try_get(id);
             if(!opt) {
-                throw unfilled_component_exception(m_name, id);
+                throw unfilled_component_exception(m_name, id, typeid(T).name());
             }
             return *opt;
         }
         const T& get(ecs_id_t id) const final {
             auto opt = try_get(id);
             if(!opt) {
-                throw unfilled_component_exception(m_name, id);
+                throw unfilled_component_exception(m_name, id, typeid(T).name());
             }
             return *opt;
         }
