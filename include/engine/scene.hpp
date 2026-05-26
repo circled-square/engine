@@ -15,6 +15,7 @@ namespace engine {
         std::string m_name;
         engine::renderer m_renderer;
         gal::render_flags m_render_flags;
+        rc<const gal::vertex_array> m_whole_screen_vao; // for post-processing
 
         application_channel_t m_application_channel;
 
@@ -24,6 +25,7 @@ namespace engine {
         //TODO: these should not be ENGINE_API
         ENGINE_API scene(std::string s, node root, application_channel_t::to_app_t to_app_chan = {});
         scene(scene&& o) : m_root(o.m_root), m_name(std::move(o.m_name)), m_render_flags(std::move(o.m_render_flags)),
+            m_whole_screen_vao(std::move(o.m_whole_screen_vao)),
             m_application_channel(std::move(o.m_application_channel)), m_bp_collision_detector(std::move(o.m_bp_collision_detector))
         {
             o.m_root = node(); // avoid o.~scene() deallocating the scene tree

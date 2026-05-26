@@ -2,75 +2,15 @@
 #include <engine/resources_manager.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <engine/resources_manager/rc.hpp>
-
-#define ENGINE_DO_EXPORT
 #include <engine/scene.hpp>
+#include <engine/utils/dfs.hpp>
 
 namespace engine {
     using glm::mat4;
 
     constexpr float fovy = glm::pi<float>() / 4, znear = .1f, zfar = 1000.f;
 
-    //pre-order dfs, without recursion
-    template<Callable<void(node)> callable_t>
-    inline void depth_first_traversal(node root, const callable_t& callable) {
-        std::vector<node> stack;
-        stack.push_back(root);
-
-        while(!stack.empty()) {
-            node n = stack.back();
-            stack.pop_back();
-
-            //iterate in reverse, so the first child is added last, which means it is visited first
-            auto children = n.children();
-            for(std::int64_t i = (std::int64_t)children.size()-1; i >= 0; i--) {
-                stack.push_back(children[i]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-            }
-
-            callable(n);
-        }
-    }
-
-    //pre+post-order dfs, without recursion
-    template<typename dfs_payload_t, Callable<dfs_payload_t(node, const dfs_payload_t&)> preorder_t, Callable<void(node, const dfs_payload_t&)> postorder_t>
-    inline void depth_first_traversal(node root, const dfs_payload_t& root_params, const preorder_t& preorder, const postorder_t& postorder) {
-        struct stack_entry_t {
-            node n;
-            // payload to be passed to children when they are visited, both pre- and post-order
-            dfs_payload_t p;
-            // index of next child to be visited
-            size_t i;
-        };
-        std::vector<stack_entry_t> stack;
-
-        dfs_payload_t root_payload = preorder(root, root_params); // must be done before root is moved out of
-
-        stack.push_back({ root, std::move(root_payload), 0 });
-
-        while(!stack.empty()) {
-            auto& [n, p, i] = stack.back();
-            auto n_children = n.children();
-
-            if(i < n_children.size()) {
-                node c = n_children[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < n_children.size()
-                dfs_payload_t c_payload = preorder(c, p); // must be done before c is moved out of
-                i++; //do NOT update i after having pushed, as pushing can possibly invalidate the reference
-                stack.push_back({ c, std::move(c_payload), 0 });
-            } else {
-                node m = n; // copy value before destroying the entry
-                stack.pop_back();
-
-                if(stack.empty()) {
-                    postorder(m, root_params);
-                } else {
-                    stack_entry_t& father_entry = stack.back();
-                    postorder(m, father_entry.p);
-                }
-            }
-        }
-    }
-
-    static void render_tree(renderer& r, node root, const mvp_matrices& viewproj, glm::ivec2 out_res, float frame_time) {
+    static void render_tree(renderer& r, const gal::vertex_array& whole_screen_vao, node root, const mvp_matrices& viewproj, glm::ivec2 out_res, float frame_time) {
         // TODO: make a separate stack from the dfs payload stack so we don't keep push/popping viewport info for no reason
         struct payload_t {
             glm::ivec2 out_res;
@@ -109,7 +49,7 @@ namespace engine {
             //postorder: rendering and viewport switching
             [frame_time, &r](node n, const payload_t& father_payload){
                 // render self
-                if (n.has<mesh>()){
+                if (n.has<mesh>()) {
                     r.get_low_level_renderer().change_viewport_size(father_payload.out_res);
 
                     mvp_matrices mvp = father_payload.viewproj;
@@ -178,6 +118,7 @@ namespace engine {
           m_name(std::move(name)),
           m_renderer(),
           m_render_flags(),
+          m_whole_screen_vao(get_rm().load<gal::vertex_array>(internal_resource_name_t::whole_screen_vao)),
           m_application_channel(std::move(to_app_chan), application_channel_t::from_app_t{ .scene_name = m_name }) {
         EXPECTS(m_root.ecs_id() != null_ecs_id);
         EXPECTS(m_root.name().empty()); //the root node should always be unnamed.
@@ -195,7 +136,10 @@ namespace engine {
         mat4 proj_mat = glm::perspective(fovy, aspect_ratio, znear, zfar); // TODO: fovy and znear and zfar are opinionated choices, and should be somehow parameterized (probably through the camera/viewport)
         mat4 view_mat = default_fb_camera ? default_fb_camera->get_view_mat() : mat4(1);
         mvp_matrices viewproj { .m=mat4(1.), .v=view_mat, .p=proj_mat };
-        render_tree(m_renderer, get_root(), viewproj, resolution, frame_time);
+
+        render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj, resolution, frame_time);
+        m_renderer.finalize_frame();
+
         if (get_root().children().size() == 0) {
             slogga::stdout_log.warn("scene \"{}\"'s root  has 0 children", m_name);
         }

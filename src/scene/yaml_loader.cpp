@@ -25,6 +25,7 @@ struct std::formatter<ryml::ConstNodeRef, char> {
 };
 
 namespace engine {
+    // TODO: this namespace contains way too many functions, i think we can make it more succint.
     inline namespace yaml_parsing_functions {
         inline ryml::ConstNodeRef get_child(ryml::ConstNodeRef n) { return n; }
 
@@ -33,11 +34,11 @@ namespace engine {
             return get_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
 
-        inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n) { return n; }
+        inline std::optional<ryml::ConstNodeRef> get_optional_child(std::optional<ryml::ConstNodeRef> n) { return n; }
 
-        inline std::optional<ryml::ConstNodeRef> get_optional_child(ryml::ConstNodeRef n, auto child_name, auto... child_names) {
-            if(n.is_map() && n.has_child(child_name)) {
-                return get_optional_child(n[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        inline std::optional<ryml::ConstNodeRef> get_optional_child(std::optional<ryml::ConstNodeRef> n, auto child_name, auto... child_names) {
+            if(n.has_value() && n->is_map() && n->has_child(child_name)) {
+                return get_optional_child((*n)[child_name], child_names...); //NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
             } else {
                 return std::nullopt;
             }
@@ -52,6 +53,18 @@ namespace engine {
                 return std::nullopt;
         }
 
+        inline std::optional<bool> get_optional_bool(std::optional<ryml::ConstNodeRef> n) {
+            auto s = get_optional_val(n);
+            if(s.has_value()) {
+                if (*s != "true" && *s != "false" && *s != "0" && *s != "1") {
+                    throw std::out_of_range {"impossible to parse as bool a value that is neither 'true', 'false', '0', nor '1'"};
+                }
+                return *s == "true" || *s == "1";
+            } else {
+                return std::nullopt;
+            }
+        }
+
         inline std::string_view get_val(ryml::ConstNodeRef n) {
             EXPECTS_WITH_MSG(n.has_val(), std::format("({}).has_val()", n.id()));
             return ryml_substr_to_std_string_view(n.val());
@@ -61,8 +74,12 @@ namespace engine {
             return get_val(get_child(n, child_names...));
         }
 
-        inline std::optional<std::string_view> get_optional_child_val(ryml::ConstNodeRef n, auto... child_names) {
+        inline std::optional<std::string_view> get_optional_child_val(std::optional<ryml::ConstNodeRef> n, auto... child_names) {
             return get_optional_val(get_optional_child(n, child_names...));
+        }
+
+        inline std::optional<bool> get_optional_child_bool(std::optional<ryml::ConstNodeRef> n, auto... child_names) {
+            return get_optional_bool(get_optional_child(n, child_names...));
         }
 
         template <class T>
@@ -181,26 +198,33 @@ namespace engine {
             }
 
             // TODO: handle viewport payload as well
-            bool should_have_a_camera = false;
             node_payload_t payload = std::monostate();
             if(auto pl_node = get_optional_child(n, "payload")) {
                 if(auto type_str = get_optional_child_val(*pl_node, "type")) {
                     if(*type_str == "camera") {
                         payload = node_payload_t(camera());
-
-                        should_have_a_camera = true;
                     } else {
                         UNIMPLEMENTED(false);
                     }
                 }
             }
 
-            if(should_have_a_camera) {
-                slogga::stdout_log("({}) should have a camera", name);
-                ASSERTS(std::holds_alternative<camera>(payload));
+            node_collision_behaviour col_behaviour;
+            if (auto col_behaviour_node = get_optional_child(n, "collision_behaviour")) {
+                if(auto moves_away = get_optional_child_bool(col_behaviour_node, "move_away")) {
+                    col_behaviour.moves_away_on_collision = *moves_away;
+                }
+                if(auto passes_events_to_script = get_optional_child_bool(col_behaviour_node, "pass_event_to_script")) {
+                    col_behaviour.passes_events_to_script = *passes_events_to_script;
+                }
+                if(auto passes_events_to_father = get_optional_child_bool(col_behaviour_node, "pass_event_to_father")) {
+                    col_behaviour.passes_events_to_father = *passes_events_to_father;
+                }
             }
 
             node ret;
+
+
 
             if (auto path = get_optional_child_val(n, "load")) {
                 if (path->ends_with(".yml")) {
@@ -212,7 +236,7 @@ namespace engine {
                     ret = node::deep_copy(bp, std::string(name));
                 }
                 ret.set_transform(transform * ret.transform());
-                // ret.set_payload(std::move(payload)); // would overwrite payload of the loaded node. intended behavior
+                // ret.set_payload(std::move(payload)); // would overwrite payload of the loaded node. intended behavior?
 
                 if(script.has_value()) {
                     // overwrites the script from the loaded file
@@ -222,6 +246,8 @@ namespace engine {
                 ret = node::make(std::string(name), std::move(script), std::move(script_construction_params), std::move(payload), transform);
             }
 
+            ret.set_collision_behaviour(col_behaviour);
+
             // HANDLE MORE TYPES OF PAYLOAD
 
             if(father.ecs_id() != null_ecs_id) {
@@ -230,9 +256,6 @@ namespace engine {
                 //this node is the root
                 EXPECTS(name.empty());
             }
-
-            if(should_have_a_camera)
-                slogga::stdout_log("({}).has<camera>() = {}", ret.name(), ret.has<camera>());
 
             return ret;
         });

@@ -363,7 +363,7 @@ namespace engine {
         glm::mat4 transform = get_node_transform(gltf_node);
         auto root = node::make(gltf_node.name, std::move(node_data_variant), transform);
         root.set_collision_behaviour(node_collision_behaviour {
-            .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "moves_away_on_collision"),
+            .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "move_away_on_collision"),
             .passes_events_to_script = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_script"),
             .passes_events_to_father = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_father"),
         });

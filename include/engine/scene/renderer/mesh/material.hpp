@@ -21,10 +21,7 @@ namespace engine {
     template<typename T>
     using mat_variant = std::variant<glm::mat<2,2,T>, glm::mat<2,3,T>, glm::mat<2,4,T>, glm::mat<3,2,T>, glm::mat<3,3,T>, glm::mat<3,4,T>, glm::mat<4,2,T>, glm::mat<4,3,T>, glm::mat<4,4,T>>;
 
-
     using uniform_value_variant = merge_variants<mat_variant<float>, vec_variant<float, double, gal::sint, gal::uint, bool>>;
-
-
 
     class material {
         rc<const shader> m_shader;

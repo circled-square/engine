@@ -155,6 +155,7 @@ namespace engine {
 
     void node::react_to_collision(collision_result res, node other) {
         node node_cursor = m_ecs_id;
+
         while(true) {
             const auto& col_behaviour = node_cursor.get_collision_behaviour();
 
@@ -178,6 +179,8 @@ namespace engine {
             if(col_behaviour.passes_events_to_father) {
                 if(node father = node_cursor.get_father(); father.ecs_id() != null_ecs_id) {
                     node_cursor = father;
+                } else {
+                    break;
                 }
             } else {
                 break;

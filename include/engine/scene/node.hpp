@@ -138,7 +138,7 @@ namespace engine {
         // special node data access
         // const node_payload_t& get_payload() const { return get_rm().ecs().get_component<node_payload_t>("payload").get_or(m_ecs_id, node_payload_t(std::monostate()));}
         template<NodePayload T> bool has() const {
-            auto pl = get_rm().ecs().get_component<node_payload_t>().get_or(m_ecs_id, std::monostate());
+            auto& pl = get_rm().ecs().get_component<node_payload_t>().get_or(m_ecs_id, std::monostate());
             return std::holds_alternative<T>(pl);
         }
         template<NodePayload T> T& get() const {

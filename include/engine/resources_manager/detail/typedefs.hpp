@@ -20,9 +20,9 @@ namespace engine::detail {
     // set of ids for GCion
     template<Resource T> using id_hashset = hashset<resource_id<T>>;
 
-    using id_to_resources_hashmaps = map_tuple<id_to_resource_hashmap, resource_tuple_t>;
-    using name_to_id_hashmaps = map_tuple<name_to_id_hashmap, resource_tuple_t>;
-    using id_hashsets = map_tuple<id_hashset, resource_tuple_t>;
+    using id_to_resources_hashmaps = map_type_list<id_to_resource_hashmap, std::tuple, resources_t>;
+    using name_to_id_hashmaps = map_type_list<name_to_id_hashmap, std::tuple, resources_t>;
+    using id_hashsets = map_type_list<id_hashset, std::tuple, resources_t>;
 
     class resources_manager_hashmaps {
         id_to_resources_hashmaps m_id_to_resource;
