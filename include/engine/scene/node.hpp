@@ -4,7 +4,6 @@
 #include <string>
 #include <optional>
 #include "node/script.hpp"
-#include "node/node_payload.hpp"
 #include "node/narrow_phase_collision.hpp"
 #include "node/node_span.hpp"
 #include "node/collision_behaviour.hpp"
@@ -61,13 +60,6 @@ namespace engine {
          */
         static constexpr std::string_view special_chars_allowed_in_node_name = "_-.,!?:; @#%^&*()[]{}<>|~";
 
-        static node make(std::string name, std::optional<stateless_script> s = std::nullopt, const std::any& params = std::monostate(), node_payload_t pl = std::monostate(), const glm::mat4& transform = glm::mat4(1)) {
-            return node(std::move(name), std::move(pl), std::move(transform), s, params);
-        }
-        static node make(std::string name, node_payload_t pl, const glm::mat4& transform = glm::mat4(1)) {
-            return node::make(std::move(name), std::nullopt, std::monostate(), std::move(pl), transform);
-        }
-
         // expensive
         ENGINE_API static node deep_copy(rc<const nodetree_blueprint> nt, std::optional<std::string> name = std::nullopt);
         // expensive
@@ -79,8 +71,7 @@ namespace engine {
         using node_span = map_span<ecs_id_t, node>;
 
         // this must be ENGINE_API because node::make is defined in-header, and it must be public because std::make_unique needs to be able to access it
-        ENGINE_API explicit node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params);
-
+        ENGINE_API explicit node(std::string name, const glm::mat4& transform = glm::mat4(1.f));
 
         // get child from name
         ENGINE_API node get_child(std::string_view name);
@@ -115,46 +106,23 @@ namespace engine {
          */
         ENGINE_API const glm::mat4& get_global_transform() const;
 
-        // get the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        const node_collision_behaviour& get_collision_behaviour() { return get_rm().ecs().get_component<node_collision_behaviour>().get(m_ecs_id); }
-        // set the collision behaviour: should the node move away when it receives a collision event, and/or pass the event to its script and/or to its father?
-        void set_collision_behaviour(node_collision_behaviour col_behaviour) { get_rm().ecs().get_component<node_collision_behaviour>().set(m_ecs_id, col_behaviour); }
-
-
         // handle collision event, recursing up the node tree if necessary
         void react_to_collision(collision_result res, node other);
 
         //script
         // instantiates a script and attaches it to a node; params are for the script's constructor
-        ENGINE_API void attach_script(stateless_script s, const std::any& params = std::monostate());
-        // attach an already-instantiated script to a node;
-        ENGINE_API void attach_script(script s);
+        // returns self
+        ENGINE_API node attach_script(stateless_script s, const std::any& params = std::monostate());
 
-        // TODO: treat each payload type as a separate ECS component, and have get/set just fetch it; also have set/get be a generic functions that also works for other components such as script, collision_behaviour,
-
-        // get this node's script
-        optional_ref<script> get_script() const { return get_rm().ecs().get_component<script>().try_get(m_ecs_id); }
-
-        // special node data access
-        // const node_payload_t& get_payload() const { return get_rm().ecs().get_component<node_payload_t>("payload").get_or(m_ecs_id, node_payload_t(std::monostate()));}
-        template<NodePayload T> bool has() const {
-            auto& pl = get_rm().ecs().get_component<node_payload_t>().get_or(m_ecs_id, std::monostate());
-            return std::holds_alternative<T>(pl);
+        template<typename T>
+        optional_ref<T> get() const {
+            return get_rm().ecs().get_component<T>().try_get(m_ecs_id);
         }
-        template<NodePayload T> T& get() const {
-            EXPECTS(has<T>());
-            return std::get<T>(get_rm().ecs().get_component<node_payload_t>().get(m_ecs_id));
+        template<typename T>
+        node set(T v) {
+            get_rm().ecs().get_component<T>().set(m_ecs_id, std::move(v));
+            return *this;
         }
-
-        //allow has<collision_shape> instead of has<rc<collision_shape>>
-        template<Resource T> requires NodePayload<rc<const T>> bool     has() const { return has<rc<const collision_shape>>(); }
-        template<Resource T> requires NodePayload<rc<const T>> const T& get() const { return *get<rc<const collision_shape>>(); }
-
-        void set_payload(node_payload_t p) {
-            get_rm().ecs().get_component<node_payload_t>().set(m_ecs_id, std::move(p));
-        }
-        //separate logic for rc<collision_shape>
-        void set_payload(rc<collision_shape> p) { get_rm().ecs().get_component<node_payload_t>().set(m_ecs_id, std::move(p)); }
 
         ecs_id_t ecs_id() const { return m_ecs_id; }
         operator ecs_id_t() const { return ecs_id(); }

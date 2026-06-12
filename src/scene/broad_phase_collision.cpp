@@ -7,15 +7,11 @@ namespace engine {
     void pass_all_broad_phase_collision_detector::check_collisions_and_trigger_reactions() {
         for(size_t i = 0; i < m_subscribers.size(); i++) {
             node a = m_subscribers[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < m_subscribers.size()
-            EXPECTS(a.has<rc<const collision_shape>>());
-
             for(size_t j = i + 1; j < m_subscribers.size(); j++) {
                 node b = m_subscribers[j]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) // i < m_subscribers.size()
-                EXPECTS(b.has<rc<const collision_shape>>());
-
                 //TODO: check layer correctness
-                const auto& a_cs = a.get<collision_shape>();
-                const auto& b_cs = b.get<collision_shape>();
+                const collision_shape& a_cs = **a.get<rc<const collision_shape>>();
+                const collision_shape& b_cs = **b.get<rc<const collision_shape>>();
                 bool a_sees_b = bool(a_cs.sees_layers & b_cs.is_layers);
                 bool b_sees_a = bool(b_cs.sees_layers & a_cs.is_layers);
                 if(!a_sees_b && !b_sees_a)

@@ -14,7 +14,7 @@ namespace engine {
         return s;
     }
 
-    node::node(std::string name, node_payload_t payload, const glm::mat4& transform, std::optional<stateless_script> script, const std::any& params)
+    node::node(std::string name, const glm::mat4& transform)
         // TODO: unideal interface, make it better
         : m_ecs_id(get_rm().ecs().make_new_id())
     {
@@ -22,33 +22,13 @@ namespace engine {
 
         EXPECTS(name != ".."); // special name for father node in paths
         get_rm().ecs().get_component<std::string>(component_names::name).set(m_ecs_id, std::move(name));
-
-        if(!std::holds_alternative<std::monostate>(payload)) {
-            set_payload(std::move(payload));
-        }
-
-        visit_optional(script, [&](auto& s){ attach_script(s, params); });
     }
 
     node node::deep_copy(node o, std::optional<std::string> name) {
-        node_payload_t pl = get_rm().ecs().get_component<node_payload_t>().get_or(o, std::monostate());
-
-        node n = node::make(name.value_or(std::string(o.name())), std::nullopt, std::monostate(), std::move(pl), o.transform());
-        if(o.get_script()) {
-            // clone the script AND its state
-            n.attach_script(*o.get_script());
-        }
+        node n = get_rm().ecs().shallow_clone(o);
 
         auto& ecs = get_rm().ecs();
 
-        if(auto bp = ecs.get_component<rc<const nodetree_blueprint>>().try_get(o)) {
-            ecs.get_component<rc<const nodetree_blueprint>>().set(n, *bp);
-        }
-
-        auto& col_behaviour_component = ecs.get_component<node_collision_behaviour>();
-        col_behaviour_component.set(n, col_behaviour_component.get(o));
-
-        n.set_children_sorting_preference(o.get_children_sorting_preference());
         auto& children_component = ecs.get_component<children_vector>();
 
         auto& n_children = children_component.get(n);
@@ -157,7 +137,7 @@ namespace engine {
         node node_cursor = m_ecs_id;
 
         while(true) {
-            const auto& col_behaviour = node_cursor.get_collision_behaviour();
+            const auto& col_behaviour = *node_cursor.get<node_collision_behaviour>();
 
             if(col_behaviour.moves_away_on_collision) {
                 node father = node_cursor.get_father();
@@ -168,11 +148,9 @@ namespace engine {
                 node_cursor.set_transform(glm::translate(node_cursor.transform(), -local_space_min_translation));
             }
             if(col_behaviour.passes_events_to_script) {
-                EXPECTS(node_cursor.get_script().has_value());
-
                 // pass the collision event to the node's script
-                if(node_cursor.get_script())
-                    node_cursor.get_script()->react_to_collision(node_cursor, res, *this, other);
+                if(auto s = node_cursor.get<script>())
+                    s->react_to_collision(node_cursor, res, *this, other);
             }
 
             //keep recursing up the node tree if the event needs to be passed to the father
@@ -188,14 +166,10 @@ namespace engine {
         }
     }
 
-    void node::attach_script(stateless_script sc, const std::any& params) {
-        attach_script(script(std::move(sc), node(m_ecs_id), params));
+    node node::attach_script(stateless_script sc, const std::any& params) {
+        set<script>(script(std::move(sc), node(m_ecs_id), params));
+        return *this;
     }
-
-    void node::attach_script(script sc) {
-        get_rm().ecs().get_component<script>().set(m_ecs_id, std::move(sc));
-    }
-
 
     void node::invalidate_global_transform_cache() {
         if(get_rm().ecs().get_component<glm::mat4>(component_names::global_transform_cache).uninit_for_entity(m_ecs_id)) {

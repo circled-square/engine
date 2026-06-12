@@ -38,6 +38,18 @@ namespace engine {
         return id;
     }
 
+    ecs_id_t entity_component_system::shallow_clone(ecs_id_t id) {
+        ecs_id_t ret = make_new_id();
+
+        for(component_name_t i = 0; i < m_components.size(); i++) {
+            if(i != component_names::children && i != component_names::father) {
+                m_components[i]->copy(id, ret);
+            }
+        }
+
+        return ret;
+    }
+
     // well defined for n/0 (just returns numeric_limits::max())
     inline ecs_id_t unsigned_integer_division(ecs_id_t n, ecs_id_t d) {
         return d != 0 ? n / d : std::numeric_limits<ecs_id_t>::max();

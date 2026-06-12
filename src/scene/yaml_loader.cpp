@@ -197,18 +197,6 @@ namespace engine {
                 }
             }
 
-            // TODO: handle viewport payload as well
-            node_payload_t payload = std::monostate();
-            if(auto pl_node = get_optional_child(n, "payload")) {
-                if(auto type_str = get_optional_child_val(*pl_node, "type")) {
-                    if(*type_str == "camera") {
-                        payload = node_payload_t(camera());
-                    } else {
-                        UNIMPLEMENTED(false);
-                    }
-                }
-            }
-
             node_collision_behaviour col_behaviour;
             if (auto col_behaviour_node = get_optional_child(n, "collision_behaviour")) {
                 if(auto moves_away = get_optional_child_bool(col_behaviour_node, "move_away")) {
@@ -236,17 +224,30 @@ namespace engine {
                     ret = node::deep_copy(bp, std::string(name));
                 }
                 ret.set_transform(transform * ret.transform());
-                // ret.set_payload(std::move(payload)); // would overwrite payload of the loaded node. intended behavior?
-
-                if(script.has_value()) {
-                    // overwrites the script from the loaded file
-                    ret.attach_script(std::move(*script), std::move(script_construction_params));
-                }
             } else {
-                ret = node::make(std::string(name), std::move(script), std::move(script_construction_params), std::move(payload), transform);
+                ret = node(std::string(name), transform);
             }
 
-            ret.set_collision_behaviour(col_behaviour);
+            // TODO: handle viewport payload as well
+            // TODO: awkward that we still have a "payload" node in the yaml even though the engine no longer works like this
+            if(auto pl_node = get_optional_child(n, "payload")) {
+                if(auto type_str = get_optional_child_val(*pl_node, "type")) {
+                    if(*type_str == "camera") {
+                        ret.set<camera>(camera());
+                    } else {
+                        UNIMPLEMENTED(false);
+                    }
+                }
+            }
+
+            ret.set<node_collision_behaviour>(col_behaviour);
+
+
+            if(script.has_value()) {
+                // if the node is loaded from file this overwrites the script from the loaded file
+                ret.attach_script(std::move(*script), std::move(script_construction_params));
+            }
+
 
             // HANDLE MORE TYPES OF PAYLOAD
 

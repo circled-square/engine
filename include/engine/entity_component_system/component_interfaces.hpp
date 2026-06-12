@@ -2,7 +2,6 @@
 #define ENGINE_ENTITY_COMPONENT_SYSTEM_COMPONENT_INTERFACES_HPP
 
 #include <cstdint>
-#include <string_view>
 #include <limits>
 #include <engine/utils/optional_ref.hpp>
 
@@ -20,6 +19,7 @@ namespace engine {
         virtual void init_for_entity(ecs_id_t id) = 0;
         virtual bool uninit_for_entity(ecs_id_t id) = 0;
         virtual void number_of_ids_in_use_changed(ecs_id_t new_amount) = 0;
+        virtual void copy(ecs_id_t from, ecs_id_t to) = 0;
     };
 
     template<typename T>

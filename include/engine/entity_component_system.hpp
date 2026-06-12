@@ -9,10 +9,10 @@
 #include <memory>
 #include <slogga/asserts.hpp>
 #include <engine/entity_component_system/component_implementations.hpp>
-#include <flat_set>
 #include <engine/scene/node/script.hpp>
-#include <engine/scene/node/node_payload.hpp>
 #include <engine/scene/node/collision_behaviour.hpp>
+#include <engine/scene/node/camera.hpp>
+#include <engine/scene/node/viewport.hpp>
 
 namespace engine {
     class ecs_exception;
@@ -28,24 +28,31 @@ namespace engine {
             father,
             collision_behaviour,
             transform,
-            payload,
             name,
 
             transform_edits,
             global_transform_cache,
             script,
             blueprint,
+            camera,
+            mesh,
+            collision_shape,
+            viewport,
 
             number_of_reserved_names,
             start_of_nonreserved_names = number_of_reserved_names
         };
         // gets default component for a certain type, e.g. default_component_name<children_vector>() -> children
-        template<typename T> consteval uint64_t default_component_name() {
+        template<AnyOneOf<children_vector, node_collision_behaviour, engine::script, rc<const nodetree_blueprint>, engine::camera, engine::mesh, rc<const engine::collision_shape>, engine::viewport> T>
+        consteval uint64_t default_component_name() {
             if constexpr(std::same_as<T, children_vector>) { return children; }
             else if constexpr(std::same_as<T, node_collision_behaviour>) { return collision_behaviour; }
-            else if constexpr(std::same_as<T, node_payload_t>) { return payload; }
             else if constexpr(std::same_as<T, engine::script>) { return script; }
             else if constexpr(std::same_as<T, rc<const nodetree_blueprint>>) { return blueprint; }
+            else if constexpr(std::same_as<T, engine::camera>) { return camera; }
+            else if constexpr(std::same_as<T, engine::mesh>) { return mesh; }
+            else if constexpr(std::same_as<T, rc<const engine::collision_shape>>) { return collision_shape; }
+            else if constexpr(std::same_as<T, engine::viewport>) { return viewport; }
         }
     }
 
@@ -60,21 +67,28 @@ namespace engine {
     public:
 
         entity_component_system() {
-            using namespace component_names;
+            namespace names = component_names;
 
-            m_components.reserve(number_of_reserved_names);
+            m_components.reserve(names::number_of_reserved_names);
 
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<children_vector>(children, { .is_sorted = true })));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<ecs_id_t>(father, null_ecs_id)));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<node_collision_behaviour>(collision_behaviour, {})));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<glm::mat4>(transform, glm::mat4(1.))));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<node_payload_t>(payload, std::monostate())));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_dense_vector<std::string>(name, "default_node_name")));
+            using component_ptr = std::unique_ptr<ecs_component_interface>;
 
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>(transform_edits)));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<glm::mat4>(global_transform_cache)));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<engine::script>(component_names::script)));
-            register_new_component(std::unique_ptr<ecs_component_interface>(new ecs_component_optional_hashmap<rc<const nodetree_blueprint>>(blueprint))); // reference to the nodetree blueprint the node was built from, if any, to keep its refcount up
+            // mandatory components
+            register_new_component(component_ptr(new ecs_component_dense_vector<children_vector>(names::children, { .is_sorted = true })));
+            register_new_component(component_ptr(new ecs_component_dense_vector<ecs_id_t>(names::father, null_ecs_id)));
+            register_new_component(component_ptr(new ecs_component_dense_vector<node_collision_behaviour>(names::collision_behaviour, {})));
+            register_new_component(component_ptr(new ecs_component_dense_vector<glm::mat4>(names::transform, glm::mat4(1.))));
+            register_new_component(component_ptr(new ecs_component_dense_vector<std::string>(names::name, "default_node_name")));
+
+            // optional components
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<glm::mat4>(names::transform_edits)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<glm::mat4>(names::global_transform_cache)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<script>(names::script)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<rc<const nodetree_blueprint>>(names::blueprint))); // reference to the nodetree blueprint the node was built from, if any, to keep its refcount up
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<camera>(names::camera)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<mesh>(names::mesh)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<rc<const collision_shape>>(names::collision_shape)));
+            register_new_component(component_ptr(new ecs_component_optional_hashmap<viewport>(names::viewport)));
         }
         entity_component_system(entity_component_system&&) = delete;
         entity_component_system(const entity_component_system&) = delete;
@@ -91,6 +105,8 @@ namespace engine {
 
 
         ecs_id_t make_new_id();
+        // create a new id and copy the values for all components, except father and children.
+        ecs_id_t shallow_clone(ecs_id_t id);
 
         // TODO: currently we must dealloc components the id doesn't even use!
         void release_id(ecs_id_t id);

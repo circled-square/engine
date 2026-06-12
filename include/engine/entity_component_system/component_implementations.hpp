@@ -30,6 +30,10 @@ namespace engine {
             m_vec.resize(new_amount, m_default_value);
         }
 
+        void copy(ecs_id_t from, ecs_id_t to) final {
+            m_vec[to] = m_vec[from];
+        }
+
 
         T& get(ecs_id_t id) final { return bounds_check_access(m_vec, id); }
         const T& get(ecs_id_t id) const final { return bounds_check_access(m_vec, id); }
@@ -67,6 +71,13 @@ namespace engine {
 
         void number_of_ids_in_use_changed(ecs_id_t new_amount) final {} // we don't care, this is mostly meant for vectors
 
+        void copy(ecs_id_t from, ecs_id_t to) final {
+            auto it = m_hashmap.find(from);
+            if(it != m_hashmap.end()) {
+                m_hashmap.insert(std::pair{to, it->second});
+            }
+        }
+
         optional_ref<const T> try_get(ecs_id_t id) const final {
             auto it = m_hashmap.find(id);
             if(it == m_hashmap.end())
@@ -96,7 +107,7 @@ namespace engine {
             }
             return *opt;
         }
-        const T& set(ecs_id_t id, T value) final { return m_hashmap.insert({id, value}).first->second; }
+        const T& set(ecs_id_t id, T value) final { return m_hashmap.insert(std::pair{id, value}).first->second; }
 
         // special behaviour for this specific implementation
         const hashmap<ecs_id_t, T>& underlying_hashmap() const { return m_hashmap; }

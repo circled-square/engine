@@ -326,43 +326,45 @@ namespace engine {
         return translation_mat * scale_mat * rotation_mat * raw_mat;
     }
 
-    static node_payload_t load_node_data(const tinygltf::Model& model, const tinygltf::Node& node, const rc<const shader>& shader) {
-        if(node.mesh == -1)
-            return std::monostate();
-        const tinygltf::Mesh& mesh = model.meshes[node.mesh];
+    static void load_node_data(node n, const tinygltf::Model& model, const tinygltf::Node& node, const rc<const shader>& shader) {
+        //currently only mesh is handled
+        if(node.mesh != -1) {
+            const tinygltf::Mesh& mesh = model.meshes[node.mesh];
 
-        if(node.name.ends_with("-col")) {
-            auto colshape_or_err = load_mesh_as_collision_shape(model, mesh, node.extras);
-            if(std::holds_alternative<collision_shape>(colshape_or_err)) {
-                return get_rm().new_from(std::move(std::get<collision_shape>(colshape_or_err)));
-            } else {
-                auto err = std::get<colshape_load_error>(colshape_or_err);
-                std::string_view errstr;
-                switch(err) {
-                case colshape_load_error::NO_POSITION_ACCESSOR:
-                    errstr = "no position vertex attribute accessor";
-                    break;
-                case colshape_load_error::POSITION_IS_NOT_VEC3:
-                    errstr = "position vertex attribute is not vec3";
-                default:
-                    errstr = "(invalid error code)";
+            if(node.name.ends_with("-col")) {
+                auto colshape_or_err = load_mesh_as_collision_shape(model, mesh, node.extras);
+                if(std::holds_alternative<collision_shape>(colshape_or_err)) {
+                    n.set<rc<const collision_shape>>(get_rm().new_from(std::move(std::get<collision_shape>(colshape_or_err))));
+                } else {
+                    auto err = std::get<colshape_load_error>(colshape_or_err);
+                    std::string_view errstr;
+                    switch(err) {
+                    case colshape_load_error::NO_POSITION_ACCESSOR:
+                        errstr = "no position vertex attribute accessor";
+                        break;
+                    case colshape_load_error::POSITION_IS_NOT_VEC3:
+                        errstr = "position vertex attribute is not vec3";
+                    default:
+                        errstr = "(invalid error code)";
+                    }
+                    slogga::stdout_log.warn("Error while attempting to load collision shape from node \"{}\" from gltf: {}", node.name, errstr);
                 }
-                slogga::stdout_log.warn("Error while attempting to load collision shape from node \"{}\" from gltf: {}", node.name, errstr);
-                return std::monostate();
+            } else {
+                n.set<engine::mesh>(load_mesh(model, mesh, shader));
             }
-        } else {
-            return load_mesh(model, mesh, shader);
         }
     }
 
     static node load_node_subtree(const tinygltf::Model& model, int idx, const rc<const shader>& shader) {
         const tinygltf::Node& gltf_node = model.nodes[idx];
 
-        node_payload_t node_data_variant = load_node_data(model, gltf_node, shader);
 
         glm::mat4 transform = get_node_transform(gltf_node);
-        auto root = node::make(gltf_node.name, std::move(node_data_variant), transform);
-        root.set_collision_behaviour(node_collision_behaviour {
+        auto root = node(gltf_node.name, transform);
+
+        load_node_data(root, model, gltf_node, shader);
+
+        root.set<node_collision_behaviour>(node_collision_behaviour {
             .moves_away_on_collision = load_bool_from_gltf_extras(gltf_node.extras, "move_away_on_collision"),
             .passes_events_to_script = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_script"),
             .passes_events_to_father = load_bool_from_gltf_extras(gltf_node.extras, "pass_collision_event_to_father"),
@@ -385,7 +387,7 @@ namespace engine {
 
         const tinygltf::Model model = load_gltf_from_file(filepath, binary);
 
-        auto root = node::make(filepath);
+        auto root = node(filepath);
 
         const tinygltf::Scene& scene = model.scenes.at(0);
         list<int> node_idx_queue;
