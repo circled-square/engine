@@ -6,23 +6,26 @@
 
 namespace engine {
     viewport::viewport(framebuffer fbo, std::optional<glm::vec2> dynamic_size_relative_to_output)
-        : m_fbo(std::move(fbo)), m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {}
+        : m_fbo(std::move(fbo)), m_dynamic_size_relative_to_output(dynamic_size_relative_to_output) {
+        EXPECTS(m_fbo.get_texture()->is_null() || (m_fbo.resolution().x > 0 && m_fbo.resolution().y > 0));
+    }
 
     viewport::viewport(glm::vec2 dynamic_size_relative_to_output)
         // a texture with 0 texels causes the fbo to throw a framebuffer_construction_exception
         : viewport(framebuffer(get_rm().new_from(gal::texture::null())), dynamic_size_relative_to_output) {}
 
     inline viewport copy(const viewport &o) {
-        rc<gal::texture> new_texture = get_rm().new_from(gal::texture::empty(o.fbo().resolution(), 4));
+        auto tex = o.fbo().get_texture()->is_null() ? gal::texture::null() : gal::texture::empty(o.fbo().resolution(), 4);
+        rc<gal::texture> new_texture = get_rm().new_from(std::move(tex));
         return viewport(framebuffer(std::move(new_texture)), o.dynamic_size_relative_to_output());
     }
 
     viewport::viewport(const viewport &o)
         : viewport(copy(o)) {}
 
-    framebuffer &viewport::fbo() { return m_fbo; }
+    framebuffer& viewport::fbo() { return m_fbo; }
 
-    const framebuffer &viewport::fbo() const { return m_fbo; }
+    const framebuffer& viewport::fbo() const { return m_fbo; }
 
     std::optional<glm::vec2> viewport::dynamic_size_relative_to_output() const { return m_dynamic_size_relative_to_output; }
 
