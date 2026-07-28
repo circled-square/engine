@@ -1,12 +1,15 @@
-#ifndef _C4_YML_ERROR_DEF_HPP_
-#define _C4_YML_ERROR_DEF_HPP_
+#ifndef C4_YML_ERROR_DEF_HPP_
+#define C4_YML_ERROR_DEF_HPP_
 
 /** @file error.def.hpp Definitions of error utilities used by ryml. */
 
-#ifndef _C4_YML_ERROR_HPP_
+#ifndef C4_YML_ERROR_HPP_
 #include <c4/yml/error.hpp>
 #endif
 
+#include <cassert>
+
+// NOLINTBEGIN(bugprone-use-after-move,hicpp-invalid-access-moved)
 
 namespace c4 {
 namespace yml {
@@ -383,4 +386,6 @@ C4_NO_INLINE void err_visit_format(DumpFn &&dumpfn, csubstr msg, ErrorDataVisit 
 } // namespace yml
 } // namespace c4
 
-#endif /* _C4_YML_ERROR_HPP_ */
+// NOLINTEND(bugprone-use-after-move,hicpp-invalid-access-moved)
+
+#endif /* C4_YML_ERROR_HPP_ */

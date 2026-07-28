@@ -1,11 +1,17 @@
+#ifndef C4_YML_NODE_TYPE_HPP_
 #include "c4/yml/node_type.hpp"
+#endif
+#ifndef C4_YML_ERROR_HPP_
+#include "c4/yml/error.hpp"
+#endif
+
 
 namespace c4 {
 namespace yml {
 
-const char* NodeType::type_str(NodeType_e ty) noexcept
+const char* NodeType::type_str(type_bits ty) noexcept
 {
-    switch(ty & _TYMASK)
+    switch(ty & TYMASK_)
     {
     case KEYVAL:
         return "KEYVAL";
@@ -60,168 +66,63 @@ const char* NodeType::type_str(NodeType_e ty) noexcept
     }
 }
 
-csubstr NodeType::type_str(substr buf, NodeType_e flags) noexcept
-{
-    size_t pos = 0;
-    bool gotone = false;
-
-    #define _prflag(fl, txt)                                    \
-    do {                                                        \
-        if((flags & (fl)) == (fl))                              \
-        {                                                       \
-            if(gotone)                                          \
-            {                                                   \
-                if(pos + 1 < buf.len)                           \
-                    buf[pos] = '|';                             \
-                ++pos;                                          \
-            }                                                   \
-            csubstr fltxt = txt;                                \
-            if(pos + fltxt.len <= buf.len)                      \
-                memcpy(buf.str + pos, fltxt.str, fltxt.len);    \
-            pos += fltxt.len;                                   \
-            gotone = true;                                      \
-            flags = (flags & ~(fl)); /*remove the flag*/        \
-        }                                                       \
-    } while(0)
-
-    _prflag(STREAM, "STREAM");
-    _prflag(DOC, "DOC");
+namespace {
+struct type_and_name { const char* str; type_bits bits; };
+constexpr const type_and_name type_names[] = {
+    {"STREAM", STREAM},
+    {"DOC", DOC},
     // key properties
-    _prflag(KEY, "KEY");
-    _prflag(KEYNIL, "KNIL");
-    _prflag(KEYTAG, "KTAG");
-    _prflag(KEYANCH, "KANCH");
-    _prflag(KEYREF, "KREF");
-    _prflag(KEY_LITERAL, "KLITERAL");
-    _prflag(KEY_FOLDED, "KFOLDED");
-    _prflag(KEY_SQUO, "KSQUO");
-    _prflag(KEY_DQUO, "KDQUO");
-    _prflag(KEY_PLAIN, "KPLAIN");
-    _prflag(KEY_UNFILT, "KUNFILT");
+    {"KEY", KEY},
+    {"KNIL", KEYNIL},
+    {"KTAG", KEYTAG},
+    {"KANCH", KEYANCH},
+    {"KREF", KEYREF},
+    {"KLITERAL", KEY_LITERAL},
+    {"KFOLDED", KEY_FOLDED},
+    {"KSQUO", KEY_SQUO},
+    {"KDQUO", KEY_DQUO},
+    {"KPLAIN", KEY_PLAIN},
+    {"KUNFILT", KEY_UNFILT},
     // val properties
-    _prflag(VAL, "VAL");
-    _prflag(VALNIL, "VNIL");
-    _prflag(VALTAG, "VTAG");
-    _prflag(VALANCH, "VANCH");
-    _prflag(VALREF, "VREF");
-    _prflag(VAL_UNFILT, "VUNFILT");
-    _prflag(VAL_LITERAL, "VLITERAL");
-    _prflag(VAL_FOLDED, "VFOLDED");
-    _prflag(VAL_SQUO, "VSQUO");
-    _prflag(VAL_DQUO, "VDQUO");
-    _prflag(VAL_PLAIN, "VPLAIN");
-    _prflag(VAL_UNFILT, "VUNFILT");
+    {"VAL", VAL},
+    {"VNIL", VALNIL},
+    {"VTAG", VALTAG},
+    {"VANCH", VALANCH},
+    {"VREF", VALREF},
+    {"VLITERAL", VAL_LITERAL},
+    {"VFOLDED", VAL_FOLDED},
+    {"VSQUO", VAL_SQUO},
+    {"VDQUO", VAL_DQUO},
+    {"VPLAIN", VAL_PLAIN},
+    {"VUNFILT", VAL_UNFILT},
     // container properties
-    _prflag(MAP, "MAP");
-    _prflag(SEQ, "SEQ");
-    _prflag(FLOW_SL, "FLOWSL");
-    _prflag(FLOW_ML, "FLOWML");
-    _prflag(BLOCK, "BLCK");
-    if(pos == 0)
-        _prflag(NOTYPE, "NOTYPE");
-
-    #undef _prflag
-
-    if(pos < buf.len)
-    {
-        buf[pos] = '\0';
-        return buf.first(pos);
-    }
-    else
-    {
-        csubstr failed;
-        failed.len = pos + 1;
-        failed.str = nullptr;
-        return failed;
-    }
-}
-
-
-//-----------------------------------------------------------------------------
-
-// see https://www.yaml.info/learn/quote.html#noplain
-bool scalar_style_query_squo(csubstr s) noexcept
+    {"MAP", MAP},
+    {"SEQ", SEQ},
+    {"FLOWSL", FLOW_SL},
+    {"FLOWML1", FLOW_ML1},
+    {"FLOWMLN", FLOW_MLN},
+    {"FLOWSPC", FLOW_SPC},
+    {"BLCK", BLOCK},
+};
+} // namespace
+size_t NodeType::type_str(substr buf, type_bits flags) noexcept
 {
-    return ! s.first_of_any("\n ", "\n\t");
-}
-
-// see https://www.yaml.info/learn/quote.html#noplain
-bool scalar_style_query_plain(csubstr s) noexcept
-{
-    if(s.begins_with("-."))
+    detail::SubstrWriter_ writer(buf);
+    for(type_and_name const tn : type_names)
     {
-        if(s == "-.inf" || s == "-.INF")
-            return true;
-        else if(s.sub(2).is_number())
-            return true;
-    }
-    else if(s.begins_with_any("0123456789.-+") && s.is_number())
-    {
-        return true;
-    }
-    return ( ! s.begins_with_any("-:?*&,'\"{}[]|>%#@`\r")) // @ and ` are reserved characters
-        && ( ! s.ends_with_any(":#"))
-             // make this check in the last place, as it has linear
-             // complexity, while the previous ones are
-             // constant-time
-        && (s.first_of("\n#:[]{},") == npos);
-}
-
-NodeType_e scalar_style_choose(csubstr s) noexcept
-{
-    if(s.len)
-    {
-        if(s.begins_with_any(" \n\t")
-           ||
-           s.ends_with_any(" \n\t"))
+        if((flags & tn.bits) == tn.bits)
         {
-            return SCALAR_DQUO;
+            if(writer.pos)
+                writer.append('|');
+            writer.append(tn.str);
+            flags = flags & ~tn.bits; // remove the flag
         }
-        else if( ! scalar_style_query_plain(s))
-        {
-            return scalar_style_query_squo(s) ? SCALAR_SQUO : SCALAR_DQUO;
-        }
-        // nothing remarkable - use plain
-        return SCALAR_PLAIN;
     }
-    return s.str ? SCALAR_SQUO : SCALAR_PLAIN;
-}
-
-NodeType_e scalar_style_json_choose(csubstr s) noexcept
-{
-    // do not quote special cases
-    bool plain = (
-        (s == "true" || s == "false" || s == "null")
-        ||
-        (
-            // do not quote numbers
-            s.is_number()
-            &&
-            (
-                (
-                    // quote integral numbers if they have a leading 0
-                    // https://github.com/biojppm/rapidyaml/issues/291
-                    (!(s.len > 1 && s.begins_with('0')))
-                    // do not quote reals with leading 0
-                    // https://github.com/biojppm/rapidyaml/issues/313
-                    || (s.find('.') != csubstr::npos)
-                )
-            )
-        )
-        ||
-        (
-            (s.len > 3)
-            &&
-            (
-                (s[0] == '.' && (s == ".inf" || s == ".Inf" || s == ".INF"
-                                 ||
-                                 s == ".nan" || s == ".NaN" || s == ".NAN"))
-                ||
-                (s[0] == '-' && (s == "-.inf" || s == "-.Inf" || s == "-.INF"))
-            )
-        )
-    );
-    return plain ? SCALAR_PLAIN : SCALAR_DQUO;
+    if(!writer.pos)
+        writer.append("NOTYPE");
+    if(writer.pos < buf.len)
+        buf[writer.pos] = '\0';
+    return writer.pos;
 }
 
 } // namespace yml

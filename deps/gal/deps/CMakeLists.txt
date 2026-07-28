@@ -25,3 +25,4 @@ target_include_directories(stb_image PUBLIC stb/)
 set_property(TARGET stb_image PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 set_target_properties(glm glm-header-only glad stb_image PROPERTIES CXX_CLANG_TIDY "") # no clangtidy errors on code we do not control
+
