@@ -6,6 +6,7 @@
 #include <engine/scene.hpp>
 #include <dylib.hpp>
 #include <engine/scene/yaml_loader.hpp>
+#include <engine/utils/cube.hpp>
 
 namespace engine {
 
@@ -30,12 +31,8 @@ namespace engine {
     //temporary debug implementation, since we currently do not support loading scenes from file
     template<> scene construct_from_name<scene>(std::string_view name) {
         std::string name_string(name);
-        if(get_rm().get_dbg_scene_ctors().contains(name_string)) {
-            return get_rm().get_dbg_scene_ctors().at(name_string)();
-        } else {
-            std::string path_string = std::format("assets/scenes/{}", name);
-            return load_scene_from_yaml(path_string.c_str());
-        }
+        std::string path_string = std::format("assets/scenes/{}", name);
+        return load_scene_from_yaml(path_string.c_str());
     }
     template<> dylib::library construct_from_name<dylib::library>(std::string_view name) {
         dylib::decorations only_extension = dylib::decorations::os_default();
@@ -53,6 +50,7 @@ namespace engine {
 
         return dylib::library(path, only_extension);
     }
+
 
     template<Resource T>
     T construct_from_name(internal_resource_name_t n) { throw std::runtime_error("unimplemented!"); }
@@ -118,6 +116,8 @@ namespace engine {
             gal::index_buffer ibo(whole_screen_indices);
 
             return gal::vertex_array(std::move(vbo), std::move(ibo), whole_screen_vao_vertex_t::layout_t::to_vertex_layout());
+        } else if(n == internal_resource_name_t::cube_vao) {
+            return cube::make_vao();
         } else {
             throw std::runtime_error(std::format("incorrect internal_resource_name_t passed to resources_manager::construct_from_name<gal::vertex_array>(): {}", uint8_t(n)));
         }
@@ -193,7 +193,6 @@ namespace engine {
             mem_location->resource() = std::nullopt;
 
             // finally load the resource
-            // ret->emplace(resource_constructor(path));
             rc<const T> ignore = load<T>(identifier);
         }
     }

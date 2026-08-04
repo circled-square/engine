@@ -7,5 +7,8 @@ target_link_libraries(engine__utils_hash PUBLIC engine__global unordered_dense g
 add_library(engine__utils_linalgebra STATIC lin_algebra.cpp)
 target_link_libraries(engine__utils_linalgebra PUBLIC engine__global glm)
 
+add_library(engine__utils_cube STATIC cube.cpp)
+target_link_libraries(engine__utils_cube PUBLIC engine__global glm GAL)
+
 add_library(engine__utils INTERFACE)
-target_link_libraries(engine__utils INTERFACE engine__utils_read_file engine__utils_hash engine__utils_linalgebra)
+target_link_libraries(engine__utils INTERFACE engine__utils_read_file engine__utils_hash engine__utils_linalgebra engine__utils_cube)

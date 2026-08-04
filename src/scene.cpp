@@ -138,8 +138,8 @@ namespace engine {
         render_tree(m_renderer, *m_whole_screen_vao, get_root(), viewproj, resolution, frame_time);
         m_renderer.finalize_frame();
 
-        if (get_root().children().size() == 0) {
-            slogga::stdout_log.warn("scene \"{}\"'s root  has 0 children", m_name);
+        if (get_root().children().empty()) {
+            slogga::stdout_log.warn("scene \"{}\"'s root  has no children", m_name);
         }
     }
 

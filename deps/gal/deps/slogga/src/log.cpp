@@ -44,9 +44,7 @@ namespace slogga {
           m_timestamp(timestamp ? get_timestamp_string() : std::string()),
           m_repeated_line_count(0),
           m_log_level(l)
-    {
-        info("log level set to {}", log_level_name(l));
-    }
+    {}
 
     void log::set_log_level(log_level l) {
         m_log_level = l;

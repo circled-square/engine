@@ -96,7 +96,17 @@ namespace engine {
         // get this node's local transform
         const glm::mat4& transform() const {
             // slogga::stdout_log("[{}].transform()", m_ecs_id);
-            return get_rm().ecs().get_component<glm::mat4>(component_names::transform).get(m_ecs_id);
+            auto& rm = get_rm();
+
+            auto& ecs = rm.ecs();
+
+            auto& component = ecs.get_component<glm::mat4>(component_names::transform);
+
+            const auto& ret = component.get(m_ecs_id);
+
+            return ret;
+
+            // return get_rm().ecs().get_component<glm::mat4>(component_names::transform).get(m_ecs_id);
         }
         // set this node's local transform
         ENGINE_API void set_transform(const glm::mat4& m);

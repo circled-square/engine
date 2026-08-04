@@ -17,11 +17,6 @@ namespace engine {
         collect_garbage();
     }
 
-    void resources_manager::dbg_add_scene_constructor(std::string name, std::function<scene ()> scene_constructor) {
-        using namespace detail;
-        m_dbg_scene_ctors.insert({name, std::move(scene_constructor)});
-    }
-
     rc<const shader> resources_manager::get_default_3d_shader() { return m_default_3d_shader.value_or(load<shader>(internal_resource_name_t::simple_3d_shader)); }
     void resources_manager::set_default_3d_shader(std::optional<rc<const shader>> s) { m_default_3d_shader = std::move(s); }
 

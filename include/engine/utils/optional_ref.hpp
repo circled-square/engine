@@ -10,6 +10,7 @@ namespace engine {
         T* m_p;
     public:
         optional_ref() : m_p(nullptr) {}
+        optional_ref(std::nullopt_t) : m_p(nullptr) {}
         optional_ref(T& v) : m_p(&v) {}
         bool has_value() { return m_p != nullptr; }
         operator bool() { return has_value(); }

@@ -96,6 +96,21 @@ namespace engine {
             return ret;
         }
         template<typename T, size_t N>
+        inline std::array<T, N> optional_children_as_array(ryml::ConstNodeRef n) {
+            if(n.num_children() != N) {
+                return std::nullopt;
+            }
+
+            std::array<T, N> ret{};
+            auto iter = n.cchildren().begin();
+            for(size_t i = 0; i < N; i++) {
+                ret[i] = as_num<T>(get_val(*iter)); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access, cppcoreguidelines-pro-bounds-constant-array-index) // i < N
+                ++iter;
+            }
+
+            return ret;
+        }
+        template<typename T, size_t N>
         inline std::array<T, N> children_as_array(ryml::ConstNodeRef n) {
             EXPECTS(n.num_children() == N);
 
@@ -134,10 +149,15 @@ namespace engine {
 
         template<typename T, size_t N>
         inline glm::vec<N, T> children_as_glm_vec(ryml::ConstNodeRef n) {
-            auto[x,y,z] = children_as_array<float, 3>(n);
-            return glm::vec3(x,y,z);
-        }
+            glm::vec<N, T> ret;
+            auto arr = children_as_array<T, N>(n);
 
+            for(size_t i = 0; i < N; i++) {
+                ret[i] = arr[i];
+            }
+
+            return ret;
+        }
     }
 
     template<typename payload_t>
@@ -157,10 +177,21 @@ namespace engine {
         ryml::Tree tree = ryml::parse_in_arena(ryml::to_csubstr(file_contents.c_str()));
 
         // read from the tree:
-        ryml::ConstNodeRef root = get_child(tree.crootref(), "scene", "root");
-        node root_payload = node();
+        ryml::ConstNodeRef scene_node = get_child(tree.crootref(), "scene");
+        ryml::ConstNodeRef scene_root_node = get_child(scene_node, "root");
+        node dfs_root_payload = node();
 
-        node scene_root = simple_dfs(root_payload, root, [](node father, ryml::ConstNodeRef n) {
+        application_channel_t::to_app_t to_app_chan;
+        if(auto params_node = get_optional_child(scene_node, "params")) {
+            if(auto wants_cursor_captured = get_optional_child_bool(params_node, "wants_mouse_cursor_captured")) {
+                to_app_chan.wants_mouse_cursor_captured = *wants_cursor_captured;
+            }
+            if(auto clear_color_node = get_optional_child(params_node, "clear_color")) {
+                to_app_chan.clear_color = children_as_glm_vec<float, 4>(*clear_color_node);
+            }
+        }
+
+        node scene_root = simple_dfs(dfs_root_payload, scene_root_node, [](node father, ryml::ConstNodeRef n) {
             auto name = get_optional_child_val(n, "name").value_or("");
 
             std::optional<stateless_script> script {};
@@ -197,21 +228,7 @@ namespace engine {
                 }
             }
 
-            node_collision_behaviour col_behaviour;
-            if (auto col_behaviour_node = get_optional_child(n, "collision_behaviour")) {
-                if(auto moves_away = get_optional_child_bool(col_behaviour_node, "move_away")) {
-                    col_behaviour.moves_away_on_collision = *moves_away;
-                }
-                if(auto passes_events_to_script = get_optional_child_bool(col_behaviour_node, "pass_event_to_script")) {
-                    col_behaviour.passes_events_to_script = *passes_events_to_script;
-                }
-                if(auto passes_events_to_father = get_optional_child_bool(col_behaviour_node, "pass_event_to_father")) {
-                    col_behaviour.passes_events_to_father = *passes_events_to_father;
-                }
-            }
-
             node ret;
-
 
 
             if (auto path = get_optional_child_val(n, "load")) {
@@ -228,18 +245,50 @@ namespace engine {
                 ret = node(std::string(name), transform);
             }
 
-            // TODO: handle viewport payload as well
-            // TODO: awkward that we still have a "payload" node in the yaml even though the engine no longer works like this
-            if(auto pl_node = get_optional_child(n, "payload")) {
-                if(auto type_str = get_optional_child_val(*pl_node, "type")) {
-                    if(*type_str == "camera") {
-                        ret.set<camera>(camera());
+            if(auto cam = get_optional_child(n, "camera")) {
+                ret.set<camera>(camera());
+            }
+            if(auto vp = get_optional_child(n, "viewport")) {
+                if(auto dyn_size_node = get_optional_child(*vp, "dyn_size")) {
+                    glm::vec2 dyn_size;
+
+                    if(auto dyn_size_val = get_optional_val(*dyn_size_node)) {
+                        dyn_size = glm::vec2(as_num<float>(*dyn_size_val));
                     } else {
-                        UNIMPLEMENTED(false);
+                        glm::vec2 dyn_size = children_as_glm_vec<float, 2>(*dyn_size_node);
                     }
+
+                    ret.set<viewport>(viewport(dyn_size));
+
+                } else if(auto pixel_size_node = get_optional_child(*vp, "pixel_size")) {
+                    glm::ivec2 pixel_size;
+
+                    if(auto pixel_size_val = get_optional_val(*pixel_size_node)) {
+                        pixel_size = glm::vec2(as_num<std::uint32_t>(*pixel_size_val));
+                    } else {
+                        glm::ivec2 pixel_size = children_as_glm_vec<std::uint32_t, 2>(*pixel_size_node);
+                    }
+
+                    ret.set<viewport>(viewport(get_rm().new_from(gal::texture::empty(pixel_size, 4))));
+
+                } else {
+                    slogga::stdout_log.warn("no size (neither 'dyn_size' nor 'pixel_size') specified for viewport node {}, skipping viewport construction...", name);
                 }
             }
 
+
+            node_collision_behaviour col_behaviour;
+            if (auto col_behaviour_node = get_optional_child(n, "collision_behaviour")) {
+                if(auto moves_away = get_optional_child_bool(col_behaviour_node, "move_away")) {
+                    col_behaviour.moves_away_on_collision = *moves_away;
+                }
+                if(auto passes_events_to_script = get_optional_child_bool(col_behaviour_node, "pass_event_to_script")) {
+                    col_behaviour.passes_events_to_script = *passes_events_to_script;
+                }
+                if(auto passes_events_to_father = get_optional_child_bool(col_behaviour_node, "pass_event_to_father")) {
+                    col_behaviour.passes_events_to_father = *passes_events_to_father;
+                }
+            }
             ret.set<node_collision_behaviour>(col_behaviour);
 
 
@@ -261,6 +310,22 @@ namespace engine {
             return ret;
         });
 
-        return scene(filename, scene_root);
+        return scene(filename, scene_root, std::move(to_app_chan));
+    }
+
+    project_info_t load_yaml_project_file(const char* filename) {
+        std::string file_contents = read_file(filename);
+        ryml::Tree tree = ryml::parse_in_arena(ryml::to_csubstr(file_contents.c_str()));
+        auto yaml_root = tree.crootref();
+
+        project_info_t ret {
+            .window_name = std::string(get_child_val(yaml_root, "window-name")),
+            .log_level = get_optional_child_val(yaml_root, "log-level").and_then(slogga::log_level_from_string),
+            .resolution = std::nullopt,
+            .maximised = get_optional_child_bool(yaml_root, "maximised").value_or(false),
+            .start_scene_path = std::string(get_child_val(yaml_root, "start-scene"))
+        };
+        //resolution
+        return ret;
     }
 }

@@ -43,11 +43,24 @@ namespace slogga {
         DEBUG = 4,
         TRACE = 5,
     };
+
     #ifdef NDEBUG
         constexpr log_level default_log_level = log_level::WARN;
     #else
         constexpr log_level default_log_level = log_level::DEBUG;
     #endif
+
+    inline std::optional<log_level> log_level_from_string(std::string_view s) {
+        return
+            s == "trace" ? std::optional(slogga::log_level::TRACE) :
+            s == "debug" ? std::optional(slogga::log_level::DEBUG) :
+            s == "info"  ? std::optional(slogga::log_level::INFO)  :
+            s == "warn"  ? std::optional(slogga::log_level::WARN)  :
+            s == "error" ? std::optional(slogga::log_level::ERROR) :
+            s == "fatal" ? std::optional(slogga::log_level::FATAL) :
+            s == "off"   ? std::optional(slogga::log_level::OFF)   :
+            std::nullopt;
+    }
 
     class log {
         std::variant<std::ofstream, std::FILE*> m_stream;

@@ -14,7 +14,7 @@
 
 namespace engine {
     enum class internal_resource_name_t : uint8_t {
-        whole_screen_vao, simple_3d_shader, dither_texture,
+        whole_screen_vao, cube_vao, simple_3d_shader, dither_texture,
     };
 
     [[nodiscard]]
@@ -27,13 +27,7 @@ namespace engine {
 
         detail::resources_manager_hashmaps m_hashmaps;
 
-        hashmap<std::string, std::function<scene()>> m_dbg_scene_ctors;
-
         entity_component_system m_ecs;
-
-        // NOTE: necessary because of the debug implementation of scene_construction
-        template<Resource T>
-        friend T construct_from_name(std::string_view name);
 
         std::optional<rc<const shader>> m_default_3d_shader;
 
@@ -89,10 +83,6 @@ namespace engine {
         ///TODO: allow user to embed shader information in gltf (which would also allow different meshes in the same gltf to use different shaders)
         [[nodiscard]] ENGINE_API rc<const shader> get_default_3d_shader();
         ENGINE_API void set_default_3d_shader(std::optional<rc<const shader>> s);
-
-        // useful for debugging scene loading behaviour since for now we don't have scenes that are loaded from file
-        ENGINE_API void dbg_add_scene_constructor(std::string name, std::function<scene()> scene_constructor);
-        const auto& get_dbg_scene_ctors() const { return m_dbg_scene_ctors; }
 
         // destroys and deallocates resources not in use
         ENGINE_API void collect_garbage();
