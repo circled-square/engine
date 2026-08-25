@@ -12,7 +12,7 @@
 namespace engine {
     static void terminate_handler();
 
-    void entry_point(std::optional<slogga::log_level> log_level_override, std::string project_file_path, glm::ivec2 wnd_res, const std::string& wnd_name, window::hints wnd_hints, std::function<rc<scene>()> get_start_scene) {
+    void entry_point(std::optional<slogga::log_level> log_level_override, std::string project_file_path, glm::ivec2 wnd_res, const std::string& wnd_name, window::hints wnd_hints) {
         project_info_t project_info = load_yaml_project_file(project_file_path.c_str());
 
         slogga::log_level log_level = log_level_override.value_or(
